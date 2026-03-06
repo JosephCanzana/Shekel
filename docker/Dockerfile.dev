@@ -1,22 +1,22 @@
 # Install system dependencies WeasyPrint needs
-# RUN apt-get update && apt-get install -y \
-#     gcc \
-#     libpango-1.0-0 \
-#     libpangoft2-1.0-0 \
-#     libpangocairo-1.0-0 \
-#     libgdk-pixbuf2.0-0 \
-#     libffi-dev \
-#     libcairo2 \
-#     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 FROM python:3.12-slim
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-xlib-2.0-0 \
+    libffi-dev \
+    libcairo2 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 COPY pip_packages/ ./pip_packages/
 
-RUN pip install --upgrade pip --no-index --find-links=./pip_packages 
+RUN pip install --no-index --find-links=./pip_packages -r requirements.txt
 
 CMD ["python", "run.py"]
