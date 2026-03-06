@@ -1,5 +1,6 @@
-.env
 .env.prod
+.env
 venv
 __pycache__
 node_modules
+pip_packages

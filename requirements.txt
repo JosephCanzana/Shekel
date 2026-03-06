@@ -1,5 +1,4 @@
 Flask
-Flask-DotEnv
 Flask-Login
 Flask-Migrate
 Flask-SQLAlchemy
