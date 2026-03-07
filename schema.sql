@@ -2,12 +2,12 @@
 -- DATABASE SCHEMA
 -- ============================================================
 
--- 3.1 Users
+--  Users
 CREATE TABLE IF NOT EXISTS Users (
     user_id     INT          NOT NULL AUTO_INCREMENT,
-    first_name  VARCHAR(50)  NOT NULL,
-    last_name   VARCHAR(50)  NOT NULL,
-    role        ENUM('admin', 'cashier', 'stocking') NOT NULL,
+    first_name  VARCHAR(50)  NOT NULL, 
+    last_name   VARCHAR(50)  NOT NULL, 
+    role        ENUM('admin', 'cashier', 'stocking', 'co-admin') NOT NULL,
     password    VARCHAR(255) NOT NULL,         
     status      ENUM('activated', 'not_activated', 'suspended', 'archived') NOT NULL,
     PRIMARY KEY (user_id)
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS Users (
 
 -- ============================================================
 
--- 3.2 Recovery_Details
+--  Recovery_Details
 CREATE TABLE IF NOT EXISTS Recovery_Details (
     user_id        INT          NOT NULL,             -- PK + FK -> Users (Admin access only)
     email          VARCHAR(100) NOT NULL,             -- Recovery email address
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS Recovery_Details (
 
 -- ============================================================
 
--- 3.3 Categories
+-- Categories
 CREATE TABLE IF NOT EXISTS Categories (
     category_id   INT          NOT NULL AUTO_INCREMENT,
     category_name VARCHAR(100) NOT NULL,
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS Categories (
 
 -- ============================================================
 
--- 3.4 Products
+--  Products
 CREATE TABLE IF NOT EXISTS Products (
     product_id            INT            NOT NULL AUTO_INCREMENT,
     product_name          VARCHAR(150)   NOT NULL,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS Products (
 
 -- ============================================================
 
--- 3.5 Inventory
+--  Inventory
 CREATE TABLE IF NOT EXISTS Inventory (
     inventory_id        INT      NOT NULL AUTO_INCREMENT,
     product_id          INT      NOT NULL,            -- FK -> Products (UNIQUE: one record per product)
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS Inventory (
 
 -- ============================================================
 
--- 3.6 Stock_In
+--  Stock_In
 CREATE TABLE IF NOT EXISTS Stock_In (
     stockin_id        INT      NOT NULL AUTO_INCREMENT,
     product_id        INT      NOT NULL,              -- FK -> Products
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS Stock_In (
 
 -- ============================================================
 
--- 3.7 Sales
+--  Sales
 CREATE TABLE IF NOT EXISTS Sales (
     transaction_id        INT           NOT NULL AUTO_INCREMENT,
     sale_datetime         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS Sales (
 
 -- ============================================================
 
--- 3.8 Sales_Details
+-- Sales_Details
 CREATE TABLE IF NOT EXISTS Sales_Details (
     sale_detail_id          INT           NOT NULL AUTO_INCREMENT,
     transaction_id          INT           NOT NULL,   -- FK -> Sales
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS Sales_Details (
 
 -- ============================================================
 
--- 3.9 Defects
+-- Defects
 CREATE TABLE IF NOT EXISTS Defects (
     defect_id             INT           NOT NULL AUTO_INCREMENT,
     defect_datetime       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS Defects (
 
 -- ============================================================
 
--- 3.10 Defect_Details
+-- Defect_Details
 CREATE TABLE IF NOT EXISTS Defect_Details (
     defect_detail_id         INT           NOT NULL AUTO_INCREMENT,
     defect_id                INT           NOT NULL,  -- FK -> Defects
@@ -176,7 +176,7 @@ CREATE TABLE IF NOT EXISTS Defect_Details (
 
 -- ============================================================
 
--- 3.11 Audit_Log
+-- Audit_Log
 CREATE TABLE IF NOT EXISTS Audit_Log (
     log_id          INT          NOT NULL AUTO_INCREMENT,
     user_id         INT          NOT NULL,            -- FK -> Users
@@ -191,3 +191,6 @@ CREATE TABLE IF NOT EXISTS Audit_Log (
         FOREIGN KEY (user_id) REFERENCES Users (user_id)
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
+
+INSERT INTO Users (first_name, last_name, role, password, status)
+VALUES ('admin', 'account', 'admin', 'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf', 'not_activated');
