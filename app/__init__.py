@@ -1,38 +1,27 @@
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from flask_migrate import Migrate
-from flask_wtf.csrf import CSRFProtect
-from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from config import DevelopmentConfig
-
-# ─── Extensions ───────────────────────────────────────────────
-# Initialized here but not tied to any app yet.
-# They get connected to the app inside create_app() via .init_app()
-db = SQLAlchemy()
-login_manager = LoginManager()
-migrate = Migrate()
-csrf = CSRFProtect()
+from app.extensions import db, login_manager, migrate, csrf
 
 def create_app():
     load_dotenv()
 
     app = Flask(__name__)
-    # app.config.from_object(DevelopmentConfig)
+    app.config.from_object(DevelopmentConfig)
 
     # # ─── Bind Extensions to App ───────────────────────────────
-    # db.init_app(app)
-    # login_manager.init_app(app)
-    # migrate.init_app(app, db)
-    # csrf.init_app(app)
+    db.init_app(app)
+    login_manager.init_app(app)
+    migrate.init_app(app, db)
+    csrf.init_app(app)
 
     # # ─── Login Manager Config ─────────────────────────────────
     # # Where to redirect if a user tries to access a protected route
-    # login_manager.login_view = "auth.login"
+    login_manager.login_view = "auth.login"
+    
     # # Flash message shown when redirected
-    # login_manager.login_message = "Please log in to access this page."
-    # login_manager.login_message_category = "warning"
+    login_manager.login_message = "Please log in to access this page."
+    login_manager.login_message_category = "warning"
 
     # ─── User Loader ──────────────────────────────────────────
     # Flask-Login calls this to reload the user from the session.
