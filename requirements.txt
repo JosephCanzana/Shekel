@@ -8,3 +8,4 @@ pytest
 Werkzeug
 DotEnv
 weasyprint
+pymysql

@@ -17,11 +17,11 @@ def create_app():
 
     # # ─── Login Manager Config ─────────────────────────────────
     # # Where to redirect if a user tries to access a protected route
-    login_manager.login_view = "auth.login"
+    # login_manager.login_view = "auth.login"
     
-    # # Flash message shown when redirected
-    login_manager.login_message = "Please log in to access this page."
-    login_manager.login_message_category = "warning"
+    # # # Flash message shown when redirected
+    # login_manager.login_message = "Please log in to access this page."
+    # login_manager.login_message_category = "warning"
 
     # ─── User Loader ──────────────────────────────────────────
     # Flask-Login calls this to reload the user from the session.
