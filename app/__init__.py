@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 from dotenv import load_dotenv
 from config import DevelopmentConfig
 from app.extensions import db, login_manager, migrate, csrf
@@ -17,23 +17,20 @@ def create_app():
 
     # # ─── Login Manager Config ─────────────────────────────────
     # # Where to redirect if a user tries to access a protected route
-    # login_manager.login_view = "auth.login"
+    login_manager.login_view = "auth.login"
     
     # # # Flash message shown when redirected
-    # login_manager.login_message = "Please log in to access this page."
-    # login_manager.login_message_category = "warning"
+    login_manager.login_message = "Please log in to access this page."
+    login_manager.login_message_category = "warning"
 
     # ─── User Loader ──────────────────────────────────────────
     # Flask-Login calls this to reload the user from the session.
-    # Import is here (not top-level) to avoid circular imports.
-    # from app.models.user import User
-
-    # @login_manager.user_loader
-    # def load_user(user_id):
-    #     return User.query.get(int(user_id))
+    from app.models.user import User
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(int(user_id))
 
     # ─── Register Blueprints ──────────────────────────────────
-    # Uncomment each one as you build and create the route file.
 
     # from app.routes.auth import auth_bp
     # app.register_blueprint(auth_bp)
@@ -58,5 +55,5 @@ def create_app():
 
     @app.route("/test")
     def test():
-        return "It's Working!"
+        return render_template("test.html")
     return app

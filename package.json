@@ -1,6 +1,11 @@
 {
   "devDependencies": {
+    "@tailwindcss/cli": "^4.2.1",
     "concurrently": "^9.2.1",
     "tailwindcss": "^4.2.1"
+  },
+  "scripts": {
+    "dev": "tailwindcss -i ./app/static/css/input.css -o ./app/static/css/output.css --watch",
+    "build": "tailwindcss -i ./app/static/css/input.css -o ./app/static/css/output.css --minify"
   }
 }

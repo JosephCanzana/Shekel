@@ -1,10 +1,9 @@
-# Install system dependencies WeasyPrint needs
-
 # Install Python dependencies
 FROM python:3.12-slim
 
 WORKDIR /app
 
+# Install system dependencies WeasyPrint needs
 RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \

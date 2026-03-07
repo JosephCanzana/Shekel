@@ -16,3 +16,5 @@
 ## Running the app
 1. docker compose up
 
+## Install Tailwind
+1. npm install -D @tailwindcss/cli

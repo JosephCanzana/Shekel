@@ -21,6 +21,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.dev
+    restart: on-failure
     ports:
       - "5000:5000"
     volumes:
