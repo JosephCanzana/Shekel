@@ -1,46 +1,74 @@
 @font-face {
   font-family: 'Main';
-  src: url('/static/fonts/Exo2-VariableFont_wght.ttf') format('truetype');
+  src: url('/static/fonts/Geist-VariableFont_wght.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
 }
 
 @theme {
-  --color-primary:       #1E40AF;
-  --color-secondary:     #2563EB;
-  --color-tertiary:      #3B82F6;
-  --color-bg:            #F1F5FB;
+  /* brand */
+  --color-primary:       #18181B;
+  --color-primary-hover: #09090B;
+  --color-primary-soft:  #F4F4F5;
+
+  /* backgrounds */
+  --color-bg:            #FCFCFC;
   --color-surface:       #FFFFFF;
-  --color-surface-alt:   #E2E8F0;
-  --color-txt-primary:   #0F172A;
-  --color-txt-secondary: #334155;
-  --color-txt-muted:     #64748B;
-  --color-txt-hover:     #1E3A8A;
-  --color-border:        rgba(203, 213, 225, 0.8);
-  --color-border-strong: rgba(148, 163, 184, 0.7);
+  --color-surface-alt:   #F7F7F8;
+
+  /* text */
+  --color-txt-primary:   #111111;
+  --color-txt-secondary: #52525B;
+  --color-txt-muted:     #A1A1AA;
+
+  /* borders */
+  --color-border:        #EBEBEB;
+  --color-border-strong: #D4D4D8;
+
+  /* states */
   --color-success:       #16A34A;
   --color-error:         #DC2626;
-  --color-warning:       #EAB308;
-  --color-info:          #2563EB;
+  --color-warning:       #D97706;
+  --color-info:          #18181B;
+
+  /* accent — the shekel coin */
+  --color-accent:        #C47F17;
+  --color-accent-hover:  #A86912;
+  --color-accent-soft:   #FEF9EC;
+
+  /* font */
   --font-main:           'Main', sans-serif;
 }
 
-/* dark mode — toggled by adding .dark to <html> */
+/* dark mode */
 .dark {
-  --color-primary:       #3B82F6;
-  --color-secondary:     #60A5FA;
-  --color-tertiary:      #93C5FD;
-  --color-bg:            #0B1120;
-  --color-surface:       #111827;
-  --color-surface-alt:   #1F2937;
-  --color-txt-primary:   #F8FAFC;
-  --color-txt-secondary: #CBD5F5;
-  --color-txt-muted:     #94A3B8;
-  --color-txt-hover:     #BFDBFE;
-  --color-border:        rgba(71, 85, 105, 0.6);
-  --color-border-strong: rgba(100, 116, 139, 0.8);
+  /* brand */
+  --color-primary:       #FFFFFF;
+  --color-primary-hover: #E4E4E7;
+  --color-primary-soft:  #1C1C1F;
+
+  /* backgrounds */
+  --color-bg:            #0C0C0D;
+  --color-surface:       #141415;
+  --color-surface-alt:   #1A1A1E;
+
+  /* text */
+  --color-txt-primary:   #FFFFFF;
+  --color-txt-secondary: #B4B4BB;
+  --color-txt-muted:     #606068;
+
+  /* borders */
+  --color-border:        #232326;
+  --color-border-strong: #2E2E33;
+
+  /* states */
   --color-success:       #22C55E;
   --color-error:         #F87171;
-  --color-warning:       #FACC15;
-  --color-info:          #60A5FA;
+  --color-warning:       #FBBF24;
+  --color-info:          #FFFFFF;
+
+  /* accent — the shekel coin */
+  --color-accent:        #E8A020;
+  --color-accent-hover:  #F0B535;
+  --color-accent-soft:   #1A1200;
 }

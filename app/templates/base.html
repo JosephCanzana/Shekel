@@ -1,13 +1,69 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-    <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>{% block title %}Shekel{% endblock %}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+  <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
+
+  {% block head %}{% endblock %}
 </head>
-<body class="relative flex flex-col min-h-screen bg-[var(--clr-bg)] overflow-x-hidden">
 
+<body class="min-h-screen bg-bg text-txt-primary font-main antialiased">
+<div class="flex flex-col min-h-screen">
 
+  {% if current_user.is_authenticated %}
+  <!-- Navbar -->
+  <nav class="bg-surface border-b border-border">
+    <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+      {% block nav %}{% endblock %}
+    </div>
+  </nav>
+  {% endif %}
+
+  <!-- Main -->
+  <main class="flex-1">
+    <div class="max-w-screen mx-auto px-6 py-10">
+
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-6 space-y-3">
+          {% for category, message in messages %}
+            <div class="p-3 rounded-lg border border-border bg-surface-alt text-sm">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endwith %}
+
+      {% if current_user.is_authenticated %}
+      <div class="flex-1 transition-all duration-450 md:ml-20 sm:ml-10" id="wrapper">    
+        <main class="w-full min-h-[calc(100vh-4.25rem)] text-[var(--clr-txt-primary)] pb-24 pt-12 
+                    px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
+            {% block main %}
+            {% endblock %}
+        </main>
+    </div>
+      {% else %}
+        <!-- Auth Layout -->
+        {% block auth_body %}{% endblock %}
+      {% endif %}
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-border bg-surface-alt">
+    <div class="max-w-7xl mx-auto px-6 py-4 text-center text-sm text-txt-muted">
+      &copy; 2025 Shekel — All rights reserved.
+    </div>
+  </footer>
+
+</div>
+</body>
 </html>

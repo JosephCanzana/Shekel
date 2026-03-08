@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block auth_body %}
+<div class="w-full min-h-[85vh] grid md:grid-cols-2 bg-bg font-main">
+
+  <!-- Left Side (Branding) -->
+  <div class="hidden md:flex flex-col justify-center items-center bg-surface-alt p-10 text-center border-r border-border">
+    <!-- Logo Mark -->
+    <div class="w-16 h-16 rounded-full border-2 border-accent flex items-center justify-center mb-6">
+      <span class="text-2xl font-bold text-accent">S</span>
+    </div>
+
+    <h1 class="text-5xl font-bold tracking-widest text-txt-primary uppercase">
+      Shekel
+    </h1>
+
+    <div class="w-8 h-0.5 bg-accent mx-auto my-4"></div>
+
+    <p class="text-base text-txt-secondary max-w-xs leading-relaxed">
+      Stock smart. Sell more. <br>
+      <span class="text-txt-muted text-sm">Every great store finds its balance.</span>
+    </p>
+  </div>
+
+  <!-- Right Side (Login Form) -->
+  <div class="flex items-center justify-center p-6">
+    <div class="w-full max-w-md bg-surface border border-border rounded-xl shadow-sm p-8">
+
+      <!-- Header -->
+      <div class="mb-7">
+        <h2 class="text-xl font-semibold text-txt-primary">
+          Welcome back
+        </h2>
+        <p class="text-sm text-txt-muted mt-1">
+          Sign in to your Shekel account
+        </p>
+      </div>
+
+      <form action="{{ url_for('auth.login') }}" method="post" class="space-y-5">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Full Name -->
+        <div class="space-y-1.5">
+          <label class="text-sm font-medium text-txt-secondary">
+            Full Name
+          </label>
+          <input
+            type="text"
+            name="full_name"
+            placeholder="Juan dela Cruz"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-border bg-surface text-txt-primary placeholder:text-txt-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition"
+          >
+        </div>
+
+        <!-- Password -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-txt-secondary">
+              Password
+            </label>
+            <a href="#" class="text-xs text-accent hover:text-accent-hover transition">
+              Forgot password?
+            </a>
+          </div>
+          <input
+            type="password"
+            name="password"
+            placeholder="••••••••"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-border bg-surface text-txt-primary placeholder:text-txt-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition"
+          >
+        </div>
+
+        <!-- Button -->
+        <button
+          type="submit"
+          class="w-full py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-hover transition mt-2"
+        >
+          Sign in
+        </button>
+
+      </form>
+
+      <!-- Divider -->
+      <div class="flex items-center gap-3 my-5">
+        <div class="flex-1 h-px bg-border"></div>
+        <span class="text-xs text-txt-muted">Shekel v1.0</span>
+        <div class="flex-1 h-px bg-border"></div>
+      </div>
+
+      <p class="text-center text-xs text-txt-muted">
+        Every great store finds its balance. 🪙
+      </p>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
