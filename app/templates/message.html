@@ -2,6 +2,22 @@
 
 {% block title %}Error {{ error_code }}{% endblock %}
 
+{% block main %}
+<div class="w-full max-w-md mx-auto text-center space-y-6">
+
+    <!-- Error Code -->
+    <div class="text-5xl font-bold text-error">
+        {{ error_code }}
+    </div>
+
+    <!-- Message -->
+    <p class="text-lg text-txt-secondary">
+        {{ message }}
+    </p>
+
+
+</div>
+{% endblock %}
 {% block auth_body %}
 <div class="w-full max-w-md mx-auto text-center space-y-6">
 

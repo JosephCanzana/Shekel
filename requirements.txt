@@ -9,3 +9,4 @@ Werkzeug
 DotEnv
 weasyprint
 pymysql
+cryptography
