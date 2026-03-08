@@ -13,8 +13,20 @@
 4. Build and run the docker
 > docker compose up --build
 
-## Running the app
-1. docker compose up
+## DOCKER
+1. Run command
+> docker compose up
+2. View Containers details
+> docker ps
 
-## Install Tailwind
-1. npm install -D @tailwindcss/cli
+## Tailwind
+1. Install Tailwind
+> npm install -D @tailwindcss/cli
+2. Verify Installation
+> ls node_modules/.bin/ | grep tailwind
+
+## Alpinejs
+1. Install Alpinejs
+> npm install alpinejs
+2. Verify Installation
+> ls node_modules | grep alpinejs

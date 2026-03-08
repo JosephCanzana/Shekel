@@ -32,8 +32,8 @@ def create_app():
 
     # ─── Register Blueprints ──────────────────────────────────
 
-    # from app.routes.auth import auth_bp
-    # app.register_blueprint(auth_bp)
+    from app.routes.auth import auth_bp
+    app.register_blueprint(auth_bp)
 
     # from app.routes.sales import sales_bp
     # app.register_blueprint(sales_bp)

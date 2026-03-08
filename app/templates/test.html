@@ -3,26 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tailwind Test</title>
-  <!-- Change this to url_for when using in Flask -->
+  <title>Tailwind + Alpine Test</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-  <!-- <link rel="stylesheet" href="../static/css/output.css"> -->
+  <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
 </head>
 <body class="bg-gray-950 text-white min-h-screen font-mono p-10">
 
-  <!-- Header -->
   <div class="max-w-3xl mx-auto">
+
+    <!-- Header -->
     <div class="mb-10 border-b border-gray-700 pb-6">
       <span class="text-xs uppercase tracking-widest text-green-400 font-bold">System Check</span>
-      <h1 class="text-4xl font-black mt-2 text-white">Tailwind CSS <span class="text-green-400">is working</span> ✓</h1>
-      <p class="text-gray-400 mt-2 text-sm">If you can see colors, spacing, and styled text — Tailwind is connected correctly.</p>
+      <h1 class="text-4xl font-main font-black mt-2 text-white">Tailwind + Alpine.js <span class="text-green-400">is working</span> ✓</h1>
+      <p class="text-gray-400 mt-2 text-sm">If you can see colors, styled text, and interactive components — both are connected correctly.</p>
     </div>
 
     <!-- Color Test -->
     <section class="mb-8">
       <h2 class="text-xs uppercase tracking-widest text-gray-500 mb-3">Colors</h2>
       <div class="flex gap-2 flex-wrap">
-        <div class="w-10 h-10 rounded bg-blue-500">hatdog</div>
+        <div class="w-10 h-10 rounded bg-red-500"></div>
         <div class="w-10 h-10 rounded bg-orange-500"></div>
         <div class="w-10 h-10 rounded bg-yellow-400"></div>
         <div class="w-10 h-10 rounded bg-green-500"></div>
@@ -58,22 +58,6 @@
       </div>
     </section>
 
-    <!-- Button Test -->
-    <section class="mb-8">
-      <h2 class="text-xs uppercase tracking-widest text-gray-500 mb-3">Buttons & Interactivity</h2>
-      <div class="flex gap-3 flex-wrap">
-        <button class="px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-bold rounded transition-colors text-sm">
-          Hover me
-        </button>
-        <button class="px-4 py-2 border border-gray-600 hover:border-white text-gray-300 hover:text-white rounded transition-colors text-sm">
-          Outline
-        </button>
-        <button class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors text-sm">
-          Ghost
-        </button>
-      </div>
-    </section>
-
     <!-- Grid Test -->
     <section class="mb-8">
       <h2 class="text-xs uppercase tracking-widest text-gray-500 mb-3">Grid</h2>
@@ -84,16 +68,97 @@
       </div>
     </section>
 
-    <!-- Status Card -->
-    <div class="mt-10 border border-green-500/30 bg-green-500/5 rounded-lg p-5 flex items-center gap-4">
-      <div class="w-3 h-3 rounded-full bg-green-400 animate-pulse"></div>
-      <div>
-        <p class="text-green-400 font-bold text-sm">All systems operational</p>
-        <p class="text-gray-500 text-xs mt-0.5">Tailwind is scanning your templates and generating CSS correctly.</p>
+    <!-- ───── ALPINE.JS TESTS ───── -->
+    <div class="border-t border-gray-700 pt-8 mt-8 mb-2">
+      <span class="text-xs uppercase tracking-widest text-blue-400 font-bold">Alpine.js Tests</span>
+      <p class="text-gray-500 text-xs mt-1 mb-6">Interact with the components below to verify Alpine.js is working.</p>
+    </div>
+
+    <!-- Test 1: Toggle -->
+    <section class="mb-6" x-data="{ show: false }">
+      <h2 class="text-xs uppercase tracking-widest text-gray-500 mb-3">1. x-show / @click — Toggle</h2>
+      <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+        <button
+          @click="show = !show"
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded transition-colors text-sm"
+          x-text="show ? 'Hide Message' : 'Show Message'">
+        </button>
+        <p
+          x-show="show"
+          x-transition
+          class="mt-3 text-green-400 text-sm font-bold">
+          ✓ Alpine x-show is working!
+        </p>
+      </div>
+    </section>
+
+    <!-- Test 2: x-model input binding -->
+    <section class="mb-6" x-data="{ name: '' }">
+      <h2 class="text-xs uppercase tracking-widest text-gray-500 mb-3">2. x-model — Input Binding</h2>
+      <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+        <input
+          x-model="name"
+          type="text"
+          placeholder="Type something..."
+          class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+        />
+        <p class="mt-3 text-sm text-gray-400">
+          Live output: <span class="text-white font-bold" x-text="name || '—'"></span>
+        </p>
+      </div>
+    </section>
+
+    <!-- Test 3: Counter -->
+    <section class="mb-6" x-data="{ count: 0 }">
+      <h2 class="text-xs uppercase tracking-widest text-gray-500 mb-3">3. x-data / x-text — Counter</h2>
+      <div class="bg-gray-900 rounded-lg p-4 border border-gray-800 flex items-center gap-4">
+        <button @click="count--" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white font-bold transition-colors">−</button>
+        <span class="text-2xl font-black text-white w-10 text-center" x-text="count"></span>
+        <button @click="count++" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white font-bold transition-colors">+</button>
+        <button @click="count = 0" class="ml-2 px-3 py-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded text-gray-400 text-xs transition-colors">Reset</button>
+      </div>
+    </section>
+
+    <!-- Test 4: Dropdown -->
+    <section class="mb-8" x-data="{ open: false }">
+      <h2 class="text-xs uppercase tracking-widest text-gray-500 mb-3">4. Dropdown / @click.outside</h2>
+      <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+        <button
+          @click="open = !open"
+          class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm flex items-center gap-2 transition-colors">
+          Options
+          <span x-text="open ? '▲' : '▼'" class="text-xs"></span>
+        </button>
+        <div
+          x-show="open"
+          x-transition
+          @click.outside="open = false"
+          class="mt-2 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden w-48">
+          <div class="px-4 py-2 hover:bg-gray-700 text-sm text-gray-300 cursor-pointer transition-colors">Option A</div>
+          <div class="px-4 py-2 hover:bg-gray-700 text-sm text-gray-300 cursor-pointer transition-colors">Option B</div>
+          <div class="px-4 py-2 hover:bg-gray-700 text-sm text-gray-300 cursor-pointer transition-colors">Option C</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Status Cards -->
+    <div class="grid grid-cols-2 gap-3 mt-4">
+      <div class="border border-green-500/30 bg-green-500/5 rounded-lg p-4 flex items-center gap-3">
+        <div class="w-3 h-3 rounded-full bg-green-400 animate-pulse shrink-0"></div>
+        <div>
+          <p class="text-green-400 font-bold text-sm">Tailwind CSS</p>
+          <p class="text-gray-500 text-xs mt-0.5">Operational</p>
+        </div>
+      </div>
+      <div class="border border-blue-500/30 bg-blue-500/5 rounded-lg p-4 flex items-center gap-3">
+        <div class="w-3 h-3 rounded-full bg-blue-400 animate-pulse shrink-0"></div>
+        <div>
+          <p class="text-blue-400 font-bold text-sm">Alpine.js</p>
+          <p class="text-gray-500 text-xs mt-0.5">Operational</p>
+        </div>
       </div>
     </div>
 
   </div>
-
 </body>
 </html>
