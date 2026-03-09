@@ -1,0 +1,211 @@
+{# ══════════════════════════════════════════════════════════
+   SIDEBAR COMPONENT
+   Usage: {% include "components/sidebar.html" %}
+
+   ── To add/edit nav links, update the sidebar_links dict below.
+   ── Bottom utilities (theme, info, logout) are always shown.
+   ── Sidebar starts collapsed (icon only), expands on toggle.
+   ── Toggle is fired via Alpine custom event 'toggle-sidebar'
+      dispatched by the hamburger in navbar.html
+══════════════════════════════════════════════════════════ #}
+
+{# ── Define nav links per role ─────────────────────────────
+   Each item: { url, icon, label }
+   icon = Material Symbols name
+   Keep url as '#' until the route exists
+────────────────────────────────────────────────────────── #}
+{% set sidebar_links = {
+
+    'admin': [
+        {'url': '#', 'icon': 'home',      'label': 'Dashboard'},
+        {'url': '#', 'icon': 'inventory', 'label': 'Inventory'},
+        {'url': '#', 'icon': 'monitoring','label': 'Reports'},
+        {'url': '#', 'icon': 'group',     'label': 'Users'},
+        {'url': '#', 'icon': 'category',  'label': 'Categories'},
+    ],
+
+    'co-admin': [
+        {'url': '#', 'icon': 'home',      'label': 'Dashboard'},
+        {'url': '#', 'icon': 'inventory', 'label': 'Inventory'},
+        {'url': '#', 'icon': 'monitoring','label': 'Reports'},
+        {'url': '#', 'icon': 'group',     'label': 'Users'},
+    ],
+
+    'cashier': [
+        {'url': '#', 'icon': 'home',          'label': 'Dashboard'},
+        {'url': '#', 'icon': 'point_of_sale', 'label': 'New Sale'},
+        {'url': '#', 'icon': 'receipt_long',  'label': 'Sales History'},
+    ],
+
+    'stocking': [
+        {'url': '#', 'icon': 'home',           'label': 'Dashboard'},
+        {'url': '#', 'icon': 'inventory',      'label': 'Inventory'},
+        {'url': '#', 'icon': 'add_box',        'label': 'Stock In'},
+        {'url': '#', 'icon': 'report_problem', 'label': 'Defects'},
+    ],
+
+} %}
+
+{# ── Bottom utility buttons (always visible for all roles) ── #}
+{% set utilities = [
+    {'type': 'button', 'action': 'theme-toggle',  'icon': 'light_mode',  'label': 'Theme'},
+    {'type': 'link',   'url': '#',                 'icon': 'info',        'label': 'Info'},
+    {'type': 'link',   'url': url_for('auth.logout'), 'icon': 'logout',   'label': 'Logout'},
+] %}
+
+{# Resolve links for the current user's role #}
+{% set links = sidebar_links.get(current_user.role, []) %}
+
+
+{# ══════════════════════════════════════════════════════════
+   SIDEBAR MARKUP
+   Uses Alpine x-data on wrapper to manage expanded state.
+   Listens for 'toggle-sidebar' event from navbar hamburger.
+══════════════════════════════════════════════════════════ #}
+<div x-data="{ expanded: false }"
+     @toggle-sidebar.window="expanded = !expanded"
+     class="relative">
+
+    {# ── Collapsed sidebar (icon only, always visible) ── #}
+    <div id="sidebar-collapsed"
+         :class="expanded ? 'opacity-0 pointer-events-none' : 'opacity-100'"
+         class="fixed left-0 top-14 z-30
+                h-[calc(100vh-3.5rem)] w-16
+                flex flex-col justify-between
+                bg-surface border-r border-border
+                transition-all duration-300 ease-in-out">
+
+        {# Top nav icons #}
+        <div class="flex flex-col items-center pt-3 gap-1">
+            {% for item in links %}
+            <a href="{{ item.url }}"
+               class="w-10 h-10 rounded-lg flex items-center justify-center
+                      text-txt-muted hover:text-txt-primary hover:bg-surface-alt
+                      {% if request.path == item.url %}
+                          bg-primary/10 text-primary
+                      {% endif %}
+                      transition-colors duration-150 group relative"
+               title="{{ item.label }}">
+                <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
+
+                {# tooltip on hover #}
+                <span class="absolute left-14 px-2 py-1 rounded-md text-xs
+                             bg-surface border border-border text-txt-primary
+                             whitespace-nowrap shadow-md
+                             opacity-0 group-hover:opacity-100
+                             pointer-events-none transition-opacity duration-150 z-50">
+                    {{ item.label }}
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+
+        {# Bottom utility icons #}
+        <div class="flex flex-col items-center pb-3 gap-1">
+            {% for util in utilities %}
+                {% if util.type == 'link' %}
+                <a href="{{ util.url }}"
+                   class="w-10 h-10 rounded-lg flex items-center justify-center
+                          {% if util.icon == 'logout' %}
+                              text-error hover:bg-error/10
+                          {% else %}
+                              text-txt-muted hover:text-txt-primary hover:bg-surface-alt
+                          {% endif %}
+                          transition-colors duration-150 group relative"
+                   title="{{ util.label }}">
+                    <span class="material-symbols-outlined text-[20px]">{{ util.icon }}</span>
+                    <span class="absolute left-14 px-2 py-1 rounded-md text-xs
+                                 bg-surface border border-border text-txt-primary
+                                 whitespace-nowrap shadow-md
+                                 opacity-0 group-hover:opacity-100
+                                 pointer-events-none transition-opacity duration-150 z-50">
+                        {{ util.label }}
+                    </span>
+                </a>
+                {% else %}
+                <button class="w-10 h-10 rounded-lg flex items-center justify-center
+                               text-txt-muted hover:text-txt-primary hover:bg-surface-alt
+                               transition-colors duration-150 group relative
+                               {% if util.action == 'theme-toggle' %}theme-toggle{% endif %}"
+                        title="{{ util.label }}">
+                    <span class="material-symbols-outlined text-[20px]">{{ util.icon }}</span>
+                    <span class="absolute left-14 px-2 py-1 rounded-md text-xs
+                                 bg-surface border border-border text-txt-primary
+                                 whitespace-nowrap shadow-md
+                                 opacity-0 group-hover:opacity-100
+                                 pointer-events-none transition-opacity duration-150 z-50">
+                        {{ util.label }}
+                    </span>
+                </button>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+
+    {# ── Expanded sidebar (icon + label) ── #}
+    <div id="sidebar-expanded"
+         :class="expanded ? 'translate-x-0' : '-translate-x-full'"
+         class="fixed left-0 top-14 z-40
+                h-[calc(100vh-3.5rem)] w-56
+                flex flex-col justify-between
+                bg-surface border-r border-border shadow-lg
+                transition-transform duration-300 ease-in-out">
+
+        {# Top nav links #}
+        <div class="flex flex-col pt-3 gap-0.5 px-2">
+            {% for item in links %}
+            <a href="{{ item.url }}"
+               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+                      {% if request.path == item.url %}
+                          bg-primary/10 text-primary font-medium
+                      {% else %}
+                          text-txt-secondary hover:text-txt-primary hover:bg-surface-alt
+                      {% endif %}
+                      transition-colors duration-150">
+                <span class="material-symbols-outlined text-[20px] shrink-0">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+            </a>
+            {% endfor %}
+        </div>
+
+        {# Bottom utilities #}
+        <div class="flex flex-col pb-3 gap-0.5 px-2">
+
+            {# Divider #}
+            <div class="border-t border-border mb-2 mx-1"></div>
+
+            {% for util in utilities %}
+                {% if util.type == 'link' %}
+                <a href="{{ util.url }}"
+                   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm
+                          {% if util.icon == 'logout' %}
+                              text-error hover:bg-error/10
+                          {% else %}
+                              text-txt-secondary hover:text-txt-primary hover:bg-surface-alt
+                          {% endif %}
+                          transition-colors duration-150">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">{{ util.icon }}</span>
+                    <span>{{ util.label }}</span>
+                </a>
+                {% else %}
+                <button class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full
+                               text-txt-secondary hover:text-txt-primary hover:bg-surface-alt
+                               transition-colors duration-150
+                               {% if util.action == 'theme-toggle' %}theme-toggle{% endif %}">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">{{ util.icon }}</span>
+                    <span>{{ util.label }}</span>
+                </button>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    {# Click outside overlay — closes expanded sidebar #}
+    <div x-show="expanded"
+         @click="expanded = false"
+         class="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px]
+                sm:hidden">
+    </div>
+
+</div>

@@ -1,71 +1,153 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Shekel{% endblock %}</title>
 
-  <title>{% block title %}Shekel{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
-  <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
-
-  {% block head %}{% endblock %}
+    {% block head %}{% endblock %}
 </head>
 
-<body class="min-h-screen bg-bg text-txt-primary font-main antialiased">
-<div class="flex flex-col min-h-screen">
+<body class="bg-bg text-txt-primary font-main antialiased">
 
-  {% if current_user.is_authenticated %}
-  <!-- Navbar -->
-  <nav class="bg-surface border-b border-border">
-    <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-      {% block nav %}{% endblock %}
-    </div>
-  </nav>
-  {% endif %}
+{# ══════════════════════════════════════════════════════════
+   UNAUTHENTICATED — login / auth pages
+══════════════════════════════════════════════════════════ #}
+{% if not current_user.is_authenticated %}
 
-  <!-- Main -->
-  <main class="flex-1">
+    {# Theme toggle — fixed top right #}
+    <button aria-label="Toggle dark mode"
+            class="theme-toggle
+                   fixed top-4 right-4 z-50
+                   w-9 h-9 rounded-full
+                   bg-surface border border-border
+                   text-txt-muted hover:text-txt-primary
+                   hover:border-border-strong shadow-sm
+                   flex items-center justify-center
+                   transition-all duration-200">
+        <span class="material-symbols-outlined text-[20px] dark:hidden">dark_mode</span>
+        <span class="material-symbols-outlined text-[20px] hidden dark:block">light_mode</span>
+    </button>
 
-    <!-- Flash Messages -->
+    {# Flash messages #}
     {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-      <div class="mb-6 space-y-3 px-6 pt-6">
-        {% for category, message in messages %}
-        <div class="p-3 rounded-lg border border-border bg-surface-alt text-sm">
-          {{ message }}
+        {% if messages %}
+        <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50
+                    w-full max-w-sm space-y-2 px-4">
+            {% for category, message in messages %}
+            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border text-sm
+                {% if   category == 'danger'  %} bg-error/10   border-error/30   text-error
+                {% elif category == 'success' %} bg-success/10 border-success/30 text-success
+                {% elif category == 'warning' %} bg-warning/10 border-warning/30 text-warning
+                {% else %}                        bg-info/10    border-info/30    text-info
+                {% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-      </div>
-      {% endif %}
+        {% endif %}
     {% endwith %}
 
-    {% if current_user.is_authenticated %}
-    <!-- Authenticated Layout -->
-    <div class="max-w-screen mx-auto px-6 py-10">
-      <div class="flex-1 transition-all duration-450 md:ml-20 sm:ml-10" id="wrapper">
-        <main class="w-full min-h-[calc(100vh-4.25rem)] text-[var(--clr-txt-primary)] pb-24 pt-12 
-                    px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
-          {% block main %}{% endblock %}
+    {# Centered auth content #}
+    <main class="min-h-[85vh] flex items-center justify-center
+                 px-4 py-12 bg-bg relative overflow-hidden">
+
+        {# Subtle grid texture #}
+        <div class="pointer-events-none absolute inset-0 opacity-30
+                    [background-image:linear-gradient(var(--color-border)_1px,transparent_1px),linear-gradient(90deg,var(--color-border)_1px,transparent_1px)]
+                    [background-size:40px_40px]">
+        </div>
+
+        {# Glow blob #}
+        <div class="pointer-events-none absolute top-1/2 left-1/2
+                    -translate-x-1/2 -translate-y-1/2
+                    w-[500px] h-[500px] rounded-full
+                    bg-secondary/10 blur-[100px]">
+        </div>
+
+        <div class="relative z-10 w-full">
+            {% block auth_body %}{% endblock %}
+        </div>
+      </main>
+
+{# ══════════════════════════════════════════════════════════
+   AUTHENTICATED — full app shell
+══════════════════════════════════════════════════════════ #}
+{% else %}
+
+    {% include "components/navbar.html" %}
+    {% include "components/sidebar.html" %}
+
+    {# Content area — padded to clear fixed navbar (h-14) and collapsed sidebar (w-16) #}
+    <div class="pl-16 pt-14 min-h-screen flex flex-col bg-bg">
+
+        {# Flash messages #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="px-6 pt-4 space-y-2">
+                {% for category, message in messages %}
+                <div class="flex items-center gap-2 px-4 py-3 rounded-lg border text-sm
+                    {% if   category == 'danger'  %} bg-error/10   border-error/30   text-error
+                    {% elif category == 'success' %} bg-success/10 border-success/30 text-success
+                    {% elif category == 'warning' %} bg-warning/10 border-warning/30 text-warning
+                    {% else %}                        bg-info/10    border-info/30    text-info
+                    {% endif %}">
+                    {% if category == 'danger' %}
+                        <span class="material-symbols-outlined text-[18px]">error</span>
+                    {% elif category == 'success' %}
+                        <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                    {% elif category == 'warning' %}
+                        <span class="material-symbols-outlined text-[18px]">warning</span>
+                    {% else %}
+                        <span class="material-symbols-outlined text-[18px]">info</span>
+                    {% endif %}
+                    <span>{{ message }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        <main class="flex-1 px-6 py-5">
+            {% block body %}{% endblock %}
         </main>
+
+        <footer class="px-6 py-3 border-t border-border
+                       text-xs text-txt-muted text-center">
+            {% block footer %}
+                &copy; 2025 Shekel &mdash; All rights reserved.
+            {% endblock %}
+        </footer>
       </div>
-    </div>
+  {% endif %}
 
-    {% else %}
-    <!-- Auth Layout — no padding, full width -->
-    {% block auth_body %}{% endblock %}
+<script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
 
-    {% endif %}
+<script>
+    // ── Theme toggle ─────────────────────────────────────────
+    // Runs before Alpine so dark class is set before paint
+    const html     = document.documentElement;
+    const DARK_KEY = 'shekel-theme';
 
-  </main>
+    if (localStorage.getItem(DARK_KEY) === 'dark' ||
+        (!localStorage.getItem(DARK_KEY) &&
+         window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        html.classList.add('dark');
+    }
 
-  <!-- Footer -->
-  <footer class="border-t border-border bg-surface-alt">
-    <div class="max-w-7xl mx-auto px-6 py-4 text-center text-sm text-txt-muted">
-      &copy; 2025 Shekel — All rights reserved.
-    </div>
-  </footer>
+    document.querySelectorAll('.theme-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.setItem(DARK_KEY,
+                html.classList.contains('dark') ? 'dark' : 'light');
+        });
+    });
+</script>
 
-</div>
+{% block scripts %}{% endblock %}
+
 </body>
 </html>
