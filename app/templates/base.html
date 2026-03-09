@@ -17,18 +17,19 @@
 {% if not current_user.is_authenticated %}
 
     {# Theme toggle — fixed top right #}
-    <button aria-label="Toggle dark mode"
-            class="theme-toggle
-                   fixed top-4 right-4 z-50
-                   w-9 h-9 rounded-full
-                   bg-surface border border-border
-                   text-txt-muted hover:text-txt-primary
-                   hover:border-border-strong shadow-sm
-                   flex items-center justify-center
-                   transition-all duration-200">
-        <span class="material-symbols-outlined text-[20px] dark:hidden">dark_mode</span>
-        <span class="material-symbols-outlined text-[20px] hidden dark:block">light_mode</span>
-    </button>
+<button aria-label="Toggle dark mode"
+        class="theme-toggle
+               fixed top-4 right-4 z-50
+               w-9 h-9 rounded-full
+               bg-surface border border-border
+               text-txt-muted hover:text-txt-primary
+               hover:border-border-strong shadow-sm
+               flex items-center justify-center
+               transition-all duration-200">
+    <span class="material-symbols-outlined text-[20px] theme-icon">
+        dark_mode
+    </span>
+</button>
 
     <!-- FLASH MESSAGE -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -124,22 +125,33 @@
 <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
 
 <script>
-    // ── Theme toggle ─────────────────────────────────────────
-    // Runs before Alpine so dark class is set before paint
-    const html     = document.documentElement;
-    const DARK_KEY = 'shekel-theme';
+    const html      = document.documentElement;
+    const DARK_KEY  = 'shekel-theme';
 
-    if (localStorage.getItem(DARK_KEY) === 'dark' ||
-        (!localStorage.getItem(DARK_KEY) &&
-         window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        html.classList.add('dark');
+    // ── Apply saved theme ─────────────────────────────────────
+    function applyTheme(isDark) {
+        if (isDark) {
+            html.classList.add('dark');
+        } else {
+            html.classList.remove('dark');
+        }
+        // update ALL theme icons on the page
+        document.querySelectorAll('.theme-icon').forEach(icon => {
+            icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+        });
     }
 
+    // ── On page load — restore saved preference ───────────────
+    const savedTheme  = localStorage.getItem(DARK_KEY);
+    const systemDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(savedTheme === 'dark' || (!savedTheme && systemDark));
+
+    // ── On button click ───────────────────────────────────────
     document.querySelectorAll('.theme-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
-            html.classList.toggle('dark');
-            localStorage.setItem(DARK_KEY,
-                html.classList.contains('dark') ? 'dark' : 'light');
+            const isDark = !html.classList.contains('dark');
+            applyTheme(isDark);
+            localStorage.setItem(DARK_KEY, isDark ? 'dark' : 'light');
         });
     });
 </script>

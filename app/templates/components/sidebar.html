@@ -125,16 +125,23 @@
                 </a>
                 {% else %}
                 <button class="w-10 h-10 rounded-lg flex items-center justify-center
-                               text-txt-muted hover:text-txt-primary hover:bg-surface-alt
-                               transition-colors duration-150 group relative
-                               {% if util.action == 'theme-toggle' %}theme-toggle{% endif %}"
+                            text-txt-muted hover:text-txt-primary hover:bg-surface-alt
+                            transition-colors duration-150 group relative
+                            {% if util.action == 'theme-toggle' %}theme-toggle{% endif %}"
                         title="{{ util.label }}">
-                    <span class="material-symbols-outlined text-[20px]">{{ util.icon }}</span>
+
+                    {# ── swap icon text based on action ── #}
+                    {% if util.action == 'theme-toggle' %}
+                        <span class="material-symbols-outlined text-[20px] theme-icon">dark_mode</span>
+                    {% else %}
+                        <span class="material-symbols-outlined text-[20px]">{{ util.icon }}</span>
+                    {% endif %}
+
                     <span class="absolute left-14 px-2 py-1 rounded-md text-xs
-                                 bg-surface border border-border text-txt-primary
-                                 whitespace-nowrap shadow-md
-                                 opacity-0 group-hover:opacity-100
-                                 pointer-events-none transition-opacity duration-150 z-50">
+                                bg-surface border border-border text-txt-primary
+                                whitespace-nowrap shadow-md
+                                opacity-0 group-hover:opacity-100
+                                pointer-events-none transition-opacity duration-150 z-50">
                         {{ util.label }}
                     </span>
                 </button>
@@ -190,13 +197,19 @@
                     <span>{{ util.label }}</span>
                 </a>
                 {% else %}
-                <button class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full
-                               text-txt-secondary hover:text-txt-primary hover:bg-surface-alt
-                               transition-colors duration-150
-                               {% if util.action == 'theme-toggle' %}theme-toggle{% endif %}">
+            <button class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full
+                        text-txt-secondary hover:text-txt-primary hover:bg-surface-alt
+                        transition-colors duration-150
+                        {% if util.action == 'theme-toggle' %}theme-toggle{% endif %}">
+
+                {% if util.action == 'theme-toggle' %}
+                    <span class="material-symbols-outlined text-[20px] shrink-0 theme-icon">dark_mode</span>
+                {% else %}
                     <span class="material-symbols-outlined text-[20px] shrink-0">{{ util.icon }}</span>
-                    <span>{{ util.label }}</span>
-                </button>
+                {% endif %}
+
+                <span>{{ util.label }}</span>
+            </button>
                 {% endif %}
             {% endfor %}
         </div>
