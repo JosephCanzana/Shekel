@@ -1,118 +1,292 @@
 {% extends "base.html" %}
-{% block title %}Login{% endblock %}
-{% block auth_body %}
-<div class="w-full min-h-[85vh] grid md:grid-cols-2 bg-bg font-main">
+{% block title %}Login — Shekel{% endblock %}
 
-  <!-- Left Side (Branding) -->
-  <div class="hidden md:flex flex-col justify-center items-center bg-surface-alt p-10 text-center border-r border-border">
-    <!-- Logo Mark -->
-    <div class="w-16 h-16 rounded-full border-2 border-accent flex items-center justify-center mb-6">
-      <span class="text-2xl font-bold text-accent">S</span>
+{% block auth_body %}
+{# min-height accounts for fixed footer (~2.5rem tall) #}
+<div class="w-full flex font-main" style="min-height: calc(100vh - 2.5rem);">
+
+  {# ══════════════════════════════════════════════
+     LEFT — branding panel, fully theme-synced
+  ══════════════════════════════════════════════ #}
+  <div class="hidden lg:flex lg:w-[45%] relative flex-col
+              overflow-hidden select-none"
+       style="background-color: var(--color-surface-alt);
+              border-right: 1px solid var(--color-border);">
+
+    {# grid overlay #}
+    <div class="absolute inset-0 pointer-events-none"
+         style="background-image:
+                  linear-gradient(var(--color-border) 1px, transparent 1px),
+                  linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+                background-size: 40px 40px;
+                opacity: 0.6;">
     </div>
 
-    <h1 class="text-5xl font-bold tracking-widest text-txt-primary uppercase">
-      Shekel
-    </h1>
+    {# accent glow — bottom right #}
+    <div class="absolute bottom-0 right-0 w-[400px] h-[400px]
+                rounded-full pointer-events-none"
+         style="background: radial-gradient(circle,
+                  rgba(99,102,241,0.12) 0%, transparent 70%);
+                transform: translate(30%, 30%);">
+    </div>
 
-    <div class="w-8 h-0.5 bg-accent mx-auto my-4"></div>
+    {# ── centered content ── #}
+    <div class="relative z-10 flex flex-col items-center justify-center
+                h-full px-14 text-center gap-8">
 
-    <p class="text-base text-txt-secondary max-w-xs leading-relaxed">
-      Stock smart. Sell more. <br>
-      <span class="text-txt-muted text-sm">Every great store finds its balance.</span>
-    </p>
-  </div>
+      {# logo placeholder box #}
+      <div class="w-20 h-20 rounded-2xl flex items-center justify-center"
+           style="background-color: var(--color-surface);
+                  border: 1px solid var(--color-border-strong);">
+        {# swap with <img> when logo is ready #}
+        <span class="material-symbols-outlined text-[38px]"
+              style="color: var(--color-txt-muted);">
+          storefront
+        </span>
+      </div>
 
-  <!-- Right Side (Login Form) -->
-  <div class="flex items-center justify-center p-6">
-    <div class="w-full max-w-md bg-surface border border-border rounded-xl shadow-sm p-8">
+      {# app name + divider + tagline #}
+      <div class="flex flex-col items-center gap-4">
+        <h1 class="text-5xl font-bold"
+            style="color: var(--color-txt-primary);
+                   letter-spacing: -0.03em;">
+          Shekel
+        </h1>
 
-      <!-- Header -->
-      <div class="mb-7">
-        <h2 class="text-xl font-semibold text-txt-primary">
-          Welcome back
-        </h2>
-        <p class="text-sm text-txt-muted mt-1">
-          Sign in to your Shekel account
+        <div class="w-8 h-0.5 rounded-full"
+             style="background-color: var(--color-accent);">
+        </div>
+
+        {# tagline — "pulse" vibe #}
+        <p class="text-sm leading-relaxed max-w-[210px]"
+           style="color: var(--color-txt-muted);">
+          From Ancient Trade to<br>
+          <span style="color: var(--color-accent); font-weight: 600;">
+            Modern Business.
+          </span>
         </p>
       </div>
 
-      <form action="{{ url_for('auth.login') }}" method="post" class="space-y-5">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    </div>
 
-        <!-- Full Name -->
-        <div class="space-y-1.5">
-          <label class="text-sm font-medium text-txt-secondary">
-            Full Name
-          </label>
-          <input
-            type="text"
-            name="full_name"
-            placeholder="Anthony Dichoso"
-            class="w-full px-3.5 py-2.5 rounded-lg border border-border bg-surface text-txt-primary placeholder:text-txt-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition"
-          >
+    {# version — bottom center #}
+    <p class="absolute bottom-8 left-0 right-0 text-center
+              text-xs tracking-widest uppercase"
+       style="color: var(--color-txt-muted); opacity: 0.5;">
+      v1.0 &nbsp;·&nbsp; 2026
+    </p>
+
+  </div>
+
+
+  {# ══════════════════════════════════════════════
+     RIGHT — login form, fully theme-synced
+  ══════════════════════════════════════════════ #}
+  <div class="flex-1 flex flex-col items-center justify-center
+              px-8 py-10 pb-16 relative"
+       style="background-color: var(--color-bg);">
+
+    {# dot pattern #}
+    <div class="absolute inset-0 pointer-events-none"
+         style="background-image: radial-gradient(var(--color-border-strong) 1px, transparent 1px);
+                background-size: 24px 24px;
+                opacity: 0.5;">
+    </div>
+
+    {# ── form wrapper — full width mobile, 520px desktop ── #}
+    <div class="relative z-10 w-full max-w-sm sm:max-w-[520px]"
+         style="animation: fadeUp .35s ease both;">
+
+      {# mobile logo #}
+      <div class="lg:hidden flex items-center gap-2 mb-8">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+             style="background-color: var(--color-primary);">
+          <span class="text-sm font-bold"
+                style="color: var(--color-bg);">S</span>
+        </div>
+        <span class="text-base font-semibold tracking-widest uppercase"
+              style="color: var(--color-txt-muted);">
+          Shekel
+        </span>
+      </div>
+
+      {# card #}
+      <div class="rounded-2xl p-7 sm:p-12"
+           style="background-color: var(--color-surface);
+                  border: 1px solid var(--color-border);
+                  box-shadow: 0 2px 8px rgba(0,0,0,.06),
+                              0 8px 32px rgba(0,0,0,.07);">
+
+        {# heading #}
+        <div class="mb-7 sm:mb-9">
+          <h2 class="text-2xl sm:text-4xl font-bold tracking-tight"
+              style="color: var(--color-txt-primary);">
+            Welcome back
+          </h2>
+          <p class="text-sm sm:text-base mt-2"
+             style="color: var(--color-txt-muted);">
+            Sign in to continue to your workspace
+          </p>
         </div>
 
-        <!-- Password -->
-        <div class="space-y-1.5">
+        {# flash messages #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+          <div class="space-y-2 mb-6">
+            {% for category, message in messages %}
+            <div class="flex items-center gap-3 px-4 py-3
+                        rounded-lg border text-sm
+                {% if   category == 'danger'  %} bg-error/10   border-error/30   text-error
+                {% elif category == 'success' %} bg-success/10 border-success/30 text-success
+                {% elif category == 'warning' %} bg-warning/10 border-warning/30 text-warning
+                {% else %}                        bg-info/10    border-info/30    text-info
+                {% endif %}">
+              <span class="material-symbols-outlined text-[18px] shrink-0">
+                {% if   category == 'danger'  %}error
+                {% elif category == 'success' %}check_circle
+                {% elif category == 'warning' %}warning
+                {% else %}info{% endif %}
+              </span>
+              <span>{{ message }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        {% endwith %}
+
+        {# form #}
+        <form action="{{ url_for('auth.login') }}"
+              method="post"
+              class="space-y-5">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          {# Full name #}
+          <div class="space-y-2">
+            <label class="text-xs font-semibold uppercase tracking-wider"
+                   style="color: var(--color-txt-muted);">
+              Full name
+            </label>
+            <div class="relative">
+              <span class="material-symbols-outlined text-[20px]
+                           absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style="color: var(--color-txt-muted);">
+                person
+              </span>
+              <input
+                type="text"
+                name="full_name"
+                placeholder="Antonio Luna"
+                autocomplete="username"
+                class="w-full pl-11 pr-4 py-2.5 sm:py-3.5 rounded-xl text-sm sm:text-base
+                       focus:outline-none transition duration-150"
+                style="border: 1px solid var(--color-border);
+                       background-color: var(--color-surface-alt);
+                       color: var(--color-txt-primary);"
+                onfocus="this.style.borderColor='var(--color-accent)';
+                         this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                onblur="this.style.borderColor='var(--color-border)';
+                        this.style.boxShadow='none'"
+              >
+            </div>
+          </div>
+
+          {# Password #}
+          <div class="space-y-2">
             <div class="flex items-center justify-between">
-                <label class="text-sm font-medium text-txt-secondary">
-                    Password
-                </label>
-                <a href="#" class="text-xs text-txt-muted hover:text-txt-primary transition">
-                    Forgot password?
-                </a>
+              <label class="text-xs font-semibold uppercase tracking-wider"
+                     style="color: var(--color-txt-muted);">
+                Password
+              </label>
+              <a href="#"
+                 class="text-sm transition"
+                 style="color: var(--color-accent);"
+                 onmouseover="this.style.color='var(--color-accent-hover)'"
+                 onmouseout="this.style.color='var(--color-accent)'">
+                Forgot password?
+              </a>
             </div>
 
             <div x-data="{ show: false }">
-                {# ── Password input ── #}
+              <div class="relative">
+                <span class="material-symbols-outlined text-[20px]
+                             absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                      style="color: var(--color-txt-muted);">
+                  lock
+                </span>
                 <input
-                    :type="show ? 'text' : 'password'"
-                    name="password"
-                    placeholder="••••••••"
-                    class="w-full px-3.5 py-2.5 rounded-lg
-                          border border-border bg-surface
-                          text-txt-primary placeholder:text-txt-muted
-                          text-sm focus:outline-none
-                          focus:ring-2 focus:ring-primary focus:border-primary
-                          transition"
+                  :type="show ? 'text' : 'password'"
+                  name="password"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  class="w-full pl-11 pr-4 py-2.5 sm:py-3.5 rounded-xl text-sm sm:text-base
+                         focus:outline-none transition duration-150"
+                  style="border: 1px solid var(--color-border);
+                         background-color: var(--color-surface-alt);
+                         color: var(--color-txt-primary);"
+                  onfocus="this.style.borderColor='var(--color-accent)';
+                           this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                  onblur="this.style.borderColor='var(--color-border)';
+                          this.style.boxShadow='none'"
                 >
+              </div>
 
-                {# ── Show password checkbox ── #}
-                <label class="flex items-center gap-2 mt-2 cursor-pointer w-fit">
-                    <input
-                        type="checkbox"
-                        @change="show = !show"
-                        class="w-3.5 h-3.5 rounded border-border
-                              accent-primary cursor-pointer"
-                    >
-                    <span class="text-xs text-txt-muted">Show password</span>
-                </label>
+              <label class="flex items-center gap-2 mt-2.5 cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  @change="show = !show"
+                  class="w-4 h-4 rounded cursor-pointer"
+                  style="accent-color: var(--color-accent);"
+                >
+                <span class="text-sm" style="color: var(--color-txt-muted);">
+                  Show password
+                </span>
+              </label>
             </div>
+          </div>
+
+          {# submit #}
+          <button
+            type="submit"
+            class="w-full py-2.5 sm:py-3.5 mt-1 rounded-xl text-sm sm:text-base font-semibold
+                   tracking-wide transition duration-150
+                   flex items-center justify-center gap-2
+                   active:scale-[.99]"
+            style="background-color: var(--color-primary);
+                   color: var(--color-bg);"
+            onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+            onmouseout="this.style.backgroundColor='var(--color-primary)'">
+            Sign in
+            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+          </button>
+
+        </form>
+
+        {# bottom divider #}
+        <div class="flex items-center gap-3 mt-8">
+          <div class="flex-1 h-px"
+               style="background-color: var(--color-border);"></div>
+          <span class="text-xs tracking-widest uppercase"
+                style="color: var(--color-txt-muted);">
+            Shekel v1.0
+          </span>
+          <div class="flex-1 h-px"
+               style="background-color: var(--color-border);"></div>
         </div>
 
-        <!-- Button -->
-        <button
-          type="submit"
-          class="w-full py-2.5 rounded-lg bg-primary text-bg text-sm font-medium hover:bg-primary-hover transition mt-2"
-        >
-          Sign in
-        </button>
-
-      </form>
-
-      <!-- Divider -->
-      <div class="flex items-center gap-3 my-5">
-        <div class="flex-1 h-px bg-border"></div>
-        <span class="text-xs text-txt-muted">Shekel v1.0</span>
-        <div class="flex-1 h-px bg-border"></div>
-      </div>
-
-      <p class="text-center text-xs text-txt-muted">
-        Every great store finds its balance.
-      </p>
-
+      </div>{# /card #}
     </div>
   </div>
 
 </div>
+
+<style>
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  input::placeholder {
+    color: var(--color-txt-muted);
+    opacity: 1;
+  }
+</style>
 {% endblock %}

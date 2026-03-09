@@ -14,24 +14,25 @@
 <body class="bg-bg text-txt-primary font-main antialiased">
 
 <!-- UNUATHENTICATED USER -->
+<!-- UNAUTHENTICATED USER -->
 {% if not current_user.is_authenticated %}
 
     {# Theme toggle — fixed top right #}
-<button aria-label="Toggle dark mode"
-        class="theme-toggle
-               fixed top-4 right-4 z-50
-               w-9 h-9 rounded-full
-               bg-surface border border-border
-               text-txt-muted hover:text-txt-primary
-               hover:border-border-strong shadow-sm
-               flex items-center justify-center
-               transition-all duration-200">
-    <span class="material-symbols-outlined text-[20px] theme-icon">
-        dark_mode
-    </span>
-</button>
+    <button aria-label="Toggle dark mode"
+            class="theme-toggle
+                   fixed top-4 right-4 z-50
+                   w-9 h-9 rounded-full
+                   bg-surface border border-border
+                   text-txt-muted hover:text-txt-primary
+                   hover:border-border-strong shadow-sm
+                   flex items-center justify-center
+                   transition-all duration-200">
+        <span class="material-symbols-outlined text-[20px] theme-icon">
+            dark_mode
+        </span>
+    </button>
 
-    <!-- FLASH MESSAGE -->
+    {# Flash messages #}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50
@@ -43,34 +44,23 @@
                 {% elif category == 'warning' %} bg-warning/10 border-warning/30 text-warning
                 {% else %}                        bg-info/10    border-info/30    text-info
                 {% endif %}">
-                {{ message }}
+                <span class="material-symbols-outlined text-[16px] shrink-0">
+                    {% if   category == 'danger'  %}error
+                    {% elif category == 'success' %}check_circle
+                    {% elif category == 'warning' %}warning
+                    {% else %}info{% endif %}
+                </span>
+                <span>{{ message }}</span>
             </div>
             {% endfor %}
         </div>
         {% endif %}
     {% endwith %}
 
-    {# Centered auth content #}
-    <main class="min-h-[85vh] flex items-center justify-center
-                 px-4 py-12 bg-bg relative overflow-hidden">
-
-        {# Subtle grid texture #}
-        <div class="pointer-events-none absolute inset-0 opacity-30
-                    [background-image:linear-gradient(var(--color-border)_1px,transparent_1px),linear-gradient(90deg,var(--color-border)_1px,transparent_1px)]
-                    [background-size:40px_40px]">
-        </div>
-
-        {# Glow blob #}
-        <div class="pointer-events-none absolute top-1/2 left-1/2
-                    -translate-x-1/2 -translate-y-1/2
-                    w-[500px] h-[500px] rounded-full
-                    bg-secondary/10 blur-[100px]">
-        </div>
-
-        <div class="relative z-10 w-full">
-            {% block auth_body %}{% endblock %}
-        </div>
-      </main>
+    {# Auth page content — no decorations here, login.html handles its own layout #}
+    <main class="min-h-screen bg-bg">
+        {% block auth_body %}{% endblock %}
+    </main>
 
 <!-- AUTHENTICATED USERS -->
 {% else %}
