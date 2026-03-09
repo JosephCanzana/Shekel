@@ -80,7 +80,11 @@
     {% include "components/sidebar.html" %}
 
     {# Content area — padded to clear fixed navbar (h-14) and collapsed sidebar (w-16) #}
-    <div class="pl-16 pt-14 min-h-screen flex flex-col bg-bg">
+    <div class="pt-14 min-h-screen flex flex-col bg-bg
+            pl-0 sm:pl-16
+            transition-all duration-300"
+     x-data
+     :class="$store.sidebar.expanded ? 'sm:pl-56' : 'sm:pl-16'">
 
         {# Flash messages #}
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -121,6 +125,16 @@
            bg-bg z-10">
         &copy; 2025 Shekel &mdash; All rights reserved.
     </footer>
+
+<script>
+    // ── Alpine store — must be before Alpine loads ────────────
+    document.addEventListener('alpine:init', () => {
+        Alpine.store('sidebar', {
+            expanded: false,
+            toggle() { this.expanded = !this.expanded }
+        })
+    })
+</script>
 
 <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
 

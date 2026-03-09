@@ -69,12 +69,12 @@
 
     {# ── Collapsed sidebar (icon only, always visible) ── #}
     <div id="sidebar-collapsed"
-         :class="expanded ? 'opacity-0 pointer-events-none' : 'opacity-100'"
-         class="fixed left-0 top-14 z-30
-                h-[calc(100vh-3.5rem)] w-16
-                flex flex-col justify-between
-                bg-surface border-r border-border
-                transition-all duration-300 ease-in-out">
+     :class="expanded ? 'opacity-0 pointer-events-none' : 'opacity-100'"
+     class="hidden sm:flex fixed left-0 top-14 z-30
+            h-[calc(100vh-3.5rem)] w-16
+            flex-col justify-between
+            bg-surface border-r border-border
+            transition-all duration-300 ease-in-out">
 
         {# Top nav icons #}
         <div class="flex flex-col items-center pt-3 gap-1">
@@ -152,13 +152,14 @@
 
 
     {# ── Expanded sidebar (icon + label) ── #}
-    <div id="sidebar-expanded"
-         :class="expanded ? 'translate-x-0' : '-translate-x-full'"
-         class="fixed left-0 top-14 z-40
+    <div class="fixed left-0 top-14 z-40
                 h-[calc(100vh-3.5rem)] w-56
                 flex flex-col justify-between
                 bg-surface border-r border-border shadow-lg
-                transition-transform duration-300 ease-in-out">
+                transition-transform duration-300 ease-in-out"
+         :class="$store.sidebar.expanded
+                    ? 'translate-x-0'
+                    : '-translate-x-full'">
 
         {# Top nav links #}
         <div class="flex flex-col pt-3 gap-0.5 px-2">
@@ -220,6 +221,11 @@
          @click="expanded = false"
          class="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px]
                 sm:hidden">
+    </div>
+        <div x-show="$store.sidebar.expanded"
+         @click="$store.sidebar.toggle()"
+         class="fixed inset-0 z-30 bg-black/20
+                backdrop-blur-[1px] sm:hidden">
     </div>
 
 </div>
