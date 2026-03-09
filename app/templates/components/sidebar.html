@@ -17,7 +17,7 @@
 {% set sidebar_links = {
 
     'admin': [
-        {'url': url_for('admin.dashboard'), 'icon': 'home',      'label': 'Dashboard'},
+        {'url': url_for("admin.dashboard"), 'icon': 'home', 'label': 'Dashboard'},
         {'url': '#', 'icon': 'inventory', 'label': 'Inventory'},
         {'url': '#', 'icon': 'report_problem', 'label': 'Defects/Returns'},
         {'url': '#', 'icon': 'group',     'label': 'Users'},
@@ -34,13 +34,13 @@
     ],
 
     'cashier': [
-        {'url': '#', 'icon': 'point_of_sale', 'label': 'New Sale'},
+        {'url': url_for("cashier.transaction"), 'icon': 'point_of_sale', 'label': 'New Sale'},
         {'url': '#', 'icon': 'report_problem', 'label': 'Returns'},
         {'url': '#', 'icon': 'receipt_long',  'label': 'Sales History'},
     ],
 
     'stocking': [
-        {'url': '#', 'icon': 'home',           'label': 'Dashboard'},
+        {'url': url_for("stocking.dashboard"), 'icon': 'home',           'label': 'Dashboard'},
         {'url': '#', 'icon': 'inventory',      'label': 'Inventory'},
         {'url': '#', 'icon': 'report_problem', 'label': 'Defects'},
     ],

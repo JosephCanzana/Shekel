@@ -194,3 +194,9 @@ CREATE TABLE IF NOT EXISTS Audit_Log (
 
 INSERT INTO Users (first_name, last_name, role, password, status)
 VALUES ('admin', 'account', 'admin', 'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf', 'not_activated');
+
+INSERT INTO Users (first_name, last_name, role, password, status)
+VALUES
+    ('coadmin',  'test', 'co-admin',  'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf', 'activated'),
+    ('cashier',  'test', 'cashier',   'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf', 'activated'),
+    ('stocking', 'test', 'stocking',  'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf', 'activated');

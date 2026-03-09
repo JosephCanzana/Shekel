@@ -34,9 +34,16 @@ def create_app():
 
     from app.routes.auth import auth_bp
     app.register_blueprint(auth_bp)
-
+    
     from app.routes.admin import admin_bp
     app.register_blueprint(admin_bp)
+
+    from app.routes.cashier import cashier_bp
+    app.register_blueprint(cashier_bp)
+
+    from app.routes.stocking import stocking_bp
+    app.register_blueprint(stocking_bp)
+
     # from app.routes.sales import sales_bp
     # app.register_blueprint(sales_bp)
 

@@ -18,6 +18,8 @@
 > docker compose up
 2. View Containers details
 > docker ps
+3. Access mysql
+> docker compose exec db mysql -u root -p
 
 ## Tailwind
 1. Install Tailwind

@@ -2,11 +2,11 @@ from flask import Blueprint, render_template, redirect, request, url_for, flash
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
 
-admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
+stocking_bp = Blueprint("stocking", __name__, url_prefix='/stocking')
 
-@admin_bp.route("/")
+@stocking_bp.route("/")
 @login_required
-@role_required("admin")
+@role_required("stocking")
 def dashboard():
-    return render_template("admin/dashboard.html")
+    return render_template("stocking/dashboard.html")
 

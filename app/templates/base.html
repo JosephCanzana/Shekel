@@ -73,7 +73,8 @@
 
 <!-- AUTHENTICATED USERS -->
 {% else %}
-    {% set page_title = self.navbar_title() %}
+    {% block nav_title %}Shekel{% endblock %}
+    {% set page_title = self.nav_title() %}
     {% include "components/navbar.html" %}
     {% include "components/sidebar.html" %}
 
@@ -110,15 +111,15 @@
         <main class="flex-1 px-6 py-5">
             {% block body %}{% endblock %}
         </main>
-
-        <footer class="px-6 py-3 border-t border-border
-                       text-xs text-txt-muted text-center">
-            {% block footer %}
-                &copy; 2025 Shekel &mdash; All rights reserved.
-            {% endblock %}
-        </footer>
-      </div>
-  {% endif %}
+        
+    </div>
+    {% endif %}
+    <footer class="fixed bottom-0 left-0 right-0
+           px-6 py-3 border-t border-border
+           text-xs text-txt-muted text-center
+           bg-bg z-10">
+        &copy; 2025 Shekel &mdash; All rights reserved.
+    </footer>
 
 <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
 

@@ -45,6 +45,7 @@ def login():
             if user:
                 break
 
+
         if not user:
             flash("Invalid name or password.", "error")
             return redirect(url_for("auth.login"))
@@ -54,7 +55,17 @@ def login():
             return redirect(url_for("auth.login"))
 
         login_user(user)
-        return message(200, "test")
+        try:
+            if user.role == "admin":
+                return redirect(url_for("admin.dashboard"))
+            elif user.role == "co-admin":
+                return redirect(url_for("admin.dashboard"))
+            elif user.role == "cashier":
+                return redirect(url_for("cashier.transaction"))
+            elif user.role == "inventory":
+                return redirect(url_for("stocking.dashboard"))
+        except Exception as e:
+            return message(404, "An error occur while validating your role")
 
     return render_template("auth/login.html")
 
