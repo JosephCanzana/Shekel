@@ -17,11 +17,13 @@
 {% set sidebar_links = {
 
     'admin': [
-        {'url': '#', 'icon': 'home',      'label': 'Dashboard'},
+        {'url': url_for('admin.dashboard'), 'icon': 'home',      'label': 'Dashboard'},
         {'url': '#', 'icon': 'inventory', 'label': 'Inventory'},
-        {'url': '#', 'icon': 'monitoring','label': 'Reports'},
+        {'url': '#', 'icon': 'report_problem', 'label': 'Defects/Returns'},
         {'url': '#', 'icon': 'group',     'label': 'Users'},
         {'url': '#', 'icon': 'category',  'label': 'Categories'},
+        {'url': '#', 'icon': 'monitoring','label': 'Reports'},
+        {'url': '#', 'icon': 'history','label': 'Audit log'},
     ],
 
     'co-admin': [
@@ -32,15 +34,14 @@
     ],
 
     'cashier': [
-        {'url': '#', 'icon': 'home',          'label': 'Dashboard'},
         {'url': '#', 'icon': 'point_of_sale', 'label': 'New Sale'},
+        {'url': '#', 'icon': 'report_problem', 'label': 'Returns'},
         {'url': '#', 'icon': 'receipt_long',  'label': 'Sales History'},
     ],
 
     'stocking': [
         {'url': '#', 'icon': 'home',           'label': 'Dashboard'},
         {'url': '#', 'icon': 'inventory',      'label': 'Inventory'},
-        {'url': '#', 'icon': 'add_box',        'label': 'Stock In'},
         {'url': '#', 'icon': 'report_problem', 'label': 'Defects'},
     ],
 

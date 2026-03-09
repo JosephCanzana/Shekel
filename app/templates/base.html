@@ -13,9 +13,7 @@
 
 <body class="bg-bg text-txt-primary font-main antialiased">
 
-{# ══════════════════════════════════════════════════════════
-   UNAUTHENTICATED — login / auth pages
-══════════════════════════════════════════════════════════ #}
+<!-- UNUATHENTICATED USER -->
 {% if not current_user.is_authenticated %}
 
     {# Theme toggle — fixed top right #}
@@ -32,7 +30,7 @@
         <span class="material-symbols-outlined text-[20px] hidden dark:block">light_mode</span>
     </button>
 
-    {# Flash messages #}
+    <!-- FLASH MESSAGE -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50
@@ -73,11 +71,9 @@
         </div>
       </main>
 
-{# ══════════════════════════════════════════════════════════
-   AUTHENTICATED — full app shell
-══════════════════════════════════════════════════════════ #}
+<!-- AUTHENTICATED USERS -->
 {% else %}
-
+    {% set page_title = self.navbar_title() %}
     {% include "components/navbar.html" %}
     {% include "components/sidebar.html" %}
 

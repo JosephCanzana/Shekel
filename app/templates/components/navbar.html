@@ -29,11 +29,9 @@
         </button>
 
         {# App name — doubles as current page indicator #}
-        <span class="font-bold text-sm tracking-tight text-txt-primary truncate">
+        <span class="font-bold text-m tracking-tight text-txt-primary truncate">
             {# Child templates can override page_title block #}
-            {% block navbar_title %}
-                Shekel
-            {% endblock %}
+            {{ page_title | default("Shekel") }}
         </span>
     </div>
 
@@ -127,7 +125,7 @@
                     <span class="material-symbols-outlined text-[16px]">person</span>
                     Profile
                 </a>
-                <a href="{{ url_for('auth.logout') }}"
+                <a href="#"
                    class="flex items-center gap-2 px-3 py-2 text-xs
                           text-error hover:bg-error/10 transition-colors">
                     <span class="material-symbols-outlined text-[16px]">logout</span>
