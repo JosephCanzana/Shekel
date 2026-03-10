@@ -175,7 +175,6 @@ CREATE TABLE IF NOT EXISTS Defect_Details (
 );
 
 -- ============================================================
-
 -- Audit_Log
 CREATE TABLE IF NOT EXISTS Audit_Log (
     log_id          INT          NOT NULL AUTO_INCREMENT,
@@ -192,11 +191,36 @@ CREATE TABLE IF NOT EXISTS Audit_Log (
         ON UPDATE CASCADE ON DELETE RESTRICT
 );
 
-INSERT INTO Users (first_name, last_name, role, password, status)
-VALUES ('admin', 'account', 'admin', 'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf', 'not_activated');
+-- ============================================================
+-- User Id counter AND DEFAULT PASSWORD
+CREATE TABLE IF NOT EXISTS App_settings (
+    id               INTEGER PRIMARY KEY DEFAULT 1,  -- always one row
+    user_counter     INTEGER NOT NULL DEFAULT 1000,
+    counter_year     INTEGER NOT NULL,               -- tracks which year the counter is on
+    default_password VARCHAR(255) NOT NULL DEFAULT 'shekel123',
+    updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
 
-INSERT INTO Users (first_name, last_name, role, password, status)
+    -- enforce single row
+    CONSTRAINT single_row CHECK (id = 1)
+);
+
+INSERT INTO App_settings (id, user_counter, counter_year, default_password)
+VALUES (1, 1004, 2026, 'dudaY_2026');
+-- counter starts at 1004 since we're manually inserting 1000–1003 below
+
+INSERT INTO Users (user_id, first_name, last_name, role, password, status)
+VALUES (10002026, 'admin', 'account', 'admin',
+        'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf',
+        'activated');
+
+INSERT INTO Users (user_id, first_name, last_name, role, password, status)
 VALUES
-    ('coadmin',  'test', 'co-admin',  'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf', 'activated'),
-    ('cashier',  'test', 'cashier',   'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf', 'activated'),
-    ('stocking', 'test', 'stocking',  'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf', 'activated');
+    (10012026, 'coadmin',  'test', 'co-admin',
+     'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf',
+     'activated'),
+    (10022026, 'cashier',  'test', 'cashier',
+     'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf',
+     'activated'),
+    (10032026, 'stocking', 'test', 'stocking',
+     'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf',
+     'activated');

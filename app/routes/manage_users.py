@@ -6,8 +6,6 @@ from app.models.user import User
 
 manage_users_bp = Blueprint("manage_users", __name__, url_prefix="/admin/users")
 
-DEFAULT_PASS = "dudaY_2026"
-
 @manage_users_bp.route("/")
 @login_required
 @role_required("admin", "co-admin")
@@ -24,14 +22,16 @@ def index():
 @role_required("admin", "co-admin")
 def add():
     if request.method == "POST":
-        first_name = request.form.get("first_name", "").strip()
-        last_name  = request.form.get("last_name",  "").strip()
-        role       = request.form.get("role",       "").strip()
-        status     = request.form.get("status",     "not_activated").strip()
+        first_name = request.form.get("first_name", "").strip().lower()
+        last_name  = request.form.get("last_name",  "").strip().lower()
+        role       = request.form.get("role",       "").strip().lower()
         password   = request.form.get("password",   "").strip()
 
+        if not password:
+            password = User.get_default_password()
+
         if not all([first_name, last_name, role, password]):
-            flash("All fields are required.", "danger")
+            flash(f"All fields are required.{password}!", "danger")
             return redirect(url_for("manage_users.add"))
 
         if len(password) < 6:
@@ -49,10 +49,11 @@ def add():
             return redirect(url_for("manage_users.add"))
 
         user = User(
-            first_name=first_name,
-            last_name=last_name,
+            user_id    = User.generate_id(),
+            first_name = first_name,
+            last_name  = last_name,
             role=role,
-            status=status,
+            status="not_activated"
         )
         user.set_password(password)
         user.save()
@@ -60,7 +61,7 @@ def add():
         flash(f"{first_name} {last_name} has been created.", "success")
         return redirect(url_for("manage_users.index"))
 
-    return render_template("admin/users/form.html")
+    return render_template("admin/users/form.html", default_pass=User.get_default_password())
 
 
 @manage_users_bp.route("/<int:user_id>/edit", methods=["GET", "POST"])
@@ -132,9 +133,9 @@ def reset_password(user_id):
         flash("User not found.", "danger")
         return redirect(url_for("manage_users.index"))
 
-    user.set_password(DEFAULT_PASS)
+    user.set_password(User.get_default_password())
     user.save()
-    flash(f"Password for {user.first_name} {user.last_name} has been reset to default ({DEFAULT_PASS}).", "success")
+    flash(f"Password for {user.first_name} {user.last_name} has been reset to default ({User.get_default_password()}).", "success")
     return redirect(request.referrer or url_for("manage_users.index"))
 
 

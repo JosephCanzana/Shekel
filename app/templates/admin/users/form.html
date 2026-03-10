@@ -3,7 +3,7 @@
 {% block nav_title %}{{ "Edit User" if user is defined else "Add User" }}{% endblock %}
 
 {% block body %}
-<div class="max-w-lg space-y-6">
+<div class="max-w-lg mx-auto space-y-6">
 
     {# ── Breadcrumb ── #}
     <div class="flex items-center gap-2 text-sm"
@@ -21,14 +21,21 @@
     </div>
 
     {# ── Card ── #}
-    <div class="rounded-2xl p-7 space-y-5"
+    <div class="rounded-2xl p-7 space-y-5 "
          style="background-color: var(--color-surface);
                 border: 1px solid var(--color-border);">
 
-        <h1 class="text-lg font-bold tracking-tight"
-            style="color: var(--color-txt-primary);">
-            {{ "Edit User" if user is defined else "Add New User" }}
-        </h1>
+        <div>
+            <h1 class="text-lg font-bold tracking-tight"
+                style="color: var(--color-txt-primary);">
+                {{ "Edit User" if user is defined else "Add New User" }}
+            </h1>
+            {% if user is defined %}
+            <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
+                ID: {{ user.user_id }}
+            </p>
+            {% endif %}
+        </div>
 
         <form action="{{ url_for('manage_users.edit', user_id=user.user_id) if user is defined else url_for('manage_users.add') }}"
               method="post"
@@ -103,7 +110,8 @@
                 </select>
             </div>
 
-            {# ── Status ── #}
+            {# ── Status (edit only) ── #}
+            {% if user is defined %}
             <div class="space-y-1.5">
                 <label class="text-xs font-semibold uppercase tracking-wider"
                        style="color: var(--color-txt-muted);">
@@ -118,31 +126,37 @@
                                  this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                         onblur="this.style.borderColor='var(--color-border)';
                                 this.style.boxShadow='none'">
-                    <option value="not_activated" {{ 'selected' if not user is defined or user.status == 'not_activated' }}>Not Activated</option>
-                    <option value="activated"     {{ 'selected' if user is defined and user.status == 'activated' }}>Activated</option>
-                    <option value="suspended"     {{ 'selected' if user is defined and user.status == 'suspended' }}>Suspended</option>
-                    <option value="archived"      {{ 'selected' if user is defined and user.status == 'archived' }}>Archived</option>
+                    <option value="not_activated" {{ 'selected' if user.status == 'not_activated' }}>Not Activated</option>
+                    <option value="activated"     {{ 'selected' if user.status == 'activated' }}>Activated</option>
+                    <option value="suspended"     {{ 'selected' if user.status == 'suspended' }}>Suspended</option>
+                    <option value="archived"      {{ 'selected' if user.status == 'archived' }}>Archived</option>
                 </select>
             </div>
+            {% endif %}
 
             {# ── Password ── #}
             <div class="space-y-1.5"
                  x-data="{ show: false }">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">
-                    Password
-                    {% if user is defined %}
-                    <span class="normal-case font-normal ml-1"
-                          style="color: var(--color-txt-muted);">
-                        (leave blank to keep current)
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-semibold uppercase tracking-wider"
+                           style="color: var(--color-txt-muted);">
+                        Password
+                    </label>
+                    <span class="text-xs" style="color: var(--color-txt-muted);">
+                        {% if user is defined %}
+                            Leave blank to keep current password
+                        {% else %}
+                            Leave blank to use default:
+                            <span class="font-mono" style="color: var(--color-txt-secondary);">
+                                {{ default_pass }}
+                            </span>
+                        {% endif %}
                     </span>
-                    {% endif %}
-                </label>
+                </div>
                 <div class="relative">
                     <input :type="show ? 'text' : 'password'"
                            name="password"
-                           placeholder="{{ '••••••••' if user is defined else 'Min. 6 characters' }}"
-                           {{ '' if user is defined else 'required' }}
+                           placeholder="••••••••"
                            class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
                            style="border: 1px solid var(--color-border);
                                   background-color: var(--color-surface-alt);

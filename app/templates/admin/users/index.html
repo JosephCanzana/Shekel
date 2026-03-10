@@ -15,6 +15,11 @@
     rows: USERS_DATA,
     page: 1,
     perPage: 10,
+    
+    titleCase(str) {
+        return str ? str.charAt(0).toUpperCase() + str.slice(1) : ""
+    },
+    
     get filtered() {
         const q = this.search.toLowerCase()
         return this.rows.filter(r => {
@@ -45,7 +50,7 @@ class="space-y-5">
                 Users
             </h1>
             <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
-                <span x-text="filtered.length"></span> of {{ users | length }} users
+                <span x-text="filtered.length"></span> of {{ (users | length) - 1 }} users
             </p>
         </div>
         <a href="{{ url_for('manage_users.add') }}"
@@ -114,7 +119,7 @@ class="space-y-5">
                 <tr style="background-color: var(--color-surface-alt);
                            border-bottom: 1px solid var(--color-border);">
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                        style="color: var(--color-txt-muted);">#</th>
+                        style="color: var(--color-txt-muted);">id</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">First Name</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
@@ -149,17 +154,17 @@ class="space-y-5">
 
                         <td class="px-4 py-3 text-xs"
                             style="color: var(--color-txt-muted);"
-                            x-text="(page - 1) * perPage + index + 1">
+                            x-text="user.user_id">
                         </td>
 
                         <td class="px-4 py-3 font-medium"
                             style="color: var(--color-txt-primary);"
-                            x-text="user.first_name">
+                            x-text="titleCase(user.first_name)">
                         </td>
 
                         <td class="px-4 py-3"
                             style="color: var(--color-txt-secondary);"
-                            x-text="user.last_name">
+                            x-text="titleCase(user.last_name)">
                         </td>
 
                         {# role badge #}

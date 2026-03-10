@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 class User(BaseModel, UserMixin):
     __tablename__ = "Users"
 
-    user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, primary_key=True, autoincrement=False)
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     role = db.Column(
@@ -49,3 +49,18 @@ class User(BaseModel, UserMixin):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+    
+    @classmethod
+    def generate_id(cls):
+        """
+        Generate the next user ID in format [counter][year].
+        e.g. 10012026, 10022026
+        Imported inside method to avoid circular import.
+        """
+        from app.models.app_settings import AppSettings
+        return AppSettings.next_user_id()
+
+    @classmethod
+    def get_default_password(cls):
+        from app.models.app_settings import AppSettings
+        return AppSettings.get_default_password()
