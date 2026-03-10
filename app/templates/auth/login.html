@@ -129,31 +129,6 @@
           </p>
         </div>
 
-        {# flash messages #}
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-          <div class="space-y-2 mb-6">
-            {% for category, message in messages %}
-            <div class="flex items-center gap-3 px-4 py-3
-                        rounded-lg border text-sm
-                {% if   category == 'danger'  %} bg-error/10   border-error/30   text-error
-                {% elif category == 'success' %} bg-success/10 border-success/30 text-success
-                {% elif category == 'warning' %} bg-warning/10 border-warning/30 text-warning
-                {% else %}                        bg-info/10    border-info/30    text-info
-                {% endif %}">
-              <span class="material-symbols-outlined text-[18px] shrink-0">
-                {% if   category == 'danger'  %}error
-                {% elif category == 'success' %}check_circle
-                {% elif category == 'warning' %}warning
-                {% else %}info{% endif %}
-              </span>
-              <span>{{ message }}</span>
-            </div>
-            {% endfor %}
-          </div>
-          {% endif %}
-        {% endwith %}
-
         {# form #}
         <form action="{{ url_for('auth.login') }}"
               method="post"

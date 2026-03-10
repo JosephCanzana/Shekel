@@ -14,7 +14,6 @@
 <body class="bg-bg text-txt-primary font-main antialiased">
 
 <!-- UNUATHENTICATED USER -->
-<!-- UNAUTHENTICATED USER -->
 {% if not current_user.is_authenticated %}
 
     {# Theme toggle — fixed top right #}
@@ -31,31 +30,6 @@
             dark_mode
         </span>
     </button>
-
-    {# Flash messages #}
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50
-                    w-full max-w-sm space-y-2 px-4">
-            {% for category, message in messages %}
-            <div class="flex items-center gap-3 px-4 py-3 rounded-lg border text-sm
-                {% if   category == 'danger'  %} bg-error/10   border-error/30   text-error
-                {% elif category == 'success' %} bg-success/10 border-success/30 text-success
-                {% elif category == 'warning' %} bg-warning/10 border-warning/30 text-warning
-                {% else %}                        bg-info/10    border-info/30    text-info
-                {% endif %}">
-                <span class="material-symbols-outlined text-[16px] shrink-0">
-                    {% if   category == 'danger'  %}error
-                    {% elif category == 'success' %}check_circle
-                    {% elif category == 'warning' %}warning
-                    {% else %}info{% endif %}
-                </span>
-                <span>{{ message }}</span>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-    {% endwith %}
 
     {# Auth page content — no decorations here, login.html handles its own layout #}
     <main class="min-h-screen bg-bg">
@@ -76,33 +50,6 @@
      x-data
      :class="$store.sidebar.expanded ? 'sm:pl-56' : 'sm:pl-16'">
 
-        {# Flash messages #}
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            <div class="px-6 pt-4 space-y-2">
-                {% for category, message in messages %}
-                <div class="flex items-center gap-2 px-4 py-3 rounded-lg border text-sm
-                    {% if   category == 'danger'  %} bg-error/10   border-error/30   text-error
-                    {% elif category == 'success' %} bg-success/10 border-success/30 text-success
-                    {% elif category == 'warning' %} bg-warning/10 border-warning/30 text-warning
-                    {% else %}                        bg-info/10    border-info/30    text-info
-                    {% endif %}">
-                    {% if category == 'danger' %}
-                        <span class="material-symbols-outlined text-[18px]">error</span>
-                    {% elif category == 'success' %}
-                        <span class="material-symbols-outlined text-[18px]">check_circle</span>
-                    {% elif category == 'warning' %}
-                        <span class="material-symbols-outlined text-[18px]">warning</span>
-                    {% else %}
-                        <span class="material-symbols-outlined text-[18px]">info</span>
-                    {% endif %}
-                    <span>{{ message }}</span>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        {% endwith %}
-
         <main class="flex-1 px-6 py-5">
             {% block body %}{% endblock %}
         </main>
@@ -116,49 +63,18 @@
         &copy; 2025 Shekel &mdash; All rights reserved.
     </footer>
 
-<script>
-    // ── Alpine store — must be before Alpine loads ────────────
-    document.addEventListener('alpine:init', () => {
-        Alpine.store('sidebar', {
-            expanded: false,
-            toggle() { this.expanded = !this.expanded }
-        })
-    })
-</script>
 
-<script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
+    <!-- theme runs immediately — before Alpine, no defer -->
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 
-<script>
-    const html      = document.documentElement;
-    const DARK_KEY  = 'shekel-theme';
+    <!-- app.js must be before Alpine so stores are registered  -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 
-    // ── Apply saved theme ─────────────────────────────────────
-    function applyTheme(isDark) {
-        if (isDark) {
-            html.classList.add('dark');
-        } else {
-            html.classList.remove('dark');
-        }
-        // update ALL theme icons on the page
-        document.querySelectorAll('.theme-icon').forEach(icon => {
-            icon.textContent = isDark ? 'light_mode' : 'dark_mode';
-        });
-    }
-
-    // ── On page load — restore saved preference ───────────────
-    const savedTheme  = localStorage.getItem(DARK_KEY);
-    const systemDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    applyTheme(savedTheme === 'dark' || (!savedTheme && systemDark));
-
-    // ── On button click ───────────────────────────────────────
-    document.querySelectorAll('.theme-toggle').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const isDark = !html.classList.contains('dark');
-            applyTheme(isDark);
-            localStorage.setItem(DARK_KEY, isDark ? 'dark' : 'light');
-        });
-    });
-</script>
+    
+    <!-- Alpine loads last, deferred  -->
+    <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
+    
+    {% include "components/modals.html" %}
 
 {% block scripts %}{% endblock %}
 

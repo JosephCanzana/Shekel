@@ -1,0 +1,295 @@
+{# ══════════════════════════════════════════════════════════
+   GLOBAL MODALS COMPONENT
+   Usage: {% include "components/modals.html" %}
+   Place inside base.html before closing </body>
+
+   ── CONFIRM MODAL ─────────────────────────────────────
+   Trigger from any element:
+   @click="$dispatch('confirm', {
+       title:   'Archive User',
+       message: 'Are you sure you want to archive John?',
+       action:  '/admin/users/1/status',
+       method:  'POST',
+       fields:  [{ name: 'status', value: 'archived' }]
+    })"
+    example:
+    x-data
+         @submit.prevent="$dispatch('confirm', {
+             title:   'Title',
+             message: 'Message',
+             form:    $el
+         })"
+
+   Or from a form submit:
+     @submit.prevent="$dispatch('confirm', {
+       title:   'Reset Password',
+       message: 'Reset password for John?',
+       form:    $el
+     })"
+
+   ── FLASH MODAL ───────────────────────────────────────
+   Triggered automatically when Flask flashes a message.
+   flash('Something went wrong', 'danger')
+   flash('User created!',        'success')
+   flash('Account suspended',    'warning')
+   flash('Note: ...',            'info')
+══════════════════════════════════════════════════════════ #}
+
+
+{# ══════════════════════════════════════════════════════════
+   CONFIRM MODAL
+══════════════════════════════════════════════════════════ #}
+<div x-data="{
+    open:    false,
+    title:   'Confirm Action',
+    message: 'Are you sure you want to proceed?',
+    action:  '',
+    method:  'POST',
+    fields:  [],
+
+    init() {
+        this.$nextTick(() => {
+            window.addEventListener('confirm', (e) => {
+                this.title   = e.detail.title   || 'Confirm Action'
+                this.message = e.detail.message || 'Are you sure?'
+                this.action  = e.detail.action  || ''
+                this.method  = e.detail.method  || 'POST'
+                this.fields  = e.detail.fields  || []
+
+                if (e.detail.form) {
+                    this.action = e.detail.form.action
+                    this.fields = Array.from(
+                        e.detail.form.querySelectorAll('input, select, textarea')
+                    ).filter(el => el.name && el.name !== 'csrf_token')
+                     .map(el => ({ name: el.name, value: el.value }))
+                }
+
+                this.open = true
+            })
+        })
+    },
+
+    submit() {
+        this.$refs.confirmForm.submit()
+        this.open = false
+    }
+}">
+
+    {# backdrop #}
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="open = false"
+         class="fixed inset-0 z-50"
+         style="background: rgba(0,0,0,0.45);
+                backdrop-filter: blur(4px);">
+    </div>
+
+    {# modal card #}
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+         x-transition:leave-end="opacity-0 scale-95 translate-y-2"
+         class="fixed inset-0 z-50 flex items-center justify-center px-4 pointer-events-none">
+
+        <div class="relative w-full max-w-sm rounded-2xl p-7 text-center pointer-events-auto overflow-hidden"
+             style="background-color: var(--color-surface);
+                    border: 1px solid var(--color-border);
+                    box-shadow: 0 8px 40px rgba(0,0,0,0.18);">
+
+            {# ambient glow #}
+            <div class="absolute inset-0 rounded-2xl pointer-events-none"
+                 style="background: radial-gradient(circle at top left,
+                          var(--color-accent-soft), transparent 70%);
+                        opacity: 0.6;">
+            </div>
+
+            {# content #}
+            <div class="relative z-10">
+
+                {# icon #}
+                <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+                     style="background-color: var(--color-warning)/15;
+                            background: color-mix(in srgb, var(--color-warning) 12%, transparent);">
+                    <span class="material-symbols-outlined text-[24px]"
+                          style="color: var(--color-warning);">
+                        warning
+                    </span>
+                </div>
+
+                <h2 class="text-lg font-bold tracking-tight mb-2"
+                    style="color: var(--color-txt-primary);"
+                    x-text="title">
+                </h2>
+
+                <p class="text-sm leading-relaxed mb-7"
+                   style="color: var(--color-txt-muted);"
+                   x-text="message">
+                </p>
+
+                {# hidden form — built dynamically #}
+                <form x-ref="confirmForm"
+                      :action="action"
+                      method="POST"
+                      class="hidden">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <template x-for="field in fields" :key="field.name">
+                        <input type="hidden" :name="field.name" :value="field.value">
+                    </template>
+                </form>
+
+                {# buttons #}
+                <div class="flex gap-3">
+                    <button @click="open = false"
+                            type="button"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-150"
+                            style="border: 1px solid var(--color-border);
+                                   color: var(--color-txt-secondary);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)';
+                                         this.style.transform='translateY(-1px)'"
+                            onmouseout="this.style.backgroundColor='transparent';
+                                        this.style.transform='none'">
+                        Cancel
+                    </button>
+                    <button @click="submit()"
+                            type="button"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150"
+                            style="background-color: var(--color-primary);
+                                   color: var(--color-bg);"
+                            onmouseover="this.style.backgroundColor='var(--color-primary-hover)';
+                                         this.style.transform='translateY(-1px)'"
+                            onmouseout="this.style.backgroundColor='var(--color-primary)';
+                                        this.style.transform='none'">
+                        Confirm
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{# ══════════════════════════════════════════════════════════
+   FLASH MODAL
+   Only renders if Flask has flashed messages
+══════════════════════════════════════════════════════════ #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+
+{# take only the first message — stack them if needed #}
+{% set category, message = messages[0] %}
+
+{# map category to color var, icon, title #}
+{% if   category == 'success' %}
+    {% set color = 'var(--color-success)' %}
+    {% set icon  = 'check_circle' %}
+    {% set title = 'Success' %}
+{% elif category == 'danger' %}
+    {% set color = 'var(--color-error)' %}
+    {% set icon  = 'error' %}
+    {% set title = 'Something went wrong' %}
+{% elif category == 'warning' %}
+    {% set color = 'var(--color-warning)' %}
+    {% set icon  = 'warning' %}
+    {% set title = 'Warning' %}
+{% else %}
+    {% set color = 'var(--color-info)' %}
+    {% set icon  = 'info' %}
+    {% set title = 'Notice' %}
+{% endif %}
+
+<div x-data="{ open: true }"
+     x-show="open"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @keydown.escape.window="open = false"
+     class="fixed inset-0 z-50 flex items-center justify-center px-4"
+     style="background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);">
+
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+         x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         @click.outside="open = false"
+         class="relative w-full max-w-sm rounded-2xl p-7 text-center overflow-hidden"
+         style="background-color: var(--color-surface);
+                border: 1px solid var(--color-border);
+                box-shadow: 0 8px 40px rgba(0,0,0,0.18);">
+
+        {# ambient glow behind content #}
+        <div class="absolute inset-0 rounded-2xl pointer-events-none"
+             style="background: radial-gradient(circle at top left, {{ color }}, transparent 65%);
+                    opacity: 0.08;">
+        </div>
+
+        {# content #}
+        <div class="relative z-10 flex flex-col items-center gap-3">
+
+            {# icon circle #}
+            <div class="w-12 h-12 rounded-full flex items-center justify-center"
+                 style="background: color-mix(in srgb, {{ color }} 12%, transparent);">
+                <span class="material-symbols-outlined text-[24px]"
+                      style="color: {{ color }};">
+                    {{ icon }}
+                </span>
+            </div>
+
+            <h2 class="text-lg font-bold tracking-tight"
+                style="color: {{ color }};">
+                {{ title }}
+            </h2>
+
+            <p class="text-sm leading-relaxed"
+               style="color: var(--color-txt-muted);">
+                {{ message }}
+            </p>
+
+            {# show remaining messages count if more than 1 #}
+            {% if messages | length > 1 %}
+            <p class="text-xs" style="color: var(--color-txt-muted);">
+                +{{ messages | length - 1 }} more notification(s)
+            </p>
+            {% endif %}
+
+            {# OK button #}
+            <button @click="open = false"
+                    type="button"
+                    class="mt-2 w-full py-2.5 rounded-xl text-sm font-semibold
+                           transition-all duration-150"
+                    style="background: color-mix(in srgb, {{ color }} 15%, transparent);
+                           border: 1px solid color-mix(in srgb, {{ color }} 30%, transparent);
+                           color: var(--color-txt-primary);"
+                    onmouseover="this.style.transform='translateY(-2px)'"
+                    onmouseout="this.style.transform='none'">
+                OK
+            </button>
+
+        </div>
+
+        {# outer ambient glow #}
+        <div class="absolute inset-0 rounded-2xl pointer-events-none"
+             style="background: {{ color }};
+                    opacity: 0.04;
+                    filter: blur(40px);">
+        </div>
+
+    </div>
+</div>
+
+{% endif %}
+{% endwith %}

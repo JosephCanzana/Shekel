@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Manage Users — Shekel{% endblock %}
+{% block nav_title %}Manage Users{% endblock %}
+
+<!-- 
+    BUTTONS
+    - Search query
+    - Filter query
+    - Add user -> Url for add page
+    - Per User
+        - Edit User
+        - Reset Password
+        - Archive/Unarchive account
+        - Suspend/Unsuspend account
+
+-->
+
+
+{% block body %}
+hello
+<!-- 
+Search and filter query send by post to index
+return the result and display
+-->
+<!-- 
+add user go to user form
+-->
+
+<!-- 
+List has pagination
+-->
+{{ users }}
+<!--
+edit user go to user form 
+archive/unarchive account (with global modal confirmation <still don't have the global modal)
+suspend/unsuspend account (with global modal confirmation <still don't have the global modal)
+reset account (with global modal confirmation <still don't have the global modal)
+ -->
+
+{% endblock %}

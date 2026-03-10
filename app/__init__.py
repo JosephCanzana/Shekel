@@ -44,23 +44,8 @@ def create_app():
     from app.routes.stocking import stocking_bp
     app.register_blueprint(stocking_bp)
 
-    # from app.routes.sales import sales_bp
-    # app.register_blueprint(sales_bp)
-
-    # from app.routes.inventory import inventory_bp
-    # app.register_blueprint(inventory_bp)
-
-    # from app.routes.stock_in import stock_in_bp
-    # app.register_blueprint(stock_in_bp)
-
-    # from app.routes.defects import defects_bp
-    # app.register_blueprint(defects_bp)
-
-    # from app.routes.users import users_bp
-    # app.register_blueprint(users_bp)
-
-    # from app.routes.reports import reports_bp
-    # app.register_blueprint(reports_bp)
+    from app.routes.manage_users import manage_users_bp
+    app.register_blueprint(manage_users_bp)
 
     @app.route("/test")
     def test():
