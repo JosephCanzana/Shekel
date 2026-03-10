@@ -1,7 +1,189 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Edit User' if user is defined else 'Add User' }} — Shekel{% endblock %}
-{% block nav_title %}{{ 'Edit User' if user is defined else 'Add User' }}{% endblock %}
+{% block title %}{{ "Edit User" if user is defined else "Add User" }} — Shekel{% endblock %}
+{% block nav_title %}{{ "Edit User" if user is defined else "Add User" }}{% endblock %}
 
 {% block body %}
-Hello add/edit
+<div class="max-w-lg space-y-6">
+
+    {# ── Breadcrumb ── #}
+    <div class="flex items-center gap-2 text-sm"
+         style="color: var(--color-txt-muted);">
+        <a href="{{ url_for('manage_users.index') }}"
+           style="color: var(--color-txt-muted);"
+           onmouseover="this.style.color='var(--color-txt-primary)'"
+           onmouseout="this.style.color='var(--color-txt-muted)'">
+            Users
+        </a>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span style="color: var(--color-txt-primary);">
+            {{ "Edit User" if user is defined else "Add User" }}
+        </span>
+    </div>
+
+    {# ── Card ── #}
+    <div class="rounded-2xl p-7 space-y-5"
+         style="background-color: var(--color-surface);
+                border: 1px solid var(--color-border);">
+
+        <h1 class="text-lg font-bold tracking-tight"
+            style="color: var(--color-txt-primary);">
+            {{ "Edit User" if user is defined else "Add New User" }}
+        </h1>
+
+        <form action="{{ url_for('manage_users.edit', user_id=user.user_id) if user is defined else url_for('manage_users.add') }}"
+              method="post"
+              class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {# ── First Name ── #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">
+                    First Name
+                </label>
+                <input type="text"
+                       name="first_name"
+                       value="{{ user.first_name if user is defined else '' }}"
+                       placeholder="Juan"
+                       required
+                       class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                       style="border: 1px solid var(--color-border);
+                              background-color: var(--color-surface-alt);
+                              color: var(--color-txt-primary);"
+                       onfocus="this.style.borderColor='var(--color-accent)';
+                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                       onblur="this.style.borderColor='var(--color-border)';
+                               this.style.boxShadow='none'">
+            </div>
+
+            {# ── Last Name ── #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">
+                    Last Name
+                </label>
+                <input type="text"
+                       name="last_name"
+                       value="{{ user.last_name if user is defined else '' }}"
+                       placeholder="dela Cruz"
+                       required
+                       class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                       style="border: 1px solid var(--color-border);
+                              background-color: var(--color-surface-alt);
+                              color: var(--color-txt-primary);"
+                       onfocus="this.style.borderColor='var(--color-accent)';
+                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                       onblur="this.style.borderColor='var(--color-border)';
+                               this.style.boxShadow='none'">
+            </div>
+
+            {# ── Role ── #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">
+                    Role
+                </label>
+                <select name="role"
+                        required
+                        class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                        style="border: 1px solid var(--color-border);
+                               background-color: var(--color-surface-alt);
+                               color: var(--color-txt-primary);"
+                        onfocus="this.style.borderColor='var(--color-accent)';
+                                 this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                        onblur="this.style.borderColor='var(--color-border)';
+                                this.style.boxShadow='none'">
+                    <option value="" disabled {{ '' if user is defined else 'selected' }}>
+                        Select a role
+                    </option>
+                    <option value="admin"    {{ 'selected' if user is defined and user.role == 'admin' }}>Admin</option>
+                    <option value="co-admin" {{ 'selected' if user is defined and user.role == 'co-admin' }}>Co-Admin</option>
+                    <option value="cashier"  {{ 'selected' if user is defined and user.role == 'cashier' }}>Cashier</option>
+                    <option value="stocking" {{ 'selected' if user is defined and user.role == 'stocking' }}>Stocking</option>
+                </select>
+            </div>
+
+            {# ── Status ── #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">
+                    Status
+                </label>
+                <select name="status"
+                        class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                        style="border: 1px solid var(--color-border);
+                               background-color: var(--color-surface-alt);
+                               color: var(--color-txt-primary);"
+                        onfocus="this.style.borderColor='var(--color-accent)';
+                                 this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                        onblur="this.style.borderColor='var(--color-border)';
+                                this.style.boxShadow='none'">
+                    <option value="not_activated" {{ 'selected' if not user is defined or user.status == 'not_activated' }}>Not Activated</option>
+                    <option value="activated"     {{ 'selected' if user is defined and user.status == 'activated' }}>Activated</option>
+                    <option value="suspended"     {{ 'selected' if user is defined and user.status == 'suspended' }}>Suspended</option>
+                    <option value="archived"      {{ 'selected' if user is defined and user.status == 'archived' }}>Archived</option>
+                </select>
+            </div>
+
+            {# ── Password ── #}
+            <div class="space-y-1.5"
+                 x-data="{ show: false }">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">
+                    Password
+                    {% if user is defined %}
+                    <span class="normal-case font-normal ml-1"
+                          style="color: var(--color-txt-muted);">
+                        (leave blank to keep current)
+                    </span>
+                    {% endif %}
+                </label>
+                <div class="relative">
+                    <input :type="show ? 'text' : 'password'"
+                           name="password"
+                           placeholder="{{ '••••••••' if user is defined else 'Min. 6 characters' }}"
+                           {{ '' if user is defined else 'required' }}
+                           class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                           style="border: 1px solid var(--color-border);
+                                  background-color: var(--color-surface-alt);
+                                  color: var(--color-txt-primary);"
+                           onfocus="this.style.borderColor='var(--color-accent)';
+                                    this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                           onblur="this.style.borderColor='var(--color-border)';
+                                   this.style.boxShadow='none'">
+                </div>
+                <label class="flex items-center gap-2 mt-1.5 cursor-pointer w-fit">
+                    <input type="checkbox"
+                           @change="show = !show"
+                           class="w-4 h-4 rounded cursor-pointer"
+                           style="accent-color: var(--color-accent);">
+                    <span class="text-sm" style="color: var(--color-txt-muted);">
+                        Show password
+                    </span>
+                </label>
+            </div>
+
+            {# ── Buttons ── #}
+            <div class="flex gap-3 pt-2">
+                <a href="{{ url_for('manage_users.index') }}"
+                   class="flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition"
+                   style="border: 1px solid var(--color-border);
+                          color: var(--color-txt-secondary);"
+                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                   onmouseout="this.style.backgroundColor='transparent'">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition active:scale-[.98]"
+                        style="background-color: var(--color-primary);
+                               color: var(--color-bg);"
+                        onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+                        onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                    {{ "Save Changes" if user is defined else "Create User" }}
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
 {% endblock %}

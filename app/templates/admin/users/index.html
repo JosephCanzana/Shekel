@@ -4,7 +4,6 @@
 
 {% block body %}
 
-{# pass data to Alpine via a JS variable — avoids quote conflicts with tojson #}
 <script>
     const USERS_DATA = {{ users_data | tojson }};
 </script>
@@ -14,6 +13,8 @@
     filterRole: "all",
     filterStatus: "all",
     rows: USERS_DATA,
+    page: 1,
+    perPage: 10,
     get filtered() {
         const q = this.search.toLowerCase()
         return this.rows.filter(r => {
@@ -24,7 +25,15 @@
             const matchStatus = this.filterStatus === "all" || r.status === this.filterStatus
             return matchSearch && matchRole && matchStatus
         })
-    }
+    },
+    get paginated() {
+        const start = (this.page - 1) * this.perPage
+        return this.filtered.slice(start, start + this.perPage)
+    },
+    get totalPages() {
+        return Math.max(1, Math.ceil(this.filtered.length / this.perPage))
+    },
+    resetPage() { this.page = 1 }
 }'
 class="space-y-5">
 
@@ -52,13 +61,13 @@ class="space-y-5">
     {# ── Search + Filter ── #}
     <div class="flex flex-col sm:flex-row gap-3">
 
-        {# search #}
         <div class="relative flex-1">
             <span class="material-symbols-outlined text-[18px]
                          absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
                   style="color: var(--color-txt-muted);">search</span>
             <input type="text"
                    x-model="search"
+                   @input="resetPage()"
                    placeholder="Search by name..."
                    class="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none transition"
                    style="border: 1px solid var(--color-border);
@@ -70,8 +79,8 @@ class="space-y-5">
                            this.style.boxShadow='none'">
         </div>
 
-        {# role filter #}
         <select x-model="filterRole"
+                @change="resetPage()"
                 class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
                 style="border: 1px solid var(--color-border);
                        background-color: var(--color-surface);
@@ -83,8 +92,8 @@ class="space-y-5">
             <option value="stocking">Stocking</option>
         </select>
 
-        {# status filter #}
         <select x-model="filterStatus"
+                @change="resetPage()"
                 class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
                 style="border: 1px solid var(--color-border);
                        background-color: var(--color-surface);
@@ -120,7 +129,7 @@ class="space-y-5">
             </thead>
             <tbody style="background-color: var(--color-surface);">
 
-                {# empty state — Alpine #}
+                {# empty state #}
                 <template x-if="filtered.length === 0">
                     <tr>
                         <td colspan="6" class="px-4 py-14 text-center"
@@ -132,15 +141,15 @@ class="space-y-5">
                     </tr>
                 </template>
 
-                {# rows — Alpine loop #}
-                <template x-for="(user, index) in filtered" :key="user.user_id">
+                {# rows — paginated #}
+                <template x-for="(user, index) in paginated" :key="user.user_id">
                     <tr style="border-top: 1px solid var(--color-border);"
                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                         onmouseout="this.style.backgroundColor='transparent'">
 
                         <td class="px-4 py-3 text-xs"
                             style="color: var(--color-txt-muted);"
-                            x-text="index + 1">
+                            x-text="(page - 1) * perPage + index + 1">
                         </td>
 
                         <td class="px-4 py-3 font-medium"
@@ -179,45 +188,101 @@ class="space-y-5">
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
 
-                                <a :href="`/admin/users/${user.user_id}/edit`" title="Edit"
-                                   class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                                   style="color: var(--color-txt-muted);"
-                                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-accent)'"
-                                   onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
-                                    <span class="material-symbols-outlined text-[18px]">edit</span>
-                                </a>
+                                {# ── normal actions (not archived) ── #}
+                                <template x-if="user.status !== 'archived'">
+                                    <div class="flex items-center gap-1">
 
-                                <a href="#" title="Reset password"
-                                   class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                                   style="color: var(--color-txt-muted);"
-                                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-info)'"
-                                   onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
-                                    <span class="material-symbols-outlined text-[18px]">lock_reset</span>
-                                </a>
+                                        <a :href="`/admin/users/${user.user_id}/edit`" title="Edit"
+                                           class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                           style="color: var(--color-txt-muted);"
+                                           onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-accent)'"
+                                           onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">edit</span>
+                                        </a>
 
-                                <a href="#"
-                                   :title='user.status === "suspended" ? "Unsuspend" : "Suspend"'
-                                   class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                                   style="color: var(--color-txt-muted);"
-                                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-warning)'"
-                                   onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
-                                    <span class="material-symbols-outlined text-[18px]"
-                                          :x-text='user.status === "suspended" ? "lock_open" : "block"'>
-                                        block
-                                    </span>
-                                </a>
+                                        <button @click='$dispatch("confirm", {
+                                                    title:   "Reset Password",
+                                                    message: `Reset password for ${user.first_name} ${user.last_name}?`,
+                                                    action:  `/admin/users/${user.user_id}/reset_password`,
+                                                    fields:  []
+                                                })'
+                                                title="Reset password"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                                style="color: var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-info)'"
+                                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">lock_reset</span>
+                                        </button>
 
-                                <a href="#"
-                                   :title='user.status === "archived" ? "Unarchive" : "Archive"'
-                                   class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                                   style="color: var(--color-txt-muted);"
-                                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-error)'"
-                                   onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
-                                    <span class="material-symbols-outlined text-[18px]"
-                                          :x-text='user.status === "archived" ? "unarchive" : "archive"'>
-                                        archive
-                                    </span>
-                                </a>
+                                        <button @click='$dispatch("confirm", {
+                                                    title:   user.status === "suspended" ? "Unsuspend User" : "Suspend User",
+                                                    message: user.status === "suspended"
+                                                        ? `Restore access for ${user.first_name}?`
+                                                        : `Suspend ${user.first_name}? They will lose access.`,
+                                                    action:  `/admin/users/${user.user_id}/status_update`,
+                                                    fields:  [{ name: "status", value: user.status === "suspended" ? "activated" : "suspended" }]
+                                                })'
+                                                :title='user.status === "suspended" ? "Unsuspend" : "Suspend"'
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                                style="color: var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-warning)'"
+                                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]"
+                                                  x-text='user.status === "suspended" ? "lock_open" : "block"'>
+                                            </span>
+                                        </button>
+
+                                        <button @click='$dispatch("confirm", {
+                                                    title:   "Archive User",
+                                                    message: `Archive ${user.first_name}? This will deactivate their account.`,
+                                                    action:  `/admin/users/${user.user_id}/status_update`,
+                                                    fields:  [{ name: "status", value: "archived" }]
+                                                })'
+                                                title="Archive"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                                style="color: var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-error)'"
+                                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">archive</span>
+                                        </button>
+
+                                    </div>
+                                </template>
+
+                                {# ── archived actions only ── #}
+                                <template x-if="user.status === 'archived'">
+                                    <div class="flex items-center gap-1">
+
+                                        <button @click='$dispatch("confirm", {
+                                                    title:   "Unarchive User",
+                                                    message: `Restore ${user.first_name}?`,
+                                                    action:  `/admin/users/${user.user_id}/status_update`,
+                                                    fields:  [{ name: "status", value: "not_activated" }]
+                                                })'
+                                                title="Unarchive"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                                style="color: var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-warning)'"
+                                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">unarchive</span>
+                                        </button>
+
+                                        <button @click='$dispatch("confirm", {
+                                                    title:   "Delete User",
+                                                    message: `Permanently delete ${user.first_name} ${user.last_name}? This cannot be undone.`,
+                                                    action:  `/admin/users/${user.user_id}/delete`,
+                                                    fields:  []
+                                                })'
+                                                title="Delete permanently"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                                style="color: var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-error)'"
+                                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">delete_forever</span>
+                                        </button>
+
+                                    </div>
+                                </template>
 
                             </div>
                         </td>
@@ -226,6 +291,53 @@ class="space-y-5">
 
             </tbody>
         </table>
+    </div>
+
+    {# ── Pagination ── #}
+    <div class="flex items-center justify-between text-sm"
+         x-show="filtered.length > perPage">
+
+        <p style="color: var(--color-txt-muted);">
+            Showing
+            <span x-text="Math.min((page - 1) * perPage + 1, filtered.length)"></span>–<span x-text="Math.min(page * perPage, filtered.length)"></span>
+            of <span x-text="filtered.length"></span>
+        </p>
+
+        <div class="flex items-center gap-1">
+
+            <button @click="page = Math.max(1, page - 1)"
+                    :disabled="page === 1"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed"
+                    style="border: 1px solid var(--color-border); color: var(--color-txt-secondary);"
+                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+            </button>
+
+            <template x-for="p in totalPages" :key="p">
+                <button @click="page = p"
+                        class="w-8 h-8 rounded-lg text-sm font-medium transition-colors"
+                        :style="page === p
+                            ? 'background-color:var(--color-primary);color:var(--color-bg)'
+                            : 'color:var(--color-txt-secondary)'"
+                        onmouseover="if(this.style.color !== 'var(--color-bg)') this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="if(this.style.color !== 'var(--color-bg)') this.style.backgroundColor='transparent'"
+                        x-text="p">
+                </button>
+            </template>
+
+            <button @click="page = Math.min(totalPages, page + 1)"
+                    :disabled="page === totalPages"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed"
+                    style="border: 1px solid var(--color-border); color: var(--color-txt-secondary);"
+                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+
+        </div>
     </div>
 
 </div>
