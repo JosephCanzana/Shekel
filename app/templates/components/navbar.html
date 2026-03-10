@@ -20,7 +20,11 @@
         {# Hamburger — triggers sidebar via Alpine on <body> or sidebar component #}
         <button @click="$store.sidebar.toggle()"
                 aria-label="Toggle sidebar"
-                class="w-8 h-8 rounded-lg ...">
+                class="w-8 h-8 rounded-lg shrink-0
+                       flex items-center justify-center
+                       text-txt-muted hover:text-txt-primary
+                       hover:bg-surface-alt border border-transparent
+                       hover:border-border transition-all duration-200">
             <span class="material-symbols-outlined text-[20px]">menu</span>
         </button>
 

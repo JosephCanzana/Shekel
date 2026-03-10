@@ -70,12 +70,11 @@
     <!-- app.js must be before Alpine so stores are registered  -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 
+    {% include "components/modals.html" %}
     
     <!-- Alpine loads last, deferred  -->
     <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
     
-    {% include "components/modals.html" %}
-
 {% block scripts %}{% endblock %}
 
 </body>

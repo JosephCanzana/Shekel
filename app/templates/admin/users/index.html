@@ -2,39 +2,231 @@
 {% block title %}Manage Users — Shekel{% endblock %}
 {% block nav_title %}Manage Users{% endblock %}
 
-<!-- 
-    BUTTONS
-    - Search query
-    - Filter query
-    - Add user -> Url for add page
-    - Per User
-        - Edit User
-        - Reset Password
-        - Archive/Unarchive account
-        - Suspend/Unsuspend account
-
--->
-
-
 {% block body %}
-hello
-<!-- 
-Search and filter query send by post to index
-return the result and display
--->
-<!-- 
-add user go to user form
--->
 
-<!-- 
-List has pagination
--->
-{{ users }}
-<!--
-edit user go to user form 
-archive/unarchive account (with global modal confirmation <still don't have the global modal)
-suspend/unsuspend account (with global modal confirmation <still don't have the global modal)
-reset account (with global modal confirmation <still don't have the global modal)
- -->
+{# pass data to Alpine via a JS variable — avoids quote conflicts with tojson #}
+<script>
+    const USERS_DATA = {{ users_data | tojson }};
+</script>
 
+<div x-data='{
+    search: "",
+    filterRole: "all",
+    filterStatus: "all",
+    rows: USERS_DATA,
+    get filtered() {
+        const q = this.search.toLowerCase()
+        return this.rows.filter(r => {
+            const matchSearch = q === "" ||
+                r.first_name.toLowerCase().includes(q) ||
+                r.last_name.toLowerCase().includes(q)
+            const matchRole   = this.filterRole   === "all" || r.role   === this.filterRole
+            const matchStatus = this.filterStatus === "all" || r.status === this.filterStatus
+            return matchSearch && matchRole && matchStatus
+        })
+    }
+}'
+class="space-y-5">
+
+    {# ── Header ── #}
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight"
+                style="color: var(--color-txt-primary);">
+                Users
+            </h1>
+            <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
+                <span x-text="filtered.length"></span> of {{ users | length }} users
+            </p>
+        </div>
+        <a href="{{ url_for('manage_users.add') }}"
+           class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition duration-150"
+           style="background-color: var(--color-primary); color: var(--color-bg);"
+           onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+           onmouseout="this.style.backgroundColor='var(--color-primary)'">
+            <span class="material-symbols-outlined text-[17px]">person_add</span>
+            Add User
+        </a>
+    </div>
+
+    {# ── Search + Filter ── #}
+    <div class="flex flex-col sm:flex-row gap-3">
+
+        {# search #}
+        <div class="relative flex-1">
+            <span class="material-symbols-outlined text-[18px]
+                         absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style="color: var(--color-txt-muted);">search</span>
+            <input type="text"
+                   x-model="search"
+                   placeholder="Search by name..."
+                   class="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none transition"
+                   style="border: 1px solid var(--color-border);
+                          background-color: var(--color-surface);
+                          color: var(--color-txt-primary);"
+                   onfocus="this.style.borderColor='var(--color-accent)';
+                            this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                   onblur="this.style.borderColor='var(--color-border)';
+                           this.style.boxShadow='none'">
+        </div>
+
+        {# role filter #}
+        <select x-model="filterRole"
+                class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                style="border: 1px solid var(--color-border);
+                       background-color: var(--color-surface);
+                       color: var(--color-txt-primary);">
+            <option value="all">All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="co-admin">Co-Admin</option>
+            <option value="cashier">Cashier</option>
+            <option value="stocking">Stocking</option>
+        </select>
+
+        {# status filter #}
+        <select x-model="filterStatus"
+                class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                style="border: 1px solid var(--color-border);
+                       background-color: var(--color-surface);
+                       color: var(--color-txt-primary);">
+            <option value="all">All Statuses</option>
+            <option value="activated">Activated</option>
+            <option value="not_activated">Not Activated</option>
+            <option value="suspended">Suspended</option>
+            <option value="archived">Archived</option>
+        </select>
+    </div>
+
+    {# ── Table ── #}
+    <div class="rounded-xl overflow-hidden"
+         style="border: 1px solid var(--color-border);">
+        <table class="w-full text-sm">
+            <thead>
+                <tr style="background-color: var(--color-surface-alt);
+                           border-bottom: 1px solid var(--color-border);">
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">#</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">First Name</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Last Name</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Role</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Status</th>
+                    <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Actions</th>
+                </tr>
+            </thead>
+            <tbody style="background-color: var(--color-surface);">
+
+                {# empty state — Alpine #}
+                <template x-if="filtered.length === 0">
+                    <tr>
+                        <td colspan="6" class="px-4 py-14 text-center"
+                            style="color: var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[40px] block mb-2"
+                                  style="color: var(--color-border-strong);">person_off</span>
+                            No users match your search.
+                        </td>
+                    </tr>
+                </template>
+
+                {# rows — Alpine loop #}
+                <template x-for="(user, index) in filtered" :key="user.user_id">
+                    <tr style="border-top: 1px solid var(--color-border);"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="this.style.backgroundColor='transparent'">
+
+                        <td class="px-4 py-3 text-xs"
+                            style="color: var(--color-txt-muted);"
+                            x-text="index + 1">
+                        </td>
+
+                        <td class="px-4 py-3 font-medium"
+                            style="color: var(--color-txt-primary);"
+                            x-text="user.first_name">
+                        </td>
+
+                        <td class="px-4 py-3"
+                            style="color: var(--color-txt-secondary);"
+                            x-text="user.last_name">
+                        </td>
+
+                        {# role badge #}
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-medium capitalize"
+                                  :style='user.role === "admin"    ? "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)"   :
+                                          user.role === "co-admin" ? "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)"        :
+                                          user.role === "cashier"  ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"  :
+                                                                     "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"'
+                                  x-text="user.role">
+                            </span>
+                        </td>
+
+                        {# status badge #}
+                        <td class="px-4 py-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-medium"
+                                  :style='user.status === "activated"     ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"   :
+                                          user.status === "not_activated" ? "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"   :
+                                          user.status === "suspended"     ? "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)"       :
+                                                                            "background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted)"'
+                                  x-text="user.status.replace('_', ' ')">
+                            </span>
+                        </td>
+
+                        {# actions #}
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-1">
+
+                                <a :href="`/admin/users/${user.user_id}/edit`" title="Edit"
+                                   class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                   style="color: var(--color-txt-muted);"
+                                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-accent)'"
+                                   onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                                </a>
+
+                                <a href="#" title="Reset password"
+                                   class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                   style="color: var(--color-txt-muted);"
+                                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-info)'"
+                                   onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                    <span class="material-symbols-outlined text-[18px]">lock_reset</span>
+                                </a>
+
+                                <a href="#"
+                                   :title='user.status === "suspended" ? "Unsuspend" : "Suspend"'
+                                   class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                   style="color: var(--color-txt-muted);"
+                                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-warning)'"
+                                   onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                    <span class="material-symbols-outlined text-[18px]"
+                                          :x-text='user.status === "suspended" ? "lock_open" : "block"'>
+                                        block
+                                    </span>
+                                </a>
+
+                                <a href="#"
+                                   :title='user.status === "archived" ? "Unarchive" : "Archive"'
+                                   class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                   style="color: var(--color-txt-muted);"
+                                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-error)'"
+                                   onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                    <span class="material-symbols-outlined text-[18px]"
+                                          :x-text='user.status === "archived" ? "unarchive" : "archive"'>
+                                        archive
+                                    </span>
+                                </a>
+
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+
+            </tbody>
+        </table>
+    </div>
+
+</div>
 {% endblock %}
