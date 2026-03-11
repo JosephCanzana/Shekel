@@ -134,6 +134,7 @@ def reset_password(user_id):
         return redirect(url_for("manage_users.index"))
 
     user.set_password(User.get_default_password())
+    user.set_status("not_activated")
     user.save()
     flash(f"Password for {user.first_name} {user.last_name} has been reset to default ({User.get_default_password()}).", "success")
     return redirect(request.referrer or url_for("manage_users.index"))
@@ -141,7 +142,7 @@ def reset_password(user_id):
 
 @manage_users_bp.route("/<int:user_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin")  # admin only — too destructive for co-admin
+@role_required("admin")  # admin only
 def delete(user_id):
     user = User.get_by_id(user_id)
     if not user:

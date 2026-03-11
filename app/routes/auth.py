@@ -53,6 +53,15 @@ def login():
         if not check_password_hash(user.password, password):
             flash("Invalid name or password.", "error")
             return redirect(url_for("auth.login"))
+        
+        if user.status == 'archived':
+            flash("Your account is archived! Please contact the admin")
+            return redirect(url_for("auth.login"))
+        elif user.status == 'suspended':
+            flash("Your account is suspended! Please contact the admin")
+            return redirect(url_for("auth.login"))
+        elif user.status == 'not_actived':
+            ...
 
         login_user(user)
         try:

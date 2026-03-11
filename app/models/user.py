@@ -37,6 +37,9 @@ class User(BaseModel, UserMixin):
     def check_password(self, password):
         return check_password_hash(self.password, password)
     
+    def set_status(self, status):
+        self.status = status
+    
     def to_dict(self):
         return {
         "user_id":    self.user_id,
