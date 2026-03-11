@@ -1,8 +1,10 @@
+import re
 from flask import Blueprint, render_template, redirect, request, url_for, flash
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
 from app.extensions import db
 from app.models.user import User
+from app.utils.helpers import validate_name, validate_password
 
 manage_users_bp = Blueprint("manage_users", __name__, url_prefix="/admin/users")
 
@@ -27,23 +29,37 @@ def add():
         role       = request.form.get("role",       "").strip().lower()
         password   = request.form.get("password",   "").strip()
 
-        if not password:
+        # required fields
+        if not all([first_name, last_name, role]):
+            flash("First name, last name and role are required.", "danger")
+            return redirect(url_for("manage_users.add"))
+
+        # name validation
+        ok, err = validate_name(first_name, "First name")
+        if not ok:
+            flash(err, "danger")
+            return redirect(url_for("manage_users.add"))
+
+        ok, err = validate_name(last_name, "Last name")
+        if not ok:
+            flash(err, "danger")
+            return redirect(url_for("manage_users.add"))
+
+        # password: validate if provided, otherwise use default
+        if password:
+            ok, err = validate_password(password)
+            if not ok:
+                flash(err, "danger")
+                return redirect(url_for("manage_users.add"))
+        else:
             password = User.get_default_password()
 
-        if not all([first_name, last_name, role, password]):
-            flash(f"All fields are required.{password}!", "danger")
-            return redirect(url_for("manage_users.add"))
-
-        if len(password) < 6:
-            flash("Password must be at least 6 characters.", "danger")
-            return redirect(url_for("manage_users.add"))
-        
+        # duplicate check
         existing_user = User.query.filter_by(
             first_name=first_name,
             last_name=last_name,
             role=role
         ).first()
-
         if existing_user:
             flash("A user with this name and role already exists.", "danger")
             return redirect(url_for("manage_users.add"))
@@ -52,8 +68,8 @@ def add():
             user_id    = User.generate_id(),
             first_name = first_name,
             last_name  = last_name,
-            role=role,
-            status="not_activated"
+            role       = role,
+            status     = "not_activated"
         )
         user.set_password(password)
         user.save()
@@ -61,7 +77,8 @@ def add():
         flash(f"{first_name} {last_name} has been created.", "success")
         return redirect(url_for("manage_users.index"))
 
-    return render_template("admin/users/form.html", default_pass=User.get_default_password())
+    return render_template("admin/users/form.html",
+                           default_pass=User.get_default_password())
 
 
 @manage_users_bp.route("/<int:user_id>/edit", methods=["GET", "POST"])
@@ -74,36 +91,49 @@ def edit(user_id):
         return redirect(url_for("manage_users.index"))
 
     if request.method == "POST":
-        user.first_name = request.form.get("first_name", user.first_name).strip()
-        user.last_name  = request.form.get("last_name",  user.last_name).strip()
-        user.role       = request.form.get("role",       user.role).strip()
-        user.status     = request.form.get("status",     user.status).strip()
+        first_name = request.form.get("first_name", user.first_name).strip().lower()
+        last_name  = request.form.get("last_name",  user.last_name).strip().lower()
+        role       = request.form.get("role",       user.role).strip()
+        status     = request.form.get("status",     user.status).strip()
+        password   = request.form.get("password",   "").strip()
 
-        password = request.form.get("password", "").strip()
+        # ── name validation
+        ok, err = validate_name(first_name, "First name")
+        if not ok:
+            flash(err, "danger")
+            return redirect(url_for("manage_users.edit", user_id=user_id))
+
+        ok, err = validate_name(last_name, "Last name")
+        if not ok:
+            flash(err, "danger")
+            return redirect(url_for("manage_users.edit", user_id=user_id))
+
+        # ── password validation (only if provided)
         if password:
-            if len(password) < 6:
-                flash("Password must be at least 6 characters.", "danger")
+            ok, err = validate_password(password)
+            if not ok:
+                flash(err, "danger")
                 return redirect(url_for("manage_users.edit", user_id=user_id))
             user.set_password(password)
 
+        user.first_name = first_name
+        user.last_name  = last_name
+        user.role       = role
+        user.status     = status
         user.save()
+
         flash(f"{user.first_name} {user.last_name} has been updated.", "success")
         return redirect(url_for("manage_users.index"))
 
-    return render_template("admin/users/form.html", user=user)
+    return render_template("admin/users/form.html",
+                           user=user,
+                           default_pass=User.get_default_password())
 
 
 @manage_users_bp.route("/<int:user_id>/status_update", methods=["POST"])
 @login_required
 @role_required("admin", "co-admin")
 def status(user_id):
-    """
-    Status hierarchy:
-    - archived      → fully deactivated
-    - suspended     → temporary loss of access
-    - not_activated → account exists but not yet active
-    - activated     → normal access
-    """
     if current_user.user_id == user_id:
         flash("You cannot change your own account status.", "danger")
         return redirect(request.referrer or url_for("manage_users.index"))
@@ -133,16 +163,17 @@ def reset_password(user_id):
         flash("User not found.", "danger")
         return redirect(url_for("manage_users.index"))
 
-    user.set_password(User.get_default_password())
-    user.set_status("not_activated")
+    default = User.get_default_password()
+    user.set_password(default)
+    user.status = "not_activated"
     user.save()
-    flash(f"Password for {user.first_name} {user.last_name} has been reset to default ({User.get_default_password()}).", "success")
+    flash(f"Password for {user.first_name} {user.last_name} has been reset to default.", "success")
     return redirect(request.referrer or url_for("manage_users.index"))
 
 
 @manage_users_bp.route("/<int:user_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin")  # admin only
+@role_required("admin")
 def delete(user_id):
     user = User.get_by_id(user_id)
     if not user:
