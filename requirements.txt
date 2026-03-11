@@ -10,3 +10,4 @@ DotEnv
 weasyprint
 pymysql
 cryptography
+python-dotenv

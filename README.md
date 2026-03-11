@@ -13,6 +13,13 @@
 4. Build and run the docker
 > docker compose up --build
 
+## MIGRATIONS
+1. make the migration (auto-detects your model changes)
+>flask db migrate -m "your comment"
+
+2. apply it to the database
+>flask db upgrade
+
 ## DOCKER
 1. Run command
 > docker compose up

@@ -1,6 +1,246 @@
 {% extends "base.html" %}
-{% block title %}stocks Dashboard{% endblock %}
-{% block nav_title %}stocks Dashboard{% endblock %}
+{% block title %}Dashboard — Shekel{% endblock %}
+{% block nav_title %}Dashboard{% endblock %}
+
 {% block body %}
-hello stocks 
+<div class="space-y-6">
+
+    {# ── Greeting ── #}
+    <div>
+        <h1 class="text-xl font-bold tracking-tight"
+            style="color: var(--color-txt-primary);">
+            Good {{ time_of_day }}, {{ current_user.first_name | capitalize }}.
+        </h1>
+        <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
+            Here's your inventory overview.
+        </p>
+    </div>
+
+    {# ── Stat Cards ── #}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+        {# Total Inventory Count #}
+        <div class="rounded-2xl p-5 space-y-3"
+             style="background-color: var(--color-surface);
+                    border: 1px solid var(--color-border);">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider"
+                      style="color: var(--color-txt-muted);">Total Products</span>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+                     style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
+                    <span class="material-symbols-outlined text-[17px]"
+                          style="color: var(--color-accent);">inventory_2</span>
+                </div>
+            </div>
+            <div>
+                <p class="text-2xl font-bold tracking-tight"
+                   style="color: var(--color-txt-primary);">
+                    {{ stats.total_products | default(0) }}
+                </p>
+                <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
+                    products in inventory
+                </p>
+            </div>
+        </div>
+
+        {# Low Stock #}
+        <div class="rounded-2xl p-5 space-y-3"
+             style="background-color: var(--color-surface);
+                    border: 1px solid var(--color-border);">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider"
+                      style="color: var(--color-txt-muted);">Low Stock</span>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+                     style="background: color-mix(in srgb, var(--color-warning) 12%, transparent);">
+                    <span class="material-symbols-outlined text-[17px]"
+                          style="color: var(--color-warning);">warning</span>
+                </div>
+            </div>
+            <div>
+                <p class="text-2xl font-bold tracking-tight"
+                   style="color: var(--color-txt-primary);">
+                    {{ stats.low_stock_count | default(0) }}
+                </p>
+                <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
+                    items need restocking
+                </p>
+            </div>
+        </div>
+
+        {# Defects #}
+        <div class="rounded-2xl p-5 space-y-3"
+             style="background-color: var(--color-surface);
+                    border: 1px solid var(--color-border);">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider"
+                      style="color: var(--color-txt-muted);">Defects</span>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+                     style="background: color-mix(in srgb, var(--color-error) 12%, transparent);">
+                    <span class="material-symbols-outlined text-[17px]"
+                          style="color: var(--color-error);">remove_shopping_cart</span>
+                </div>
+            </div>
+            <div>
+                <p class="text-2xl font-bold tracking-tight"
+                   style="color: var(--color-txt-primary);">
+                    {{ stats.defects_count | default(0) }}
+                </p>
+                <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
+                    reported this month
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    {# ── Bottom Section ── #}
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+        {# Low Stock Alerts #}
+        <div class="rounded-2xl overflow-hidden"
+             style="background-color: var(--color-surface);
+                    border: 1px solid var(--color-border);">
+
+            <div class="px-5 py-4 flex items-center justify-between"
+                 style="border-bottom: 1px solid var(--color-border);">
+                <h2 class="text-sm font-semibold"
+                    style="color: var(--color-txt-primary);">Low Stock Alerts</h2>
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style="background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+                             color: var(--color-warning);">
+                    {{ stats.low_stock_count | default(0) }} items
+                </span>
+            </div>
+
+            <div>
+                {% if low_stock_items %}
+                    {% for item in low_stock_items %}
+                    <div class="px-5 py-3 flex items-center justify-between"
+                         style="border-bottom: 1px solid var(--color-border);">
+                        <div>
+                            <p class="text-sm font-medium"
+                               style="color: var(--color-txt-primary);">{{ item.name }}</p>
+                            <p class="text-xs" style="color: var(--color-txt-muted);">
+                                {{ item.category }}
+                            </p>
+                        </div>
+                        <span class="text-xs font-semibold px-2 py-1 rounded-lg"
+                              style="background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+                                     color: var(--color-warning);">
+                            {{ item.stock }} left
+                        </span>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="px-5 py-10 text-center">
+                        <span class="material-symbols-outlined text-[32px] block mb-2"
+                              style="color: var(--color-border-strong);">inventory</span>
+                        <p class="text-sm" style="color: var(--color-txt-muted);">
+                            All items are well stocked.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        {# Right column — Recent Stock-ins + Defects #}
+        <div class="space-y-4">
+
+            {# Recent Stock-ins #}
+            <div class="rounded-2xl overflow-hidden"
+                 style="background-color: var(--color-surface);
+                        border: 1px solid var(--color-border);">
+
+                <div class="px-5 py-4 flex items-center justify-between"
+                     style="border-bottom: 1px solid var(--color-border);">
+                    <h2 class="text-sm font-semibold"
+                        style="color: var(--color-txt-primary);">Recent Stock-ins</h2>
+                    <span class="text-xs" style="color: var(--color-txt-muted);">Latest 5</span>
+                </div>
+
+                <div>
+                    {% if recent_stockins %}
+                        {% for item in recent_stockins %}
+                        <div class="px-5 py-3 flex items-center justify-between"
+                             style="border-bottom: 1px solid var(--color-border);">
+                            <div class="flex items-center gap-3">
+                                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                                     style="background: color-mix(in srgb, var(--color-success) 10%, transparent);">
+                                    <span class="material-symbols-outlined text-[14px]"
+                                          style="color: var(--color-success);">add_box</span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium"
+                                       style="color: var(--color-txt-primary);">{{ item.name }}</p>
+                                    <p class="text-xs" style="color: var(--color-txt-muted);">
+                                        {{ item.stocked_by }} · {{ item.date }}
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="text-xs font-semibold"
+                                  style="color: var(--color-success);">+{{ item.qty }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="px-5 py-10 text-center">
+                            <span class="material-symbols-outlined text-[32px] block mb-2"
+                                  style="color: var(--color-border-strong);">move_to_inbox</span>
+                            <p class="text-sm" style="color: var(--color-txt-muted);">
+                                No stock-ins recorded yet.
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
+
+            {# Defects Summary #}
+            <div class="rounded-2xl overflow-hidden"
+                 style="background-color: var(--color-surface);
+                        border: 1px solid var(--color-border);">
+
+                <div class="px-5 py-4 flex items-center justify-between"
+                     style="border-bottom: 1px solid var(--color-border);">
+                    <h2 class="text-sm font-semibold"
+                        style="color: var(--color-txt-primary);">Defects Summary</h2>
+                    <span class="text-xs" style="color: var(--color-txt-muted);">This month</span>
+                </div>
+
+                <div>
+                    {% if defects %}
+                        {% for defect in defects %}
+                        <div class="px-5 py-3 flex items-center justify-between"
+                             style="border-bottom: 1px solid var(--color-border);">
+                            <div>
+                                <p class="text-sm font-medium"
+                                   style="color: var(--color-txt-primary);">{{ defect.name }}</p>
+                                <p class="text-xs" style="color: var(--color-txt-muted);">
+                                    {{ defect.reported_by }} · {{ defect.date }}
+                                </p>
+                            </div>
+                            <span class="text-xs font-semibold px-2 py-1 rounded-lg"
+                                  style="background: color-mix(in srgb, var(--color-error) 12%, transparent);
+                                         color: var(--color-error);">
+                                x{{ defect.qty }}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="px-5 py-10 text-center">
+                            <span class="material-symbols-outlined text-[32px] block mb-2"
+                                  style="color: var(--color-border-strong);">check_circle</span>
+                            <p class="text-sm" style="color: var(--color-txt-muted);">
+                                No defects reported this month.
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
 {% endblock %}

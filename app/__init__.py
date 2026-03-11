@@ -47,6 +47,9 @@ def create_app():
     from app.routes.manage_users import manage_users_bp
     app.register_blueprint(manage_users_bp)
 
+    from app.routes.manage_categories import manage_categories_bp
+    app.register_blueprint(manage_categories_bp)
+
     @app.route("/test")
     def test():
         return render_template("test.html")

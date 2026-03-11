@@ -30,3 +30,9 @@ def validate_name(value, field_label):
     if not re.match(r"^[a-zA-Z\s\-]+$", value):
         return False, f"{field_label} can only contain letters, spaces, and hyphens."
     return True, None
+
+
+def validate_category_name(name):
+    if not re.match(r"^[a-zA-Z0-9\s\-&/]+$", name):
+        return False, "Category name can only contain letters, numbers, spaces, hyphens, ampersands, and slashes."
+    return True, None

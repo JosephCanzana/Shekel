@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit Category" if category is defined else "Add Category" }} — Shekel{% endblock %}
+{% block nav_title %}{{ "Edit Category" if category is defined else "Add Category" }}{% endblock %}
+
+{% block body %}
+<div class="max-w-lg mx-auto space-y-6">
+
+    {# ── Breadcrumb ── #}
+    <div class="flex items-center gap-2 text-sm"
+         style="color: var(--color-txt-muted);">
+        <a href="{{ url_for('manage_categories.index') }}"
+           style="color: var(--color-txt-muted);"
+           onmouseover="this.style.color='var(--color-txt-primary)'"
+           onmouseout="this.style.color='var(--color-txt-muted)'">
+            Categories
+        </a>
+        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+        <span style="color: var(--color-txt-primary);">
+            {{ "Edit Category" if category is defined else "Add Category" }}
+        </span>
+    </div>
+
+    {# ── Card ── #}
+    <div class="rounded-2xl p-7 space-y-5"
+         style="background-color: var(--color-surface);
+                border: 1px solid var(--color-border);">
+
+        <div>
+            <h1 class="text-lg font-bold tracking-tight"
+                style="color: var(--color-txt-primary);">
+                {{ "Edit Category" if category is defined else "Add New Category" }}
+            </h1>
+            {% if category is defined %}
+            <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
+                ID: {{ category.category_id }}
+            </p>
+            {% endif %}
+        </div>
+
+        <form action="{{ url_for('manage_categories.edit', category_id=category.category_id) if category is defined else url_for('manage_categories.add') }}"
+              method="post"
+              class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {# ── Name ── #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">
+                    Name <span style="color: var(--color-error);">*</span>
+                </label>
+                <input type="text"
+                       name="category_name"
+                       value="{{ category.category_name | capitalize if category is defined else '' }}"
+                       placeholder="e.g. Beverages"
+                       required
+                       class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                       style="border: 1px solid var(--color-border);
+                              background-color: var(--color-surface-alt);
+                              color: var(--color-txt-primary);"
+                       onfocus="this.style.borderColor='var(--color-accent)';
+                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                       onblur="this.style.borderColor='var(--color-border)';
+                               this.style.boxShadow='none'">
+            </div>
+
+            {# ── Description ── #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">
+                    Description
+                    <span class="normal-case font-normal ml-1"
+                          style="color: var(--color-txt-muted);">(optional)</span>
+                </label>
+                <textarea name="description"
+                          rows="3"
+                          placeholder="Brief description of this category..."
+                          class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition resize-none"
+                          style="border: 1px solid var(--color-border);
+                                 background-color: var(--color-surface-alt);
+                                 color: var(--color-txt-primary);"
+                          onfocus="this.style.borderColor='var(--color-accent)';
+                                   this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                          onblur="this.style.borderColor='var(--color-border)';
+                                  this.style.boxShadow='none'">{{ category.description if category is defined and category.description else '' }}</textarea>
+            </div>
+
+            {# ── Status (edit only) ── #}
+            {% if category is defined %}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">
+                    Status
+                </label>
+                <select name="status"
+                        class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                        style="border: 1px solid var(--color-border);
+                               background-color: var(--color-surface-alt);
+                               color: var(--color-txt-primary);"
+                        onfocus="this.style.borderColor='var(--color-accent)';
+                                 this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                        onblur="this.style.borderColor='var(--color-border)';
+                                this.style.boxShadow='none'">
+                    <option value="active"   {{ 'selected' if category.status == 'active' }}>Active</option>
+                    <option value="inactive" {{ 'selected' if category.status == 'inactive' }}>Inactive</option>
+                </select>
+            </div>
+            {% endif %}
+
+            {# ── Buttons ── #}
+            <div class="flex gap-3 pt-2">
+                <a href="{{ url_for('manage_categories.index') }}"
+                   class="flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition"
+                   style="border: 1px solid var(--color-border);
+                          color: var(--color-txt-secondary);"
+                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                   onmouseout="this.style.backgroundColor='transparent'">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition active:scale-[.98]"
+                        style="background-color: var(--color-primary);
+                               color: var(--color-bg);"
+                        onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+                        onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                    {{ "Save Changes" if category is defined else "Create Category" }}
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}
