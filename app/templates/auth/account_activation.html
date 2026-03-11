@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}Activate Account — Shekel{% endblock %}
+
+{% block auth_body %}
+<div class="w-full flex font-main" style="min-height: calc(100vh - 2.5rem);">
+
+  {# ══════════════════════════════════════════════
+     LEFT — branding panel
+  ══════════════════════════════════════════════ #}
+  <div class="hidden lg:flex lg:w-[45%] relative flex-col
+              overflow-hidden select-none"
+       style="background-color: var(--color-surface-alt);
+              border-right: 1px solid var(--color-border);">
+
+    {# grid overlay #}
+    <div class="absolute inset-0 pointer-events-none"
+         style="background-image:
+                  linear-gradient(var(--color-border) 1px, transparent 1px),
+                  linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+                background-size: 40px 40px;
+                opacity: 0.6;">
+    </div>
+
+    {# accent glow #}
+    <div class="absolute bottom-0 right-0 w-[400px] h-[400px]
+                rounded-full pointer-events-none"
+         style="background: radial-gradient(circle,
+                  rgba(99,102,241,0.12) 0%, transparent 70%);
+                transform: translate(30%, 30%);">
+    </div>
+
+    <div class="relative z-10 flex flex-col items-center justify-center
+                h-full px-14 text-center gap-8">
+
+      {# icon #}
+      <div class="w-20 h-20 rounded-2xl flex items-center justify-center"
+           style="background-color: var(--color-surface);
+                  border: 1px solid var(--color-border-strong);">
+        <span class="material-symbols-outlined text-[38px]"
+              style="color: var(--color-accent);">
+          key
+        </span>
+      </div>
+
+      <div class="flex flex-col items-center gap-4">
+        <h1 class="text-5xl font-bold"
+            style="color: var(--color-txt-primary);
+                   letter-spacing: -0.03em;">
+          Shekel
+        </h1>
+
+        <div class="w-8 h-0.5 rounded-full"
+             style="background-color: var(--color-accent);">
+        </div>
+
+        <p class="text-sm leading-relaxed max-w-[210px]"
+           style="color: var(--color-txt-muted);">
+          One last step before<br>
+          <span style="color: var(--color-accent); font-weight: 600;">
+            you get started.
+          </span>
+        </p>
+      </div>
+
+    </div>
+
+    <p class="absolute bottom-8 left-0 right-0 text-center
+              text-xs tracking-widest uppercase"
+       style="color: var(--color-txt-muted); opacity: 0.5;">
+      v1.0 &nbsp;·&nbsp; 2026
+    </p>
+
+  </div>
+
+
+  {# ══════════════════════════════════════════════
+     RIGHT — activation form
+  ══════════════════════════════════════════════ #}
+  <div class="flex-1 flex flex-col items-center justify-center
+              px-8 py-10 pb-16 relative"
+       style="background-color: var(--color-bg);">
+
+    {# dot pattern #}
+    <div class="absolute inset-0 pointer-events-none"
+         style="background-image: radial-gradient(var(--color-border-strong) 1px, transparent 1px);
+                background-size: 24px 24px;
+                opacity: 0.5;">
+    </div>
+
+    <div class="relative z-10 w-full max-w-sm sm:max-w-[520px]"
+         style="animation: fadeUp .35s ease both;">
+
+      {# mobile logo #}
+      <div class="lg:hidden flex items-center gap-2 mb-8">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+             style="background-color: var(--color-primary);">
+          <span class="text-sm font-bold" style="color: var(--color-bg);">S</span>
+        </div>
+        <span class="text-base font-semibold tracking-widest uppercase"
+              style="color: var(--color-txt-muted);">
+          Shekel
+        </span>
+      </div>
+
+      {# card #}
+      <div class="rounded-2xl p-7 sm:p-12"
+           style="background-color: var(--color-surface);
+                  border: 1px solid var(--color-border);
+                  box-shadow: 0 2px 8px rgba(0,0,0,.06),
+                              0 8px 32px rgba(0,0,0,.07);">
+
+        {# heading #}
+        <div class="mb-7 sm:mb-9">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-9 h-9 rounded-xl flex items-center justify-center"
+                 style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
+              <span class="material-symbols-outlined text-[18px]"
+                    style="color: var(--color-accent);">lock_open</span>
+            </div>
+            <span class="text-xs font-semibold uppercase tracking-widest px-2.5 py-1 rounded-full"
+                  style="background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+                         color: var(--color-warning);">
+              First Login
+            </span>
+          </div>
+          <h2 class="text-2xl sm:text-4xl font-bold tracking-tight"
+              style="color: var(--color-txt-primary);">
+            Activate your account
+          </h2>
+          <p class="text-sm sm:text-base mt-2"
+             style="color: var(--color-txt-muted);">
+            Welcome,
+            <span class="font-semibold capitalize"
+                  style="color: var(--color-txt-primary);">
+              {{ user.first_name }} {{ user.last_name }}
+            </span>.
+            Please set a new password to continue.
+          </p>
+        </div>
+
+        {# form #}
+        <form action="{{ url_for('auth.account_activation', user_id=user.user_id) }}"
+              method="post"
+              class="space-y-5 mb-4"
+              x-data="{ show: false, showConfirm: false }">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          {# New Password #}
+          <div class="space-y-2">
+            <label class="text-xs font-semibold uppercase tracking-wider"
+                   style="color: var(--color-txt-muted);">
+              New Password
+            </label>
+            <div class="relative">
+              <span class="material-symbols-outlined text-[20px]
+                           absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style="color: var(--color-txt-muted);">
+                lock
+              </span>
+              <input :type="show ? 'text' : 'password'"
+                     name="password"
+                     placeholder="Min. 6 characters"
+                     required
+                     class="w-full pl-11 pr-4 py-2.5 sm:py-3.5 rounded-xl text-sm sm:text-base
+                            focus:outline-none transition duration-150"
+                     style="border: 1px solid var(--color-border);
+                            background-color: var(--color-surface-alt);
+                            color: var(--color-txt-primary);"
+                     onfocus="this.style.borderColor='var(--color-accent)';
+                              this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                     onblur="this.style.borderColor='var(--color-border)';
+                             this.style.boxShadow='none'">
+            </div>
+          </div>
+
+          {# Confirm Password #}
+          <div class="space-y-2">
+            <label class="text-xs font-semibold uppercase tracking-wider"
+                   style="color: var(--color-txt-muted);">
+              Confirm Password
+            </label>
+            <div class="relative">
+              <span class="material-symbols-outlined text-[20px]
+                           absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style="color: var(--color-txt-muted);">
+                lock_clock
+              </span>
+              <input :type="showConfirm ? 'text' : 'password'"
+                     name="password_confirm"
+                     placeholder="Re-enter your password"
+                     required
+                     class="w-full pl-11 pr-4 py-2.5 sm:py-3.5 rounded-xl text-sm sm:text-base
+                            focus:outline-none transition duration-150"
+                     style="border: 1px solid var(--color-border);
+                            background-color: var(--color-surface-alt);
+                            color: var(--color-txt-primary);"
+                     onfocus="this.style.borderColor='var(--color-accent)';
+                              this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                     onblur="this.style.borderColor='var(--color-border)';
+                             this.style.boxShadow='none'">
+            </div>
+          </div>
+
+          {# show passwords toggle #}
+          <div class="flex items-center gap-5">
+            <label class="flex items-center gap-2 cursor-pointer w-fit">
+              <input type="checkbox"
+                     @change="show = !show"
+                     class="w-4 h-4 rounded cursor-pointer"
+                     style="accent-color: var(--color-accent);">
+              <span class="text-sm" style="color: var(--color-txt-muted);">
+                Show password
+              </span>
+            </label>
+          </div>
+
+          {# submit #}
+          <button type="submit"
+                  class="w-full py-2.5 sm:py-3.5 mt-1 rounded-xl text-sm sm:text-base font-semibold
+                         tracking-wide transition duration-150
+                         flex items-center justify-center gap-2
+                         active:scale-[.99]"
+                  style="background-color: var(--color-primary);
+                         color: var(--color-bg);"
+                  onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+                  onmouseout="this.style.backgroundColor='var(--color-primary)'">
+            Activate Account
+            <span class="material-symbols-outlined text-[18px]">check_circle</span>
+          </button>
+
+        </form>
+        {# back to login #}
+        <div class="mt-6 text-center">
+          <a href="{{ url_for('auth.login') }}"
+             class="text-sm transition"
+             style="color: var(--color-txt-muted);"
+             onmouseover="this.style.color='var(--color-txt-primary)'"
+             onmouseout="this.style.color='var(--color-txt-muted)'">
+            ← Back to login
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  input::placeholder {
+    color: var(--color-txt-muted);
+    opacity: 1;
+  }
+</style>
+{% endblock %}
