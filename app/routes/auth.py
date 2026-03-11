@@ -4,6 +4,7 @@ from sqlalchemy import func
 from werkzeug.security import check_password_hash
 from app.models.user import User
 from app.utils.helpers import message
+import re
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -86,20 +87,35 @@ def account_activation(user_id):
         flash("User not found.", "danger")
         return redirect(url_for("auth.login"))
 
-    # if already activated, just send to login
     if user.status != "not_activated":
         return redirect(url_for("auth.login"))
 
     if request.method == "POST":
-        password        = request.form.get("password", "").strip()
+        password         = request.form.get("password", "").strip()
         password_confirm = request.form.get("password_confirm", "").strip()
 
         if not password or not password_confirm:
             flash("Please fill in all fields.", "danger")
             return redirect(url_for("auth.account_activation", user_id=user_id))
 
-        if len(password) < 6:
-            flash("Password must be at least 6 characters.", "danger")
+        if len(password) < 8:
+            flash("Password must be at least 8 characters.", "danger")
+            return redirect(url_for("auth.account_activation", user_id=user_id))
+
+        if not re.search(r"[A-Z]", password):
+            flash("Password must contain at least one uppercase letter.", "danger")
+            return redirect(url_for("auth.account_activation", user_id=user_id))
+
+        if not re.search(r"[a-z]", password):
+            flash("Password must contain at least one lowercase letter.", "danger")
+            return redirect(url_for("auth.account_activation", user_id=user_id))
+
+        if not re.search(r"\d", password):
+            flash("Password must contain at least one number.", "danger")
+            return redirect(url_for("auth.account_activation", user_id=user_id))
+
+        if not re.search(r"[@$!%*?&_#\-]", password):
+            flash("Password must contain at least one special character (@$!%*?&_#-).", "danger")
             return redirect(url_for("auth.account_activation", user_id=user_id))
 
         if password != password_confirm:

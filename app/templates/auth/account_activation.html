@@ -32,27 +32,20 @@
     <div class="relative z-10 flex flex-col items-center justify-center
                 h-full px-14 text-center gap-8">
 
-      {# icon #}
       <div class="w-20 h-20 rounded-2xl flex items-center justify-center"
            style="background-color: var(--color-surface);
                   border: 1px solid var(--color-border-strong);">
         <span class="material-symbols-outlined text-[38px]"
-              style="color: var(--color-accent);">
-          key
-        </span>
+              style="color: var(--color-accent);">key</span>
       </div>
 
       <div class="flex flex-col items-center gap-4">
         <h1 class="text-5xl font-bold"
-            style="color: var(--color-txt-primary);
-                   letter-spacing: -0.03em;">
+            style="color: var(--color-txt-primary); letter-spacing: -0.03em;">
           Shekel
         </h1>
-
         <div class="w-8 h-0.5 rounded-full"
-             style="background-color: var(--color-accent);">
-        </div>
-
+             style="background-color: var(--color-accent);"></div>
         <p class="text-sm leading-relaxed max-w-[210px]"
            style="color: var(--color-txt-muted);">
           One last step before<br>
@@ -97,17 +90,14 @@
           <span class="text-sm font-bold" style="color: var(--color-bg);">S</span>
         </div>
         <span class="text-base font-semibold tracking-widest uppercase"
-              style="color: var(--color-txt-muted);">
-          Shekel
-        </span>
+              style="color: var(--color-txt-muted);">Shekel</span>
       </div>
 
       {# card #}
       <div class="rounded-2xl p-7 sm:p-12"
            style="background-color: var(--color-surface);
                   border: 1px solid var(--color-border);
-                  box-shadow: 0 2px 8px rgba(0,0,0,.06),
-                              0 8px 32px rgba(0,0,0,.07);">
+                  box-shadow: 0 2px 8px rgba(0,0,0,.06), 0 8px 32px rgba(0,0,0,.07);">
 
         {# heading #}
         <div class="mb-7 sm:mb-9">
@@ -127,25 +117,45 @@
               style="color: var(--color-txt-primary);">
             Activate your account
           </h2>
-          <p class="text-sm sm:text-base mt-2"
-             style="color: var(--color-txt-muted);">
+          <p class="text-sm sm:text-base mt-2" style="color: var(--color-txt-muted);">
             Welcome,
-            <span class="font-semibold capitalize"
-                  style="color: var(--color-txt-primary);">
+            <span class="font-semibold capitalize" style="color: var(--color-txt-primary);">
               {{ user.first_name }} {{ user.last_name }}
             </span>.
             Please set a new password to continue.
           </p>
         </div>
 
-        {# form #}
+        {# ── form ──
+             x-data lives on the form so all children share the same scope:
+             show, showConfirm, password, checks, strength
+        #}
         <form action="{{ url_for('auth.account_activation', user_id=user.user_id) }}"
               method="post"
               class="space-y-5 mb-4"
-              x-data="{ show: false, showConfirm: false }">
+              x-data="{
+                  show: false,
+                  showConfirm: false,
+                  password: '',
+                  get checks() {
+                      return {
+                          length:  this.password.length >= 8,
+                          upper:   /[A-Z]/.test(this.password),
+                          lower:   /[a-z]/.test(this.password),
+                          number:  /\d/.test(this.password),
+                          special: /[@$!%*?&_#\-]/.test(this.password)
+                      }
+                  },
+                  get strength() {
+                      const passed = Object.values(this.checks).filter(Boolean).length
+                      if (passed <= 2) return 'weak'
+                      if (passed <= 4) return 'fair'
+                      return 'strong'
+                  }
+              }">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-          {# New Password #}
+          {# ── New Password ── #}
           <div class="space-y-2">
             <label class="text-xs font-semibold uppercase tracking-wider"
                    style="color: var(--color-txt-muted);">
@@ -154,12 +164,11 @@
             <div class="relative">
               <span class="material-symbols-outlined text-[20px]
                            absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                    style="color: var(--color-txt-muted);">
-                lock
-              </span>
+                    style="color: var(--color-txt-muted);">lock</span>
               <input :type="show ? 'text' : 'password'"
                      name="password"
-                     placeholder="Min. 6 characters"
+                     x-model="password"
+                     placeholder="Min. 8 characters"
                      required
                      class="w-full pl-11 pr-4 py-2.5 sm:py-3.5 rounded-xl text-sm sm:text-base
                             focus:outline-none transition duration-150"
@@ -171,9 +180,56 @@
                      onblur="this.style.borderColor='var(--color-border)';
                              this.style.boxShadow='none'">
             </div>
-          </div>
 
-          {# Confirm Password #}
+            {# strength bar + checklist — only shows when typing #}
+            <template x-if="password.length > 0">
+              <div class="space-y-2 pt-1">
+
+                {# bar #}
+                <div class="flex items-center gap-1">
+                  <template x-for="i in 3" :key="i">
+                    <div class="h-1 flex-1 rounded-full transition-all duration-300"
+                         :style="(strength === 'weak'   && i <= 1) ? 'background:var(--color-error)'   :
+                                 (strength === 'fair'   && i <= 2) ? 'background:var(--color-warning)' :
+                                 (strength === 'strong' && i <= 3) ? 'background:var(--color-success)' :
+                                                                      'background:var(--color-border)'">
+                    </div>
+                  </template>
+                  <span class="text-xs font-medium ml-2 capitalize w-10"
+                        :style="strength === 'weak'   ? 'color:var(--color-error)'   :
+                                strength === 'fair'   ? 'color:var(--color-warning)' :
+                                                        'color:var(--color-success)'"
+                        x-text="strength">
+                  </span>
+                </div>
+
+                {# checklist #}
+              <div class="flex items-center gap-2">
+                  <template x-if="Object.values(checks).some(v => !v)">
+                  <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                      <template x-for="[key, label] in [
+                          ['length',  'Min. 8 characters'],
+                          ['upper',   'Uppercase letter'],
+                          ['lower',   'Lowercase letter'],
+                          ['number',  'Number'],
+                          ['special', 'Special character']
+                      ]" :key="key">
+                          <span x-show="!checks[key]"
+                                class="text-xs"
+                                style="color:var(--color-error);"
+                                x-text="'✕ ' + label">
+                          </span>
+                      </template>
+                  </div>
+              </template>
+              </div>
+
+              </div>
+            </template>
+
+          </div>{# /New Password #}
+
+          {# ── Confirm Password ── #}
           <div class="space-y-2">
             <label class="text-xs font-semibold uppercase tracking-wider"
                    style="color: var(--color-txt-muted);">
@@ -182,9 +238,7 @@
             <div class="relative">
               <span class="material-symbols-outlined text-[20px]
                            absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                    style="color: var(--color-txt-muted);">
-                lock_clock
-              </span>
+                    style="color: var(--color-txt-muted);">lock_clock</span>
               <input :type="showConfirm ? 'text' : 'password'"
                      name="password_confirm"
                      placeholder="Re-enter your password"
@@ -199,9 +253,9 @@
                      onblur="this.style.borderColor='var(--color-border)';
                              this.style.boxShadow='none'">
             </div>
-          </div>
+          </div>{# /Confirm Password #}
 
-          {# show passwords toggle #}
+          {# ── Show toggles ── #}
           <div class="flex items-center gap-5">
             <label class="flex items-center gap-2 cursor-pointer w-fit">
               <input type="checkbox"
@@ -214,21 +268,20 @@
             </label>
           </div>
 
-          {# submit #}
+          {# ── Submit ── #}
           <button type="submit"
                   class="w-full py-2.5 sm:py-3.5 mt-1 rounded-xl text-sm sm:text-base font-semibold
                          tracking-wide transition duration-150
-                         flex items-center justify-center gap-2
-                         active:scale-[.99]"
-                  style="background-color: var(--color-primary);
-                         color: var(--color-bg);"
+                         flex items-center justify-center gap-2 active:scale-[.99]"
+                  style="background-color: var(--color-primary); color: var(--color-bg);"
                   onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
                   onmouseout="this.style.backgroundColor='var(--color-primary)'">
             Activate Account
             <span class="material-symbols-outlined text-[18px]">check_circle</span>
           </button>
 
-        </form>
+        </form>{# /form #}
+
         {# back to login #}
         <div class="mt-6 text-center">
           <a href="{{ url_for('auth.login') }}"
@@ -240,7 +293,15 @@
           </a>
         </div>
 
-      </div>
+        {# bottom divider #}
+        <div class="flex items-center gap-3 mt-7">
+          <div class="flex-1 h-px" style="background-color: var(--color-border);"></div>
+          <span class="text-xs tracking-widest uppercase"
+                style="color: var(--color-txt-muted);">Shekel v1.0</span>
+          <div class="flex-1 h-px" style="background-color: var(--color-border);"></div>
+        </div>
+
+      </div>{# /card #}
     </div>
   </div>
 
