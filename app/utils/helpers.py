@@ -3,10 +3,12 @@ from flask_login import current_user
 import re
 from app.models.category import Category
 from app.models.product import Product
+from app.models.product_bundle import ProductBundle
 
 def message(num=400, message="Error occur"):
     return render_template("message.html", message=message, error_code=num)
 
+# User
 def validate_password(password):
     """
     Returns (True, None) if valid.
@@ -35,11 +37,14 @@ def validate_name(value, field_label):
     return True, None
 
 
+# Category
 def validate_category_name(name):
     if not re.match(r"^[a-zA-Z0-9\s\-&/]+$", name):
         return False, "Category name can only contain letters, numbers, spaces, hyphens, ampersands, and slashes."
     return True, None
 
+
+# Inventory
 def validate_product_name(name):
     if not re.match(r"^[a-zA-Z0-9\s\-&/().]+$", name):
         return False, "Product name contains invalid characters."
@@ -62,3 +67,21 @@ def get_product(product_id):
 
 def is_admin_or_coadmin():
     return current_user.role in ("admin", "co-admin")
+
+
+def barcode_in_use(barcode, exclude_product_id=None, exclude_bundle_id=None):
+    """
+    Returns a string describing where the barcode is already used,
+    or None if it's free.
+    Checks Products and ProductBundles so the same barcode
+    can't appear in both tables.
+    """
+    product = Product.query.get(barcode)
+    if product and barcode != exclude_product_id:
+        return f'"{barcode}" is already used as a Product ID ({product.product_name})'
+
+    bundle = ProductBundle.query.get(barcode)
+    if bundle and barcode != exclude_bundle_id:
+        return f'"{barcode}" is already used as a Bundle ID ({bundle.bundle_name})'
+
+    return None

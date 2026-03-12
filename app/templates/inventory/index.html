@@ -144,8 +144,6 @@ class="space-y-5">
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Units</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                        style="color: var(--color-txt-muted);">Stock Value</th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Unit Price</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Revenue</th>
@@ -217,12 +215,6 @@ class="space-y-5">
                                 ? 'color:var(--color-warning);font-weight:600'
                                 : 'color:var(--color-txt-secondary)'"
                             x-text="p.stock + ' units'">
-                        </td>
-
-                        {# stock value = stock × product_price #}
-                        <td class="px-4 py-3"
-                            style="color: var(--color-txt-secondary);"
-                            x-text="'₱' + (p.stock * p.product_price).toFixed(2)">
                         </td>
 
                         {# unit price #}

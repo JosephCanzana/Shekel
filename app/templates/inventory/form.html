@@ -3,258 +3,172 @@
 {% block nav_title %}{{ "Edit Product" if product is defined else "Add Product" }}{% endblock %}
 
 {% block body %}
-<div class="max-w-lg mx-auto space-y-6">
 
-    {# ── Breadcrumb ── #}
-    <div class="flex items-center gap-2 text-sm" style="color: var(--color-txt-muted);">
-        <a href="{{ url_for('inventory.index') }}"
-           style="color: var(--color-txt-muted);"
-           onmouseover="this.style.color='var(--color-txt-primary)'"
-           onmouseout="this.style.color='var(--color-txt-muted)'">Inventory</a>
-        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
-        <span style="color: var(--color-txt-primary);">
-            {{ "Edit Product" if product is defined else "Add Product" }}
-        </span>
-    </div>
+{# ── Breadcrumb ── #}
+<div class="flex items-center gap-2 text-sm mb-6" style="color: var(--color-txt-muted);">
+    <a href="{{ url_for('inventory.index') }}"
+       style="color: var(--color-txt-muted);"
+       onmouseover="this.style.color='var(--color-txt-primary)'"
+       onmouseout="this.style.color='var(--color-txt-muted)'">Inventory</a>
+    <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+    <span style="color: var(--color-txt-primary);">
+        {{ "Edit Product" if product is defined else "Add Product" }}
+    </span>
+</div>
 
-    {# ── Card ── #}
-    <div class="rounded-2xl p-7 space-y-6"
-         style="background-color: var(--color-surface); border: 1px solid var(--color-border);"
-         x-data="{
-             unitPrice:    {{ product.unit_price | float if product is defined else 0 }},
-             revenuePrice: {{ product.revenue_price | float if product is defined else 0 }},
-             hasBundle:    {{ 'true' if product is defined and product.bundle else 'false' }},
-             get productPrice() {
-                 return (parseFloat(this.unitPrice || 0) + parseFloat(this.revenuePrice || 0)).toFixed(2)
-             }
-         }">
+<form action="{{ url_for('inventory.edit', product_id=product.product_id) if product is defined else url_for('inventory.add') }}"
+      method="post"
+      x-data="{
+          unitPrice:    {{ product.unit_price | float if product is defined else 0 }},
+          revenuePrice: {{ product.revenue_price | float if product is defined else 0 }},
+          hasBundle:    {{ 'true' if product is defined and product.bundle else 'false' }},
+          editingStock: false,
+          get productPrice() {
+              return (parseFloat(this.unitPrice || 0) + parseFloat(this.revenuePrice || 0)).toFixed(2)
+          }
+      }">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <div>
-            <h1 class="text-lg font-bold tracking-tight" style="color: var(--color-txt-primary);">
-                {{ "Edit Product" if product is defined else "Add New Product" }}
-            </h1>
-            {% if product is defined %}
-            <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
-                ID: {{ product.product_id }}
-                {% if product.inventory %}· Stock: {{ product.inventory.quantity_available }} units{% endif %}
-            </p>
-            {% endif %}
-        </div>
+    {# ══ Two-column on lg+, single column on mobile ══ #}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-        <form action="{{ url_for('inventory.edit', product_id=product.product_id) if product is defined else url_for('inventory.add') }}"
-              method="post" class="space-y-5">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {# ════════════════════════════════════════
+           LEFT COLUMN — Product Info + Bundle
+           ════════════════════════════════════════ #}
+        <div class="space-y-5">
 
-            {# ══ PRODUCT SECTION ══ #}
-            <p class="text-xs font-semibold uppercase tracking-wider"
-               style="color: var(--color-txt-muted);">Product Details</p>
+            {# ── Card: Product Info ── #}
+            <div class="rounded-2xl p-6 space-y-4"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
 
-            {# Product ID — only on add #}
-            {% if product is not defined %}
-            <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">
-                    Product ID / Barcode <span style="color: var(--color-error);">*</span>
-                </label>
-                <input type="text" name="product_id"
-                       placeholder="e.g. 8851234567890"
-                       required
-                       class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                       style="border: 1px solid var(--color-border);
-                              background-color: var(--color-surface-alt);
-                              color: var(--color-txt-primary);"
-                       onfocus="this.style.borderColor='var(--color-accent)';
-                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                       onblur="this.style.borderColor='var(--color-border)';
-                               this.style.boxShadow='none'">
-            </div>
-            {% endif %}
+                <h2 class="text-xs font-bold uppercase tracking-wider"
+                    style="color: var(--color-txt-muted);">Product Info</h2>
 
-            {# Product Name #}
-            <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">
-                    Item Name <span style="color: var(--color-error);">*</span>
-                </label>
-                <input type="text" name="product_name"
-                       value="{{ product.product_name | capitalize if product is defined else '' }}"
-                       placeholder="e.g. Coca-Cola"
-                       required
-                       class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                       style="border: 1px solid var(--color-border);
-                              background-color: var(--color-surface-alt);
-                              color: var(--color-txt-primary);"
-                       onfocus="this.style.borderColor='var(--color-accent)';
-                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                       onblur="this.style.borderColor='var(--color-border)';
-                               this.style.boxShadow='none'">
-            </div>
-
-            {# Category #}
-            <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">
-                    Category
-                    <span class="normal-case font-normal ml-1"
-                          style="color: var(--color-txt-muted);">(optional)</span>
-                </label>
-                <select name="category_id"
-                        class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                        style="border: 1px solid var(--color-border);
-                               background-color: var(--color-surface-alt);
-                               color: var(--color-txt-primary);"
-                        onfocus="this.style.borderColor='var(--color-accent)';
-                                 this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                        onblur="this.style.borderColor='var(--color-border)';
-                                this.style.boxShadow='none'">
-                    <option value="">No category</option>
-                    {% for cat in categories %}
-                    <option value="{{ cat.category_id }}"
-                            {{ 'selected' if product is defined and product.category_id == cat.category_id }}>
-                        {{ cat.category_name | capitalize }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            {# Unit Price + Markup #}
-            <div class="grid grid-cols-2 gap-3">
+                {# Barcode / Product ID — editable on both add and edit #}
                 <div class="space-y-1.5">
                     <label class="text-xs font-semibold uppercase tracking-wider"
                            style="color: var(--color-txt-muted);">
-                        Unit Price <span style="color: var(--color-error);">*</span>
+                        Barcode / Product ID <span style="color: var(--color-error);">*</span>
                     </label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
-                              style="color: var(--color-txt-muted);">₱</span>
-                        <input type="number" name="unit_price"
-                               x-model="unitPrice"
-                               min="0" step="0.01" placeholder="0.00" required
-                               class="w-full pl-7 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                               style="border: 1px solid var(--color-border);
-                                      background-color: var(--color-surface-alt);
-                                      color: var(--color-txt-primary);"
-                               onfocus="this.style.borderColor='var(--color-accent)';
-                                        this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                               onblur="this.style.borderColor='var(--color-border)';
-                                       this.style.boxShadow='none'">
-                    </div>
-                </div>
-                <div class="space-y-1.5">
-                    <label class="text-xs font-semibold uppercase tracking-wider"
-                           style="color: var(--color-txt-muted);">
-                        Markup <span style="color: var(--color-error);">*</span>
-                    </label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
-                              style="color: var(--color-txt-muted);">₱</span>
-                        <input type="number" name="revenue_price"
-                               x-model="revenuePrice"
-                               min="0" step="0.01" placeholder="0.00" required
-                               class="w-full pl-7 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                               style="border: 1px solid var(--color-border);
-                                      background-color: var(--color-surface-alt);
-                                      color: var(--color-txt-primary);"
-                               onfocus="this.style.borderColor='var(--color-accent)';
-                                        this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                               onblur="this.style.borderColor='var(--color-border)';
-                                       this.style.boxShadow='none'">
-                    </div>
-                </div>
-            </div>
-
-            {# Selling Price (auto-calculated) #}
-            <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">
-                    Selling Price
-                    <span class="normal-case font-normal ml-1"
-                          style="color: var(--color-txt-muted);">(auto-calculated)</span>
-                </label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
-                          style="color: var(--color-txt-muted);">₱</span>
-                    <input type="text" :value="productPrice" readonly tabindex="-1"
-                           class="w-full pl-7 pr-4 py-2.5 rounded-xl text-sm cursor-not-allowed"
+                    <input type="text"
+                           name="product_id"
+                           @keydown.enter.prevent="$event.preventDefault()"
+                           value="{{ product.product_id if product is defined else '' }}"
+                           placeholder="e.g. 8851234567890"
+                           required
+                           {% if product is not defined %}autofocus{% endif %}
+                           class="w-full px-4 py-2.5 rounded-xl text-sm font-mono focus:outline-none transition"
                            style="border: 1px solid var(--color-border);
                                   background-color: var(--color-surface-alt);
-                                  color: var(--color-txt-secondary);
-                                  opacity: 0.7;">
+                                  color: var(--color-txt-primary);"
+                           onfocus="this.style.borderColor='var(--color-accent)';
+                                    this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                           onblur="this.style.borderColor='var(--color-border)';
+                                   this.style.boxShadow='none'">
+                    {% if product is defined %}
+                    <p class="text-xs" style="color: var(--color-txt-muted);">
+                        Changing this will update all related records.
+                    </p>
+                    {% endif %}
                 </div>
+
+                {# Product Name #}
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wider"
+                           style="color: var(--color-txt-muted);">
+                        Item Name <span style="color: var(--color-error);">*</span>
+                    </label>
+                    <input type="text"
+                           name="product_name"
+                           value="{{ product.product_name | capitalize if product is defined else '' }}"
+                           placeholder="e.g. Coca-Cola"
+                           required
+                           {% if product is defined %}autofocus{% endif %}
+                           class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                           style="border: 1px solid var(--color-border);
+                                  background-color: var(--color-surface-alt);
+                                  color: var(--color-txt-primary);"
+                           onfocus="this.style.borderColor='var(--color-accent)';
+                                    this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                           onblur="this.style.borderColor='var(--color-border)';
+                                   this.style.boxShadow='none'">
+                </div>
+
+                {# Category #}
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wider"
+                           style="color: var(--color-txt-muted);">
+                        Category
+                        <span class="normal-case font-normal ml-1"
+                              style="color: var(--color-txt-muted);">(optional)</span>
+                    </label>
+                    <select name="category_id"
+                            class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                            style="border: 1px solid var(--color-border);
+                                   background-color: var(--color-surface-alt);
+                                   color: var(--color-txt-primary);"
+                            onfocus="this.style.borderColor='var(--color-accent)';
+                                     this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                            onblur="this.style.borderColor='var(--color-border)';
+                                    this.style.boxShadow='none'">
+                        <option value="">No category</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.category_id }}"
+                                {{ 'selected' if product is defined and product.category_id == cat.category_id }}>
+                            {{ cat.category_name | capitalize }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
             </div>
 
-            {# Low Stock Threshold #}
-            <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">
-                    Low Stock Threshold <span style="color: var(--color-error);">*</span>
-                </label>
-                <input type="number" name="low_reorder_threshold"
-                       value="{{ product.low_reorder_threshold if product is defined else '' }}"
-                       min="0" step="1" placeholder="e.g. 10" required
-                       class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                       style="border: 1px solid var(--color-border);
-                              background-color: var(--color-surface-alt);
-                              color: var(--color-txt-primary);"
-                       onfocus="this.style.borderColor='var(--color-accent)';
-                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                       onblur="this.style.borderColor='var(--color-border)';
-                               this.style.boxShadow='none'">
-                <p class="text-xs" style="color: var(--color-txt-muted);">
-                    Warning shows when stock drops to or below this number.
-                </p>
-            </div>
+            {# ── Card: Bundle (collapsible) ── #}
+            <div class="rounded-2xl overflow-hidden"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
 
-            {# Status (edit only) #}
-            {% if product is defined %}
-            <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">Status</label>
-                <select name="status"
-                        class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                        style="border: 1px solid var(--color-border);
-                               background-color: var(--color-surface-alt);
-                               color: var(--color-txt-primary);"
-                        onfocus="this.style.borderColor='var(--color-accent)';
-                                 this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                        onblur="this.style.borderColor='var(--color-border)';
-                                this.style.boxShadow='none'">
-                    <option value="active"   {{ 'selected' if product.status == 'active' }}>Active</option>
-                    <option value="archived" {{ 'selected' if product.status == 'archived' }}>Archived</option>
-                </select>
-            </div>
-            {% endif %}
-
-            {# ══ BUNDLE SECTION ══ #}
-            <div class="pt-2" style="border-top: 1px solid var(--color-border);">
-
-                {# toggle #}
                 <button type="button"
                         @click="hasBundle = !hasBundle"
-                        class="flex items-center gap-2 text-sm font-semibold transition"
-                        :style="hasBundle
-                            ? 'color:var(--color-accent)'
-                            : 'color:var(--color-txt-muted)'">
-                    <span class="material-symbols-outlined text-[18px]"
+                        class="w-full flex items-center justify-between px-6 py-4 transition"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="this.style.backgroundColor='transparent'">
+                    <div class="flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-[18px]"
+                              :style="hasBundle ? 'color:var(--color-accent)' : 'color:var(--color-txt-muted)'">
+                            inventory
+                        </span>
+                        <span class="text-xs font-bold uppercase tracking-wider"
+                              :style="hasBundle ? 'color:var(--color-accent)' : 'color:var(--color-txt-muted)'">
+                            Bundle
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded-full"
+                              style="background: color-mix(in srgb, var(--color-txt-muted) 10%, transparent);
+                                     color: var(--color-txt-muted);">optional</span>
+                    </div>
+                    <span class="material-symbols-outlined text-[20px]"
+                          style="color: var(--color-txt-muted);"
                           x-text="hasBundle ? 'expand_less' : 'expand_more'"></span>
-                    <span x-text="hasBundle ? 'Remove Bundle' : 'Add Bundle (optional)'"></span>
                 </button>
 
-                <div x-show="hasBundle" x-collapse class="mt-4 space-y-4">
-                    <p class="text-xs" style="color: var(--color-txt-muted);">
-                        A bundle is a scannable pack (e.g. 12-pack barcode) that maps to multiple units of this product.
+                <div x-show="hasBundle"
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 -translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     class="px-6 pb-6 space-y-4"
+                     style="border-top: 1px solid var(--color-border);">
+
+                    <p class="text-xs pt-4" style="color: var(--color-txt-muted);">
+                        A bundle is a scannable pack (e.g. a 12-pack barcode) that counts as
+                        multiple units when scanned during stock-in.
                     </p>
 
-                    {# Bundle ID #}
                     <div class="space-y-1.5">
                         <label class="text-xs font-semibold uppercase tracking-wider"
-                               style="color: var(--color-txt-muted);">
-                            Bundle ID / Barcode
-                        </label>
+                               style="color: var(--color-txt-muted);">Bundle Barcode / ID</label>
                         <input type="text" name="bundle_id"
                                value="{{ product.bundle.bundle_id if product is defined and product.bundle else '' }}"
                                placeholder="e.g. 8851234500000"
-                               class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                               class="w-full px-4 py-2.5 rounded-xl text-sm font-mono focus:outline-none transition"
                                style="border: 1px solid var(--color-border);
                                       background-color: var(--color-surface-alt);
                                       color: var(--color-txt-primary);"
@@ -264,7 +178,6 @@
                                        this.style.boxShadow='none'">
                     </div>
 
-                    {# Bundle Name + Count side by side #}
                     <div class="grid grid-cols-2 gap-3">
                         <div class="space-y-1.5">
                             <label class="text-xs font-semibold uppercase tracking-wider"
@@ -297,11 +210,239 @@
                                            this.style.boxShadow='none'">
                         </div>
                     </div>
+
                 </div>
             </div>
 
+        </div>{# /left column #}
+
+        {# ════════════════════════════════════════
+           RIGHT COLUMN — Pricing + Stock + Status
+           ════════════════════════════════════════ #}
+        <div class="space-y-5">
+
+            {# ── Card: Pricing ── #}
+            <div class="rounded-2xl p-6 space-y-4"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+                <h2 class="text-xs font-bold uppercase tracking-wider"
+                    style="color: var(--color-txt-muted);">Pricing</h2>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold uppercase tracking-wider"
+                               style="color: var(--color-txt-muted);">
+                            Unit Price <span style="color: var(--color-error);">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
+                                  style="color: var(--color-txt-muted);">₱</span>
+                            <input type="number" name="unit_price"
+                                   x-model="unitPrice"
+                                   x-model="unitPrice"
+                                    @focus="if (unitPrice == 0) unitPrice = ''"
+                                    @blur="if (unitPrice === '') unitPrice = 0"
+                                   min="0" step="0.01" placeholder="0.00" required
+                                   class="w-full pl-7 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                                   style="border: 1px solid var(--color-border);
+                                          background-color: var(--color-surface-alt);
+                                          color: var(--color-txt-primary);"
+                                   onfocus="this.style.borderColor='var(--color-accent)';
+                                            this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                                   onblur="this.style.borderColor='var(--color-border)';
+                                           this.style.boxShadow='none'">
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold uppercase tracking-wider"
+                               style="color: var(--color-txt-muted);">
+                            Markup <span style="color: var(--color-error);">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
+                                  style="color: var(--color-txt-muted);">₱</span>
+                            <input type="number" name="revenue_price"
+                                   x-model="revenuePrice"
+                                   @focus="if (revenuePrice == 0) revenuePrice = ''"
+                                    @blur="if (revenuePrice === '') revenuePrice = 0"
+                                   min="0" step="0.01" placeholder="0.00" required
+                                   class="w-full pl-7 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                                   style="border: 1px solid var(--color-border);
+                                          background-color: var(--color-surface-alt);
+                                          color: var(--color-txt-primary);"
+                                   onfocus="this.style.borderColor='var(--color-accent)';
+                                            this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                                   onblur="this.style.borderColor='var(--color-border)';
+                                           this.style.boxShadow='none'">
+                        </div>
+                    </div>
+                </div>
+
+                {# Selling Price — auto calculated #}
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wider"
+                           style="color: var(--color-txt-muted);">
+                        Selling Price
+                        <span class="normal-case font-normal ml-1"
+                              style="color: var(--color-txt-muted);">(auto-calculated)</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
+                              style="color: var(--color-txt-muted);">₱</span>
+                        <input type="text" :value="productPrice" readonly tabindex="-1"
+                               class="w-full pl-7 pr-4 py-2.5 rounded-xl text-sm cursor-not-allowed"
+                               style="border: 1px solid var(--color-border);
+                                      background-color: var(--color-surface-alt);
+                                      color: var(--color-txt-secondary);
+                                      opacity: 0.65;">
+                    </div>
+                </div>
+
+            </div>
+
+            {# ── Card: Stock ── edit only ── #}
+            {% if product is defined and product.inventory %}
+            <div class="rounded-2xl overflow-hidden"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+                {# header row with edit toggle #}
+                <div class="flex items-center justify-between px-6 py-4"
+                     style="border-bottom: 1px solid var(--color-border);">
+                    <h2 class="text-xs font-bold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Stock</h2>
+                    <button type="button"
+                            @click="editingStock = !editingStock"
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                            :style="editingStock
+                                ? 'background:color-mix(in srgb,var(--color-warning) 12%,transparent); color:var(--color-warning)'
+                                : 'background:color-mix(in srgb,var(--color-accent) 10%,transparent); color:var(--color-accent)'">
+                        <span class="material-symbols-outlined text-[14px]"
+                              x-text="editingStock ? 'close' : 'edit'"></span>
+                        <span x-text="editingStock ? 'Cancel Adjustment' : 'Adjust Stock'"></span>
+                    </button>
+                </div>
+
+                <div class="px-6 py-5 space-y-4">
+
+                    {# read-only stock display — shown when not editing #}
+                    <div x-show="!editingStock" class="grid grid-cols-2 gap-3">
+
+                        {# Available #}
+                        <div class="rounded-xl px-4 py-3 flex flex-col gap-1"
+                             style="background-color: var(--color-surface-alt);
+                                    border: 1px solid var(--color-border);">
+                            <span class="text-xs font-semibold uppercase tracking-wider"
+                                  style="color: var(--color-txt-muted);">Available</span>
+                            <div class="flex items-end gap-1.5">
+                                <span class="text-2xl font-bold leading-none"
+                                      style="color: {% if product.inventory.quantity_available <= product.low_reorder_threshold %}var(--color-warning){% else %}var(--color-txt-primary){% endif %};">
+                                    {{ product.inventory.quantity_available }}
+                                </span>
+                                <span class="text-xs mb-0.5" style="color: var(--color-txt-muted);">units</span>
+                                {% if product.inventory.quantity_available <= product.low_reorder_threshold %}
+                                <span class="material-symbols-outlined text-[14px] mb-0.5"
+                                      style="color: var(--color-warning);">warning</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+
+                    </div>
+
+                    {# editable stock adjustment — shown when editing #}
+                    <div x-show="editingStock"
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 -translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         class="space-y-4">
+
+                        <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
+                             style="background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+                                    border: 1px solid color-mix(in srgb, var(--color-warning) 25%, transparent);
+                                    color: var(--color-warning);">
+                            <span class="material-symbols-outlined text-[16px] mt-0.5 shrink-0">info</span>
+                            <span>Manual stock adjustment — use only to correct discrepancies.
+                                  Regular stock-in should go through the Stock-In module.</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1.5">
+                                <label class="text-xs font-semibold uppercase tracking-wider"
+                                       style="color: var(--color-txt-muted);">Available Units</label>
+                                <input type="number"
+                                       name="quantity_available"
+                                       value="{{ product.inventory.quantity_available }}"
+                                       min="0" step="1"
+                                       class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                                       style="border: 1px solid var(--color-border);
+                                              background-color: var(--color-surface-alt);
+                                              color: var(--color-txt-primary);"
+                                       onfocus="this.style.borderColor='var(--color-accent)';
+                                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                                       onblur="this.style.borderColor='var(--color-border)';
+                                               this.style.boxShadow='none'">
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+            {% endif %}
+
+            {# ── Card: Settings ── edit only (status) / shared (threshold) ── #}
+            <div class="rounded-2xl p-6 space-y-4"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+                <h2 class="text-xs font-bold uppercase tracking-wider"
+                    style="color: var(--color-txt-muted);">Settings</h2>
+
+                {# Low Stock Threshold #}
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wider"
+                           style="color: var(--color-txt-muted);">
+                        Low Stock Threshold <span style="color: var(--color-error);">*</span>
+                    </label>
+                    <input type="number" name="low_reorder_threshold"
+                           value="{{ product.low_reorder_threshold if product is defined else '' }}"
+                           min="0" step="1" placeholder="e.g. 10" required
+                           class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                           style="border: 1px solid var(--color-border);
+                                  background-color: var(--color-surface-alt);
+                                  color: var(--color-txt-primary);"
+                           onfocus="this.style.borderColor='var(--color-accent)';
+                                    this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                           onblur="this.style.borderColor='var(--color-border)';
+                                   this.style.boxShadow='none'">
+                    <p class="text-xs" style="color: var(--color-txt-muted);">
+                        Low stock warning shows when units drop to or below this number.
+                    </p>
+                </div>
+
+                {# Status — edit only #}
+                {% if product is defined %}
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wider"
+                           style="color: var(--color-txt-muted);">Status</label>
+                    <select name="status"
+                            class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                            style="border: 1px solid var(--color-border);
+                                   background-color: var(--color-surface-alt);
+                                   color: var(--color-txt-primary);"
+                            onfocus="this.style.borderColor='var(--color-accent)';
+                                     this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                            onblur="this.style.borderColor='var(--color-border)';
+                                    this.style.boxShadow='none'">
+                        <option value="active"   {{ 'selected' if product.status == 'active' }}>Active</option>
+                        <option value="archived" {{ 'selected' if product.status == 'archived' }}>Archived</option>
+                    </select>
+                </div>
+                {% endif %}
+
+            </div>
+
             {# ── Buttons ── #}
-            <div class="flex gap-3 pt-2">
+            <div class="flex gap-3">
                 <a href="{{ url_for('inventory.index') }}"
                    class="flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition"
                    style="border: 1px solid var(--color-border); color: var(--color-txt-secondary);"
@@ -318,7 +459,9 @@
                 </button>
             </div>
 
-        </form>
-    </div>
-</div>
+        </div>{# /right column #}
+
+    </div>{# /grid #}
+</form>
+
 {% endblock %}

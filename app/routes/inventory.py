@@ -6,8 +6,9 @@ from app.utils.decorator import role_required
 from app.models.product import Product
 from app.models.product_bundle import ProductBundle
 from app.models.inventory import Inventory
+from app.models.category import Category
 from app.extensions import db
-from app.utils.helpers import get_product, get_active_categories, is_admin_or_coadmin, validate_product_name, validate_price
+from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -36,11 +37,9 @@ def add():
         unit_price    = request.form.get("unit_price",    "").strip()
         revenue_price = request.form.get("revenue_price", "").strip()
         low_reorder   = request.form.get("low_reorder_threshold", "").strip()
-
-        # bundle fields (all optional, but all-or-nothing)
-        bundle_id    = request.form.get("bundle_id",    "").strip()
-        bundle_name  = request.form.get("bundle_name",  "").strip()
-        bundle_count = request.form.get("bundle_count", "").strip()
+        bundle_id     = request.form.get("bundle_id",    "").strip()
+        bundle_name   = request.form.get("bundle_name",  "").strip()
+        bundle_count  = request.form.get("bundle_count", "").strip()
 
         if not all([product_id, product_name, unit_price, revenue_price, low_reorder]):
             flash("Product ID, name, prices, and low stock threshold are required.", "danger")
@@ -68,13 +67,22 @@ def add():
         except ValueError:
             flash("Low stock threshold must be a positive whole number.", "danger")
             return redirect(url_for("inventory.add"))
+        
 
-        if Product.query.get(product_id):
-            flash(f'Product ID "{product_id}" is already in use.', "danger")
+        err = barcode_in_use(product_id)
+        if err:
+            flash(err, "danger")
             return redirect(url_for("inventory.add"))
 
-        if Product.query.filter(Product.product_name.ilike(product_name)).first():
-            flash(f'A product named "{product_name}" already exists.', "danger")
+        # inside the has_bundle block:
+        err = barcode_in_use(bundle_id)
+        if err:
+            flash(err, "danger")
+            return redirect(url_for("inventory.add"))
+
+        # also catch product_id == bundle_id submitted in the same form
+        if bundle_id and bundle_id == product_id:
+            flash("Product ID and Bundle ID cannot be the same barcode.", "danger")
             return redirect(url_for("inventory.add"))
 
         unit_price    = float(unit_price)
@@ -82,7 +90,6 @@ def add():
         product_price = round(unit_price + revenue_price, 2)
         category_id   = int(category_id) if category_id else None
 
-        # ── validate bundle if any bundle field is provided
         has_bundle = any([bundle_id, bundle_name, bundle_count])
         if has_bundle:
             if not all([bundle_id, bundle_name, bundle_count]):
@@ -110,14 +117,12 @@ def add():
             status                = "active"
         )
         db.session.add(product)
-
         db.session.add(Inventory(
             product_id         = product_id,
             quantity_available = 0,
             quantity_defective = 0,
             last_updated       = datetime.utcnow()
         ))
-
         if has_bundle:
             db.session.add(ProductBundle(
                 bundle_id    = bundle_id,
@@ -155,12 +160,24 @@ def edit(product_id):
         bundle_name   = request.form.get("bundle_name",  "").strip()
         bundle_count  = request.form.get("bundle_count", "").strip()
 
+        # stock adjustment fields
+        new_stock        = request.form.get("quantity_available", "").strip()
+        adjustment_notes = request.form.get("adjustment_notes", "").strip()
+
         if not all([product_name, unit_price, revenue_price, low_reorder]):
             flash("Name, prices, and low stock threshold are required.", "danger")
             return redirect(url_for("inventory.edit", product_id=product_id))
 
         ok, err = validate_product_name(product_name)
         if not ok:
+            flash(err, "danger")
+            return redirect(url_for("inventory.edit", product_id=product_id))
+        
+        err = barcode_in_use(bundle_id,
+                     exclude_product_id=product_id,
+                     exclude_bundle_id=product.bundle.bundle_id if product.bundle else None)
+        
+        if err:
             flash(err, "danger")
             return redirect(url_for("inventory.edit", product_id=product_id))
 
@@ -202,6 +219,19 @@ def edit(product_id):
         product.low_reorder_threshold = low_reorder
         product.status                = status
 
+        # ── stock adjustment
+        if product.inventory and new_stock != "":
+            try:
+                new_stock_val     = int(new_stock)
+
+                if new_stock_val < 0:
+                    raise ValueError
+                product.inventory.quantity_available = new_stock_val
+                product.inventory.last_updated       = datetime.utcnow()
+            except ValueError:
+                flash("Stock values must be non-negative whole numbers.", "danger")
+                return redirect(url_for("inventory.edit", product_id=product_id))
+
         # ── handle bundle
         has_bundle = any([bundle_id, bundle_name, bundle_count])
         if has_bundle:
@@ -231,7 +261,6 @@ def edit(product_id):
                     bundle_count = bundle_count
                 ))
         else:
-            # clear bundle if all fields emptied
             if product.bundle:
                 db.session.delete(product.bundle)
 
@@ -278,12 +307,10 @@ def delete(product_id):
         return redirect(url_for("inventory.index"))
 
     name = product.product_name
-
     if product.bundle:
         db.session.delete(product.bundle)
     if product.inventory:
         db.session.delete(product.inventory)
-
     db.session.delete(product)
     db.session.commit()
 
