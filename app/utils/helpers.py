@@ -1,5 +1,8 @@
 from flask import render_template
+from flask_login import current_user
 import re
+from app.models.category import Category
+from app.models.product import Product
 
 def message(num=400, message="Error occur"):
     return render_template("message.html", message=message, error_code=num)
@@ -36,3 +39,26 @@ def validate_category_name(name):
     if not re.match(r"^[a-zA-Z0-9\s\-&/]+$", name):
         return False, "Category name can only contain letters, numbers, spaces, hyphens, ampersands, and slashes."
     return True, None
+
+def validate_product_name(name):
+    if not re.match(r"^[a-zA-Z0-9\s\-&/().]+$", name):
+        return False, "Product name contains invalid characters."
+    return True, None
+
+def validate_price(value, label):
+    try:
+        price = float(value)
+        if price < 0:
+            return False, f"{label} cannot be negative."
+        return True, None
+    except (ValueError, TypeError):
+        return False, f"{label} must be a valid number."
+
+def get_active_categories():
+    return Category.query.filter_by(status="active").order_by(Category.category_name).all()
+
+def get_product(product_id):
+    return Product.query.get(product_id)
+
+def is_admin_or_coadmin():
+    return current_user.role in ("admin", "co-admin")

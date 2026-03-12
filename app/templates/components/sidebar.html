@@ -18,7 +18,7 @@
 
     'admin': [
         {'url': url_for('admin.dashboard'), 'icon': 'home', 'label': 'Dashboard'},
-        {'url': '#', 'icon': 'inventory', 'label': 'Inventory'},
+        {'url': url_for('inventory.index'), 'icon': 'inventory', 'label': 'Inventory'},
         {'url': '#', 'icon': 'report_problem', 'label': 'Defects/Returns'},
         {'url': url_for('manage_users.index'), 'icon': 'group',     'label': 'Users'},
         {'url': url_for('manage_categories.index'), 'icon': 'category',  'label': 'Categories'},

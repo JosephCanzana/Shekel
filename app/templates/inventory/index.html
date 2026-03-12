@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% block title %}Inventory — Shekel{% endblock %}
+{% block nav_title %}Inventory{% endblock %}
+
+{% block body %}
+
+<script>
+    const PRODUCTS_DATA = {{ products_data | tojson }};
+    const CAN_MANAGE    = {{ can_manage | tojson }};
+</script>
+
+<div x-data='{
+    search: "",
+    filterStatus: "all",
+    filterCategory: "all",
+    rows: PRODUCTS_DATA,
+    canManage: CAN_MANAGE,
+    page: 1,
+    perPage: 10,
+    titleCase(str) {
+        return str ? str.charAt(0).toUpperCase() + str.slice(1) : ""
+    },
+    get categories() {
+        const seen = new Set()
+        return this.rows
+            .map(r => ({ id: r.category_id, name: r.category_name }))
+            .filter(c => c.name !== "—" && !seen.has(c.id) && seen.add(c.id))
+    },
+    get filtered() {
+        const q = this.search.toLowerCase()
+        return this.rows.filter(r => {
+            const matchSearch   = q === "" ||
+                                  r.product_name.toLowerCase().includes(q) ||
+                                  r.category_name.toLowerCase().includes(q) ||
+                                  r.product_id.toLowerCase().includes(q)
+            const matchStatus   = this.filterStatus   === "all" || r.status === this.filterStatus
+            const matchCategory = this.filterCategory === "all" || String(r.category_id) === this.filterCategory
+            return matchSearch && matchStatus && matchCategory
+        })
+    },
+    get paginated() {
+        const start = (this.page - 1) * this.perPage
+        return this.filtered.slice(start, start + this.perPage)
+    },
+    get totalPages() {
+        return Math.max(1, Math.ceil(this.filtered.length / this.perPage))
+    },
+    resetPage() { this.page = 1 }
+}'
+class="space-y-5">
+
+    {# ── Header ── #}
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight"
+                style="color: var(--color-txt-primary);">Inventory</h1>
+            <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
+                <span x-text="filtered.length"></span> of {{ products | length }} products
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            {# Stock-In — all roles (wire up later) #}
+            <button title="Stock-In (coming soon)"
+                    class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition"
+                    style="border: 1px solid var(--color-primary); color: var(--color-primary);"
+                    onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-primary) 8%,transparent)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[17px]">add_box</span>
+                Stock-In
+            </button>
+
+            {# Add Product — admin / co-admin only #}
+            <template x-if="canManage">
+                <a href="{{ url_for('inventory.add') }}"
+                   class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition"
+                   style="background-color: var(--color-primary); color: var(--color-bg);"
+                   onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+                   onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                    <span class="material-symbols-outlined text-[17px]">add</span>
+                    Add Product
+                </a>
+            </template>
+        </div>
+    </div>
+
+    {# ── Search + Filters ── #}
+    <div class="flex flex-col sm:flex-row gap-3">
+        <div class="relative flex-1">
+            <span class="material-symbols-outlined text-[18px]
+                         absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style="color: var(--color-txt-muted);">search</span>
+            <input type="text"
+                   x-model="search"
+                   @input="resetPage()"
+                   placeholder="Search by name, product ID, or category..."
+                   class="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none transition"
+                   style="border: 1px solid var(--color-border);
+                          background-color: var(--color-surface);
+                          color: var(--color-txt-primary);"
+                   onfocus="this.style.borderColor='var(--color-accent)';
+                            this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                   onblur="this.style.borderColor='var(--color-border)';
+                           this.style.boxShadow='none'">
+        </div>
+
+        <select x-model="filterCategory" @change="resetPage()"
+                class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                style="border: 1px solid var(--color-border);
+                       background-color: var(--color-surface);
+                       color: var(--color-txt-primary);">
+            <option value="all">All Categories</option>
+            <template x-for="cat in categories" :key="cat.id">
+                <option :value="String(cat.id)" x-text="titleCase(cat.name)"></option>
+            </template>
+        </select>
+
+        <select x-model="filterStatus" @change="resetPage()"
+                class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                style="border: 1px solid var(--color-border);
+                       background-color: var(--color-surface);
+                       color: var(--color-txt-primary);">
+            <option value="all">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+        </select>
+    </div>
+
+    {# ── Table ── #}
+    <div class="rounded-xl overflow-x-auto"
+         style="border: 1px solid var(--color-border);">
+        <table class="w-full text-sm">
+            <thead>
+                <tr style="background-color: var(--color-surface-alt);
+                           border-bottom: 1px solid var(--color-border);">
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">#</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Item Name</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Product ID</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Bundle</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Units</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Stock Value</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Unit Price</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Revenue</th>
+                    <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Actions</th>
+                </tr>
+            </thead>
+            <tbody style="background-color: var(--color-surface);">
+
+                <template x-if="filtered.length === 0">
+                    <tr>
+                        <td colspan="9" class="px-4 py-14 text-center"
+                            style="color: var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[40px] block mb-2"
+                                  style="color: var(--color-border-strong);">inventory_2</span>
+                            No products match your search.
+                        </td>
+                    </tr>
+                </template>
+
+                <template x-for="(p, index) in paginated" :key="p.product_id">
+                    <tr style="border-top: 1px solid var(--color-border);"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="this.style.backgroundColor='transparent'">
+
+                        <td class="px-4 py-3 text-xs"
+                            style="color: var(--color-txt-muted);"
+                            x-text="(page - 1) * perPage + index + 1">
+                        </td>
+
+                        {# item name + low stock badge #}
+                        <td class="px-4 py-3 font-medium"
+                            style="color: var(--color-txt-primary);">
+                            <span x-text="titleCase(p.product_name)"></span>
+                            <template x-if="p.stock <= p.low_reorder_threshold && p.status === 'active'">
+                                <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                                      style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
+                                             color:var(--color-warning);">
+                                    Low Stock
+                                </span>
+                            </template>
+                        </td>
+
+                        {# product id (barcode/SKU) #}
+                        <td class="px-4 py-3 font-mono text-xs"
+                            style="color: var(--color-txt-muted);"
+                            x-text="p.product_id">
+                        </td>
+
+                        {# bundle — show name + count if exists #}
+                        <td class="px-4 py-3 text-xs"
+                            style="color: var(--color-txt-muted);">
+                            <template x-if="p.bundle_id">
+                                <div>
+                                    <span x-text="p.bundle_name" class="font-medium"
+                                          style="color: var(--color-txt-secondary);"></span>
+                                    <span x-text="'×' + p.bundle_count"
+                                          class="ml-1" style="color: var(--color-txt-muted);"></span>
+                                </div>
+                            </template>
+                            <template x-if="!p.bundle_id">
+                                <span>—</span>
+                            </template>
+                        </td>
+
+                        {# units in stock #}
+                        <td class="px-4 py-3"
+                            :style="p.stock <= p.low_reorder_threshold
+                                ? 'color:var(--color-warning);font-weight:600'
+                                : 'color:var(--color-txt-secondary)'"
+                            x-text="p.stock + ' units'">
+                        </td>
+
+                        {# stock value = stock × product_price #}
+                        <td class="px-4 py-3"
+                            style="color: var(--color-txt-secondary);"
+                            x-text="'₱' + (p.stock * p.product_price).toFixed(2)">
+                        </td>
+
+                        {# unit price #}
+                        <td class="px-4 py-3"
+                            style="color: var(--color-txt-secondary);"
+                            x-text="'₱' + p.unit_price.toFixed(2)">
+                        </td>
+
+                        {# revenue = revenue_price × stock #}
+                        <td class="px-4 py-3"
+                            style="color: var(--color-txt-secondary);"
+                            x-text="'₱' + (p.revenue_price * p.stock).toFixed(2)">
+                        </td>
+
+                        {# actions #}
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-1">
+
+                                {# stocking: no product actions #}
+                                <template x-if="!canManage">
+                                    <span class="text-xs px-2" style="color:var(--color-txt-muted);">—</span>
+                                </template>
+
+                                {# admin/co-admin: active #}
+                                <template x-if="canManage && p.status !== 'archived'">
+                                    <div class="flex items-center gap-1">
+                                        <a :href="`/inventory/${p.product_id}/edit`"
+                                           title="Edit"
+                                           class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                           style="color: var(--color-txt-muted);"
+                                           onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-accent)'"
+                                           onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">edit</span>
+                                        </a>
+                                        <button @click='$dispatch("confirm", {
+                                                    title:   "Archive Product",
+                                                    message: `Archive "${titleCase(p.product_name)}"? It will be hidden from the POS.`,
+                                                    action:  `/inventory/${p.product_id}/status_update`,
+                                                    fields:  [{ name: "status", value: "archived" }]
+                                                })'
+                                                title="Archive"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                                style="color: var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-error)'"
+                                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">archive</span>
+                                        </button>
+                                    </div>
+                                </template>
+
+                                {# admin/co-admin: archived #}
+                                <template x-if="canManage && p.status === 'archived'">
+                                    <div class="flex items-center gap-1">
+                                        <button @click='$dispatch("confirm", {
+                                                    title:   "Restore Product",
+                                                    message: `Restore "${titleCase(p.product_name)}" to active?`,
+                                                    action:  `/inventory/${p.product_id}/status_update`,
+                                                    fields:  [{ name: "status", value: "active" }]
+                                                })'
+                                                title="Restore"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                                style="color: var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-success)'"
+                                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">unarchive</span>
+                                        </button>
+                                        <button @click='$dispatch("confirm", {
+                                                    title:   "Delete Product",
+                                                    message: `Permanently delete "${titleCase(p.product_name)}"? This cannot be undone.`,
+                                                    action:  `/inventory/${p.product_id}/delete`,
+                                                    fields:  []
+                                                })'
+                                                title="Delete permanently"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                                style="color: var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-error)'"
+                                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">delete_forever</span>
+                                        </button>
+                                    </div>
+                                </template>
+
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+
+            </tbody>
+        </table>
+    </div>
+
+    {# ── Pagination ── #}
+    <div class="flex items-center justify-between text-sm"
+         x-show="filtered.length > perPage">
+        <p style="color: var(--color-txt-muted);">
+            Showing
+            <span x-text="Math.min((page - 1) * perPage + 1, filtered.length)"></span>–<span
+            x-text="Math.min(page * perPage, filtered.length)"></span>
+            of <span x-text="filtered.length"></span>
+        </p>
+        <div class="flex items-center gap-1">
+            <button @click="page = Math.max(1, page - 1)"
+                    :disabled="page === 1"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed"
+                    style="border: 1px solid var(--color-border); color: var(--color-txt-secondary);"
+                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+            </button>
+            <template x-for="pg in totalPages" :key="pg">
+                <button @click="page = pg"
+                        class="w-8 h-8 rounded-lg text-sm font-medium transition-colors"
+                        :style="page === pg
+                            ? 'background-color:var(--color-primary);color:var(--color-bg)'
+                            : 'color:var(--color-txt-secondary)'"
+                        onmouseover="if(this.style.color !== 'var(--color-bg)') this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="if(this.style.color !== 'var(--color-bg)') this.style.backgroundColor='transparent'"
+                        x-text="pg">
+                </button>
+            </template>
+            <button @click="page = Math.min(totalPages, page + 1)"
+                    :disabled="page === totalPages"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors
+                           disabled:opacity-40 disabled:cursor-not-allowed"
+                    style="border: 1px solid var(--color-border); color: var(--color-txt-secondary);"
+                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

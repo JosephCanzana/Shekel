@@ -50,6 +50,9 @@ def create_app():
     from app.routes.manage_categories import manage_categories_bp
     app.register_blueprint(manage_categories_bp)
 
+    from app.routes.inventory import inventory_bp
+    app.register_blueprint(inventory_bp)
+
     @app.route("/test")
     def test():
         return render_template("test.html")
