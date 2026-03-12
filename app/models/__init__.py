@@ -10,3 +10,5 @@ from app.models.sale_detail import SaleDetail
 from app.models.defect import Defect
 from app.models.defect_detail import DefectDetail
 from app.models.audit_log import AuditLog
+from app.models.app_settings import AppSettings
+from app.models.product_bundle import ProductBundle

@@ -100,6 +100,7 @@ def run_migrations_online():
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
+            compare_foreign_keys=False,
             **conf_args
         )
 

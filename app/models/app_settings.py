@@ -4,7 +4,7 @@ from app.models.base import BaseModel
 
 
 class AppSettings(db.Model):
-    __tablename__ = "App_settings"
+    __tablename__ = "App_Settings"
 
     id               = db.Column(db.Integer, primary_key=True, default=1)
     user_counter     = db.Column(db.Integer, nullable=False, default=1000)
