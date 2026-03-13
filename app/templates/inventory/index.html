@@ -144,8 +144,6 @@ class="space-y-5">
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Units</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                        style="color: var(--color-txt-muted);">Stock Value</th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Unit Price</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Revenue</th>
@@ -202,8 +200,8 @@ class="space-y-5">
                                 <div>
                                     <span x-text="p.bundle_name" class="font-medium"
                                           style="color: var(--color-txt-secondary);"></span>
-                                    <span x-text="'×' + p.bundle_count"
-                                          class="ml-1" style="color: var(--color-txt-muted);"></span>
+                                    <!-- <span x-text="'×' + p.bundle_count"
+                                          class="ml-1" style="color: var(--color-txt-muted);"></span> -->
                                 </div>
                             </template>
                             <template x-if="!p.bundle_id">
@@ -219,12 +217,6 @@ class="space-y-5">
                             x-text="p.stock + ' units'">
                         </td>
 
-                        {# stock value = stock × product_price #}
-                        <td class="px-4 py-3"
-                            style="color: var(--color-txt-secondary);"
-                            x-text="'₱' + (p.stock * p.product_price).toFixed(2)">
-                        </td>
-
                         {# unit price #}
                         <td class="px-4 py-3"
                             style="color: var(--color-txt-secondary);"
@@ -234,7 +226,7 @@ class="space-y-5">
                         {# revenue = revenue_price × stock #}
                         <td class="px-4 py-3"
                             style="color: var(--color-txt-secondary);"
-                            x-text="'₱' + (p.revenue_price * p.stock).toFixed(2)">
+                            x-text="'₱' + (p.revenue_price).toFixed(2)">
                         </td>
 
                         {# actions #}

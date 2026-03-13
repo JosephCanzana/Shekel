@@ -7,7 +7,7 @@ class DefectDetail(BaseModel):
 
     defect_detail_id        = db.Column(db.Integer, primary_key=True, autoincrement=True)
     defect_id               = db.Column(db.Integer, db.ForeignKey("Defects.defect_id"), nullable=False)
-    product_id              = db.Column(db.String(100), db.ForeignKey("Products.product_id"), nullable=False)
+    product_id              = db.Column(db.String(100), db.ForeignKey("Products.product_id", ondelete="RESTRICT"), nullable=False)
     quantity                = db.Column(db.Integer, nullable=False)
     reason                  = db.Column(db.Enum("defect", "damage", "expired", "change_of_mind"), nullable=False)
     compensation            = db.Column(db.Enum("pending", "loss", "returned", "replacement"), nullable=False)
@@ -19,4 +19,4 @@ class DefectDetail(BaseModel):
     subtotal_amount         = db.Column(db.Numeric(10, 2), nullable=False)
 
     defect  = db.relationship("Defect",  back_populates="defect_details")
-    product = db.relationship("Product", back_populates="defect_details")
+    product = db.relationship("Product", back_populates="defect_details", passive_deletes=True)

@@ -293,6 +293,7 @@
                         <label class="text-xs font-semibold uppercase tracking-wider"
                                style="color: var(--color-txt-muted);">Bundle Barcode / ID</label>
                         <input type="text" name="bundle_id"
+                                @keydown.enter.prevent="$event.preventDefault()"
                                value="{{ product.bundle.bundle_id if product is defined and product.bundle else '' }}"
                                placeholder="e.g. 8851234500000"
                                class="w-full px-4 py-2.5 rounded-xl text-sm font-mono focus:outline-none transition"
@@ -306,7 +307,7 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="space-y-1.5">
+                        <!-- <div class="space-y-1.5">
                             <label class="text-xs font-semibold uppercase tracking-wider"
                                    style="color: var(--color-txt-muted);">Bundle Name</label>
                             <input type="text" name="bundle_name"
@@ -320,7 +321,7 @@
                                             this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                                    onblur="this.style.borderColor='var(--color-border)';
                                            this.style.boxShadow='none'">
-                        </div>
+                        </div> -->
                         <div class="space-y-1.5">
                             <label class="text-xs font-semibold uppercase tracking-wider"
                                    style="color: var(--color-txt-muted);">Units per Bundle</label>
