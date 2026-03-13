@@ -150,7 +150,7 @@ def edit(product_id):
         new_stock        = request.form.get("quantity_available", "").strip()
         adjustment_notes = request.form.get("adjustment_notes",   "").strip()
 
-        # ── stocking: stock adjustment only ──────────────────────────────────
+        # stocking: stock adjustment only
         if not can_manage:
             if product.inventory and new_stock != "":
                 try:
@@ -167,7 +167,7 @@ def edit(product_id):
                 flash("No stock changes were made.", "info")
             return redirect(url_for("inventory.index"))
 
-        # ── admin / co-admin: full edit ───────────────────────────────────────
+        # admin / co-admin: full edit
         product_name  = request.form.get("product_name",  "").strip()
         category_id   = request.form.get("category_id",   "").strip()
         unit_price    = request.form.get("unit_price",    "").strip()

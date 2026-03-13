@@ -1,19 +1,200 @@
-from flask import Blueprint, render_template, redirect, request, url_for, flash
+from datetime import datetime
+from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
+from app.models.product import Product
+from app.models.product_bundle import ProductBundle
+from app.models.inventory import Inventory
+from app.models.sale import Sale
+from app.models.sale_detail import SaleDetail
+from app.extensions import db
 
-cashier_bp = Blueprint("cashier", __name__, url_prefix='/cashier')
+cashier_bp = Blueprint("cashier", __name__, url_prefix="/cashier")
 
-
-@cashier_bp.route("/")
-@login_required
-@role_required("cashier")
-def dashboard():
-    return redirect(url_for("cashier.transaction"))
 
 @cashier_bp.route("/transaction")
 @login_required
-@role_required("cashier")
+@role_required("admin", "co-admin", "cashier")
 def transaction():
     return render_template("cashier/transaction.html")
 
+
+# ── API: search suggestions (dropdown) ───────────────────────────────────────
+@cashier_bp.route("/api/search", methods=["POST"])
+@login_required
+@role_required("admin", "co-admin", "cashier")
+def search():
+    query = (request.json or {}).get("query", "").strip()
+    if not query or len(query) < 1:
+        return jsonify([])
+
+    # match product name or product_id (barcode) — active only, limit 8
+    products = Product.query.filter(
+        Product.status == "active",
+        db.or_(
+            Product.product_name.ilike(f"%{query}%"),
+            Product.product_id.ilike(f"%{query}%"),
+        )
+    ).limit(8).all()
+
+    results = []
+    for p in products:
+        stock = p.inventory.quantity_available if p.inventory else 0
+        results.append({
+            "product_id":    p.product_id,
+            "product_name":  p.product_name.capitalize(),
+            "product_price": float(p.product_price),
+            "stock":         stock,
+        })
+
+    return jsonify(results)
+
+
+# ── API: look up a product by barcode or name ─────────────────────────────────
+@cashier_bp.route("/api/lookup", methods=["POST"])
+@login_required
+@role_required("admin", "co-admin", "cashier")
+def lookup():
+    query = (request.json or {}).get("query", "").strip()
+    if not query:
+        return jsonify({"error": "No search term provided."}), 400
+
+    # 1. exact product barcode
+    product = Product.query.get(query)
+
+    if not product:
+        # 2. exact bundle barcode
+        bundle = ProductBundle.query.get(query)
+        if bundle:
+            product = Product.query.get(bundle.product_id)
+
+    if not product:
+        # 3. partial name match (active only)
+        product = Product.query.filter(
+            Product.product_name.ilike(f"%{query}%"),
+            Product.status == "active"
+        ).first()
+
+    if not product:
+        return jsonify({"error": "Product not found."}), 404
+
+    if product.status == "archived":
+        return jsonify({"error": f'"{product.product_name.capitalize()}" is archived.'}), 400
+
+    stock       = product.inventory.quantity_available if product.inventory else 0
+    bundle_info = None
+    if product.bundle:
+        bundle_info = {
+            "bundle_id":    product.bundle.bundle_id,
+            "bundle_name":  product.bundle.bundle_name,
+            "bundle_count": product.bundle.bundle_count,
+        }
+
+    return jsonify({
+        "product_id":    product.product_id,
+        "product_name":  product.product_name.capitalize(),
+        "unit_price":    float(product.unit_price),
+        "revenue_price": float(product.revenue_price),
+        "product_price": float(product.product_price),
+        "stock":         stock,
+        "bundle":        bundle_info,
+    })
+
+
+# ── API: complete sale ────────────────────────────────────────────────────────
+@cashier_bp.route("/api/charge", methods=["POST"])
+@login_required
+@role_required("admin", "co-admin", "cashier")
+def charge():
+    data     = request.json or {}
+    items    = data.get("items", [])
+    tendered = data.get("tendered")
+
+    if not items:
+        return jsonify({"error": "Cart is empty."}), 400
+
+    try:
+        tendered = float(tendered)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid payment amount."}), 400
+
+    warnings = []
+    for item in items:
+        product = Product.query.get(item["product_id"])
+        if not product:
+            return jsonify({"error": f'Product "{item["product_id"]}" not found.'}), 400
+        if product.status == "archived":
+            return jsonify({"error": f'"{product.product_name.capitalize()}" is archived.'}), 400
+        stock = product.inventory.quantity_available if product.inventory else 0
+        qty   = int(item["qty"])
+        if qty > stock:
+            warnings.append(
+                f'"{product.product_name.capitalize()}": only {stock} in stock, selling {qty}.'
+            )
+
+    total_unit    = sum(float(i["unit_price"])    * int(i["qty"]) for i in items)
+    total_revenue = sum(float(i["revenue_price"]) * int(i["qty"]) for i in items)
+    total_amount  = sum(float(i["product_price"]) * int(i["qty"]) for i in items)
+
+    if tendered < total_amount:
+        return jsonify({"error": "Cash received is less than the total amount."}), 400
+
+    change = round(tendered - total_amount, 2)
+
+    sale = Sale(
+        sale_datetime       = datetime.utcnow(),
+        user_id             = current_user.user_id,
+        total_unit_price    = round(total_unit,    2),
+        total_revenue_price = round(total_revenue, 2),
+        total_amount        = round(total_amount,  2),
+        payment_method      = "cash",
+    )
+    db.session.add(sale)
+    db.session.flush()
+
+    for item in items:
+        qty           = int(item["qty"])
+        unit_price    = float(item["unit_price"])
+        revenue_price = float(item["revenue_price"])
+        price         = float(item["product_price"])
+
+        db.session.add(SaleDetail(
+            transaction_id        = sale.transaction_id,
+            product_id            = item["product_id"],
+            quantity              = qty,
+            unit_price_at_sale    = unit_price,
+            revenue_price_at_sale = revenue_price,
+            price_at_sale         = price,
+            subtotal_unit         = round(unit_price    * qty, 2),
+            subtotal_revenue      = round(revenue_price * qty, 2),
+            subtotal_amount       = round(price         * qty, 2),
+        ))
+
+        product = Product.query.get(item["product_id"])
+        if product and product.inventory:
+            product.inventory.quantity_available = max(
+                0, product.inventory.quantity_available - qty
+            )
+            product.inventory.last_updated = datetime.utcnow()
+
+    db.session.commit()
+
+    return jsonify({
+        "ok":             True,
+        "transaction_id": sale.transaction_id,
+        "total":          round(total_amount, 2),
+        "tendered":       tendered,
+        "change":         change,
+        "warnings":       warnings,
+        "items": [
+            {
+                "product_name": i["product_name"],
+                "qty":          int(i["qty"]),
+                "product_price":float(i["product_price"]),
+                "subtotal":     round(float(i["product_price"]) * int(i["qty"]), 2),
+            }
+            for i in items
+        ],
+        "cashier":  current_user.full_name if hasattr(current_user, "full_name") else current_user.username,
+        "datetime": sale.sale_datetime.strftime("%b %d, %Y %I:%M %p"),
+    })
