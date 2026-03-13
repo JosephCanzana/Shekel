@@ -67,20 +67,12 @@ def add():
         except ValueError:
             flash("Low stock threshold must be a positive whole number.", "danger")
             return redirect(url_for("inventory.add"))
-        
 
         err = barcode_in_use(product_id)
         if err:
             flash(err, "danger")
             return redirect(url_for("inventory.add"))
 
-        # inside the has_bundle block:
-        err = barcode_in_use(bundle_id)
-        if err:
-            flash(err, "danger")
-            return redirect(url_for("inventory.add"))
-
-        # also catch product_id == bundle_id submitted in the same form
         if bundle_id and bundle_id == product_id:
             flash("Product ID and Bundle ID cannot be the same barcode.", "danger")
             return redirect(url_for("inventory.add"))
@@ -102,8 +94,10 @@ def add():
             except ValueError:
                 flash("Bundle count must be 2 or more.", "danger")
                 return redirect(url_for("inventory.add"))
-            if ProductBundle.query.get(bundle_id):
-                flash(f'Bundle ID "{bundle_id}" is already in use.', "danger")
+
+            err = barcode_in_use(bundle_id)
+            if err:
+                flash(err, "danger")
                 return redirect(url_for("inventory.add"))
 
         product = Product(
@@ -135,21 +129,45 @@ def add():
         flash(f'Product "{product_name}" has been created.', "success")
         return redirect(url_for("inventory.index"))
 
-    return render_template("inventory/form.html", categories=categories)
+    return render_template("inventory/form.html",
+                           categories=categories,
+                           can_manage=True)
 
 
 @inventory_bp.route("/<string:product_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("admin", "co-admin", "stocking")   # ← stocking allowed
 def edit(product_id):
     product    = get_product(product_id)
     categories = get_active_categories()
+    can_manage = is_admin_or_coadmin()
 
     if not product:
         flash("Product not found.", "danger")
         return redirect(url_for("inventory.index"))
 
     if request.method == "POST":
+        new_stock        = request.form.get("quantity_available", "").strip()
+        adjustment_notes = request.form.get("adjustment_notes",   "").strip()
+
+        # ── stocking: stock adjustment only ──────────────────────────────────
+        if not can_manage:
+            if product.inventory and new_stock != "":
+                try:
+                    new_stock_val = int(new_stock)
+                    if new_stock_val < 0:
+                        raise ValueError
+                    product.inventory.quantity_available = new_stock_val
+                    product.inventory.last_updated       = datetime.utcnow()
+                    db.session.commit()
+                    flash(f'Stock for "{product.product_name}" has been updated.', "success")
+                except ValueError:
+                    flash("Stock must be a non-negative whole number.", "danger")
+            else:
+                flash("No stock changes were made.", "info")
+            return redirect(url_for("inventory.index"))
+
+        # ── admin / co-admin: full edit ───────────────────────────────────────
         product_name  = request.form.get("product_name",  "").strip()
         category_id   = request.form.get("category_id",   "").strip()
         unit_price    = request.form.get("unit_price",    "").strip()
@@ -160,24 +178,12 @@ def edit(product_id):
         bundle_name   = request.form.get("bundle_name",  "").strip()
         bundle_count  = request.form.get("bundle_count", "").strip()
 
-        # stock adjustment fields
-        new_stock        = request.form.get("quantity_available", "").strip()
-        adjustment_notes = request.form.get("adjustment_notes", "").strip()
-
         if not all([product_name, unit_price, revenue_price, low_reorder]):
             flash("Name, prices, and low stock threshold are required.", "danger")
             return redirect(url_for("inventory.edit", product_id=product_id))
 
         ok, err = validate_product_name(product_name)
         if not ok:
-            flash(err, "danger")
-            return redirect(url_for("inventory.edit", product_id=product_id))
-        
-        err = barcode_in_use(bundle_id,
-                     exclude_product_id=product_id,
-                     exclude_bundle_id=product.bundle.bundle_id if product.bundle else None)
-        
-        if err:
             flash(err, "danger")
             return redirect(url_for("inventory.edit", product_id=product_id))
 
@@ -207,6 +213,16 @@ def edit(product_id):
             flash(f'A product named "{product_name}" already exists.', "danger")
             return redirect(url_for("inventory.edit", product_id=product_id))
 
+        if bundle_id:
+            err = barcode_in_use(
+                bundle_id,
+                exclude_product_id=product_id,
+                exclude_bundle_id=product.bundle.bundle_id if product.bundle else None
+            )
+            if err:
+                flash(err, "danger")
+                return redirect(url_for("inventory.edit", product_id=product_id))
+
         unit_price    = float(unit_price)
         revenue_price = float(revenue_price)
         product_price = round(unit_price + revenue_price, 2)
@@ -219,20 +235,19 @@ def edit(product_id):
         product.low_reorder_threshold = low_reorder
         product.status                = status
 
-        # ── stock adjustment
+        # stock adjustment (admin can also adjust)
         if product.inventory and new_stock != "":
             try:
-                new_stock_val     = int(new_stock)
-
+                new_stock_val = int(new_stock)
                 if new_stock_val < 0:
                     raise ValueError
                 product.inventory.quantity_available = new_stock_val
                 product.inventory.last_updated       = datetime.utcnow()
             except ValueError:
-                flash("Stock values must be non-negative whole numbers.", "danger")
+                flash("Stock must be a non-negative whole number.", "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
 
-        # ── handle bundle
+        # handle bundle
         has_bundle = any([bundle_id, bundle_name, bundle_count])
         if has_bundle:
             if not all([bundle_id, bundle_name, bundle_count]):
@@ -251,9 +266,6 @@ def edit(product_id):
                 product.bundle.bundle_name  = bundle_name
                 product.bundle.bundle_count = bundle_count
             else:
-                if ProductBundle.query.get(bundle_id):
-                    flash(f'Bundle ID "{bundle_id}" is already in use.', "danger")
-                    return redirect(url_for("inventory.edit", product_id=product_id))
                 db.session.add(ProductBundle(
                     bundle_id    = bundle_id,
                     product_id   = product_id,
@@ -270,7 +282,8 @@ def edit(product_id):
 
     return render_template("inventory/form.html",
                            product=product,
-                           categories=categories)
+                           categories=categories,
+                           can_manage=can_manage)
 
 
 @inventory_bp.route("/<string:product_id>/status_update", methods=["POST"])

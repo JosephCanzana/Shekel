@@ -144,6 +144,8 @@ class="space-y-5">
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Units</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Stock Value</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Unit Price</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Revenue</th>
@@ -217,6 +219,12 @@ class="space-y-5">
                             x-text="p.stock + ' units'">
                         </td>
 
+                        {# stock value = stock × product_price #}
+                        <td class="px-4 py-3"
+                            style="color: var(--color-txt-secondary);"
+                            x-text="'₱' + (p.stock * p.product_price).toFixed(2)">
+                        </td>
+
                         {# unit price #}
                         <td class="px-4 py-3"
                             style="color: var(--color-txt-secondary);"
@@ -233,9 +241,16 @@ class="space-y-5">
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
 
-                                {# stocking: no product actions #}
+                                {# stocking: edit (stock adjust only) #}
                                 <template x-if="!canManage">
-                                    <span class="text-xs px-2" style="color:var(--color-txt-muted);">—</span>
+                                    <a :href="`/inventory/${p.product_id}/edit`"
+                                       title="Adjust Stock"
+                                       class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                       style="color: var(--color-txt-muted);"
+                                       onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-accent)'"
+                                       onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                                    </a>
                                 </template>
 
                                 {# admin/co-admin: active #}

@@ -3,6 +3,7 @@
 {% block nav_title %}{{ "Edit Product" if product is defined else "Add Product" }}{% endblock %}
 
 {% block body %}
+{% set can_manage = can_manage if can_manage is defined else true %}
 
 {# ── Breadcrumb ── #}
 <div class="flex items-center gap-2 text-sm mb-6" style="color: var(--color-txt-muted);">
@@ -22,29 +23,155 @@
           unitPrice:    {{ product.unit_price | float if product is defined else 0 }},
           revenuePrice: {{ product.revenue_price | float if product is defined else 0 }},
           hasBundle:    {{ 'true' if product is defined and product.bundle else 'false' }},
-          editingStock: false,
+          editingStock: {{ 'true' if not can_manage else 'false' }},
           get productPrice() {
               return (parseFloat(this.unitPrice || 0) + parseFloat(this.revenuePrice || 0)).toFixed(2)
           }
       }">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-    {# ══ Two-column on lg+, single column on mobile ══ #}
+    {# ══════════════════════════════════════════════════════════
+       STOCKING VIEW — stock adjustment only, no product details
+       ══════════════════════════════════════════════════════════ #}
+    {% if product is defined and not can_manage %}
+
+        {% if product.inventory %}
+        <div class="max-w-sm mx-auto space-y-4">
+
+            {# Product name display (read-only) #}
+            <div class="rounded-2xl px-6 py-4"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+                <p class="text-xs font-semibold uppercase tracking-wider mb-1"
+                   style="color: var(--color-txt-muted);">Product</p>
+                <p class="text-base font-bold" style="color: var(--color-txt-primary);">
+                    {{ product.product_name | capitalize }}
+                </p>
+                <p class="text-xs font-mono mt-0.5" style="color: var(--color-txt-muted);">
+                    {{ product.product_id }}
+                </p>
+            </div>
+
+            {# Stock adjustment card #}
+            <div class="rounded-2xl overflow-hidden"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+                <div class="px-6 py-4" style="border-bottom: 1px solid var(--color-border);">
+                    <h2 class="text-xs font-bold uppercase tracking-wider"
+                        style="color: var(--color-txt-muted);">Adjust Stock</h2>
+                </div>
+
+                <div class="px-6 py-5 space-y-4">
+
+                    {# Current count display #}
+                    <div class="rounded-xl px-4 py-3 flex items-center justify-between"
+                         style="background-color: var(--color-surface-alt);
+                                border: 1px solid var(--color-border);">
+                        <span class="text-xs font-semibold uppercase tracking-wider"
+                              style="color: var(--color-txt-muted);">Current Stock</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-2xl font-bold leading-none"
+                                  style="color: {% if product.inventory.quantity_available <= product.low_reorder_threshold %}var(--color-warning){% else %}var(--color-txt-primary){% endif %};">
+                                {{ product.inventory.quantity_available }}
+                            </span>
+                            <span class="text-xs" style="color: var(--color-txt-muted);">units</span>
+                            {% if product.inventory.quantity_available <= product.low_reorder_threshold %}
+                            <span class="material-symbols-outlined text-[14px]"
+                                  style="color: var(--color-warning);">warning</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {# Warning note #}
+                    <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
+                         style="background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+                                border: 1px solid color-mix(in srgb, var(--color-warning) 25%, transparent);
+                                color: var(--color-warning);">
+                        <span class="material-symbols-outlined text-[15px] mt-0.5 shrink-0">info</span>
+                        <span>Use only to correct discrepancies. Regular stock-in should go through the Stock-In module.</span>
+                    </div>
+
+                    {# New stock input #}
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold uppercase tracking-wider"
+                               style="color: var(--color-txt-muted);">New Stock Count</label>
+                        <input type="number"
+                               name="quantity_available"
+                               value="{{ product.inventory.quantity_available }}"
+                               min="0" step="1"
+                               autofocus
+                               class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                               style="border: 1px solid var(--color-border);
+                                      background-color: var(--color-surface-alt);
+                                      color: var(--color-txt-primary);"
+                               onfocus="this.style.borderColor='var(--color-accent)';
+                                        this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                               onblur="this.style.borderColor='var(--color-border)';
+                                       this.style.boxShadow='none'">
+                    </div>
+
+                    {# Reason #}
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold uppercase tracking-wider"
+                               style="color: var(--color-txt-muted);">
+                            Reason
+                            <span class="normal-case font-normal ml-1"
+                                  style="color: var(--color-txt-muted);">(optional)</span>
+                        </label>
+                        <input type="text"
+                               name="adjustment_notes"
+                               placeholder="e.g. Physical count mismatch..."
+                               class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                               style="border: 1px solid var(--color-border);
+                                      background-color: var(--color-surface-alt);
+                                      color: var(--color-txt-primary);"
+                               onfocus="this.style.borderColor='var(--color-accent)';
+                                        this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                               onblur="this.style.borderColor='var(--color-border)';
+                                       this.style.boxShadow='none'">
+                    </div>
+
+                </div>
+            </div>
+
+            {# Buttons #}
+            <div class="flex gap-3">
+                <a href="{{ url_for('inventory.index') }}"
+                   class="flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition"
+                   style="border: 1px solid var(--color-border); color: var(--color-txt-secondary);"
+                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                   onmouseout="this.style.backgroundColor='transparent'">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition active:scale-[.98]"
+                        style="background-color: var(--color-primary); color: var(--color-bg);"
+                        onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+                        onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                    Save Stock
+                </button>
+            </div>
+
+        </div>
+        {% endif %}
+
+    {% else %}
+    {# ══════════════════════════════════════════════════════════
+       ADMIN / CO-ADMIN VIEW — full product form
+       ══════════════════════════════════════════════════════════ #}
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
-        {# ════════════════════════════════════════
-           LEFT COLUMN — Product Info + Bundle
-           ════════════════════════════════════════ #}
+        {# ── LEFT COLUMN: Product Info + Bundle ── #}
         <div class="space-y-5">
 
-            {# ── Card: Product Info ── #}
+            {# Card: Product Info #}
             <div class="rounded-2xl p-6 space-y-4"
                  style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
 
                 <h2 class="text-xs font-bold uppercase tracking-wider"
                     style="color: var(--color-txt-muted);">Product Info</h2>
 
-                {# Barcode / Product ID — editable on both add and edit #}
+                {# Barcode / Product ID #}
                 <div class="space-y-1.5">
                     <label class="text-xs font-semibold uppercase tracking-wider"
                            style="color: var(--color-txt-muted);">
@@ -123,7 +250,7 @@
 
             </div>
 
-            {# ── Card: Bundle (collapsible) ── #}
+            {# Card: Bundle (collapsible) #}
             <div class="rounded-2xl overflow-hidden"
                  style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
 
@@ -216,12 +343,10 @@
 
         </div>{# /left column #}
 
-        {# ════════════════════════════════════════
-           RIGHT COLUMN — Pricing + Stock + Status
-           ════════════════════════════════════════ #}
+        {# ── RIGHT COLUMN: Pricing + Stock + Settings ── #}
         <div class="space-y-5">
 
-            {# ── Card: Pricing ── #}
+            {# Card: Pricing #}
             <div class="rounded-2xl p-6 space-y-4"
                  style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
 
@@ -239,9 +364,8 @@
                                   style="color: var(--color-txt-muted);">₱</span>
                             <input type="number" name="unit_price"
                                    x-model="unitPrice"
-                                   x-model="unitPrice"
-                                    @focus="if (unitPrice == 0) unitPrice = ''"
-                                    @blur="if (unitPrice === '') unitPrice = 0"
+                                   @focus="if (unitPrice == 0) unitPrice = ''"
+                                   @blur="if (unitPrice === '') unitPrice = 0"
                                    min="0" step="0.01" placeholder="0.00" required
                                    class="w-full pl-7 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
                                    style="border: 1px solid var(--color-border);
@@ -264,7 +388,7 @@
                             <input type="number" name="revenue_price"
                                    x-model="revenuePrice"
                                    @focus="if (revenuePrice == 0) revenuePrice = ''"
-                                    @blur="if (revenuePrice === '') revenuePrice = 0"
+                                   @blur="if (revenuePrice === '') revenuePrice = 0"
                                    min="0" step="0.01" placeholder="0.00" required
                                    class="w-full pl-7 pr-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
                                    style="border: 1px solid var(--color-border);
@@ -300,12 +424,11 @@
 
             </div>
 
-            {# ── Card: Stock ── edit only ── #}
+            {# Card: Stock — edit only #}
             {% if product is defined and product.inventory %}
             <div class="rounded-2xl overflow-hidden"
                  style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
 
-                {# header row with edit toggle #}
                 <div class="flex items-center justify-between px-6 py-4"
                      style="border-bottom: 1px solid var(--color-border);">
                     <h2 class="text-xs font-bold uppercase tracking-wider"
@@ -324,10 +447,8 @@
 
                 <div class="px-6 py-5 space-y-4">
 
-                    {# read-only stock display — shown when not editing #}
+                    {# read-only display #}
                     <div x-show="!editingStock" class="grid grid-cols-2 gap-3">
-
-                        {# Available #}
                         <div class="rounded-xl px-4 py-3 flex flex-col gap-1"
                              style="background-color: var(--color-surface-alt);
                                     border: 1px solid var(--color-border);">
@@ -345,11 +466,9 @@
                                 {% endif %}
                             </div>
                         </div>
-
-
                     </div>
 
-                    {# editable stock adjustment — shown when editing #}
+                    {# editable adjustment #}
                     <div x-show="editingStock"
                          x-transition:enter="transition ease-out duration-150"
                          x-transition:enter-start="opacity-0 -translate-y-1"
@@ -365,23 +484,41 @@
                                   Regular stock-in should go through the Stock-In module.</span>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="space-y-1.5">
-                                <label class="text-xs font-semibold uppercase tracking-wider"
-                                       style="color: var(--color-txt-muted);">Available Units</label>
-                                <input type="number"
-                                       name="quantity_available"
-                                       value="{{ product.inventory.quantity_available }}"
-                                       min="0" step="1"
-                                       class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                                       style="border: 1px solid var(--color-border);
-                                              background-color: var(--color-surface-alt);
-                                              color: var(--color-txt-primary);"
-                                       onfocus="this.style.borderColor='var(--color-accent)';
-                                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                                       onblur="this.style.borderColor='var(--color-border)';
-                                               this.style.boxShadow='none'">
-                            </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wider"
+                                   style="color: var(--color-txt-muted);">New Stock Count</label>
+                            <input type="number"
+                                   name="quantity_available"
+                                   value="{{ product.inventory.quantity_available }}"
+                                   min="0" step="1"
+                                   class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                                   style="border: 1px solid var(--color-border);
+                                          background-color: var(--color-surface-alt);
+                                          color: var(--color-txt-primary);"
+                                   onfocus="this.style.borderColor='var(--color-accent)';
+                                            this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                                   onblur="this.style.borderColor='var(--color-border)';
+                                           this.style.boxShadow='none'">
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wider"
+                                   style="color: var(--color-txt-muted);">
+                                Reason
+                                <span class="normal-case font-normal ml-1"
+                                      style="color: var(--color-txt-muted);">(optional)</span>
+                            </label>
+                            <input type="text"
+                                   name="adjustment_notes"
+                                   placeholder="e.g. Physical count mismatch, damage found..."
+                                   class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                                   style="border: 1px solid var(--color-border);
+                                          background-color: var(--color-surface-alt);
+                                          color: var(--color-txt-primary);"
+                                   onfocus="this.style.borderColor='var(--color-accent)';
+                                            this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                                   onblur="this.style.borderColor='var(--color-border)';
+                                           this.style.boxShadow='none'">
                         </div>
 
                     </div>
@@ -390,14 +527,13 @@
             </div>
             {% endif %}
 
-            {# ── Card: Settings ── edit only (status) / shared (threshold) ── #}
+            {# Card: Settings (threshold + status) #}
             <div class="rounded-2xl p-6 space-y-4"
                  style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
 
                 <h2 class="text-xs font-bold uppercase tracking-wider"
                     style="color: var(--color-txt-muted);">Settings</h2>
 
-                {# Low Stock Threshold #}
                 <div class="space-y-1.5">
                     <label class="text-xs font-semibold uppercase tracking-wider"
                            style="color: var(--color-txt-muted);">
@@ -419,7 +555,6 @@
                     </p>
                 </div>
 
-                {# Status — edit only #}
                 {% if product is defined %}
                 <div class="space-y-1.5">
                     <label class="text-xs font-semibold uppercase tracking-wider"
@@ -441,7 +576,7 @@
 
             </div>
 
-            {# ── Buttons ── #}
+            {# Buttons #}
             <div class="flex gap-3">
                 <a href="{{ url_for('inventory.index') }}"
                    class="flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition"
@@ -462,6 +597,8 @@
         </div>{# /right column #}
 
     </div>{# /grid #}
+    {% endif %}{# /can_manage branch #}
+
 </form>
 
 {% endblock %}
