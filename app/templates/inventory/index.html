@@ -60,15 +60,16 @@ class="space-y-5">
         </div>
 
         <div class="flex items-center gap-2">
-            {# Stock-In — all roles (wire up later) #}
-            <button title="Stock-In (coming soon)"
-                    class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition"
-                    style="border: 1px solid var(--color-primary); color: var(--color-primary);"
-                    onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-primary) 8%,transparent)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
-                <span class="material-symbols-outlined text-[17px]">add_box</span>
-                Stock-In
-            </button>
+            {# Stock-In — all roles #}
+            <a href="{{ url_for('stocking.stock_in') }}"
+                title="Stock-In"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition"
+                style="border: 1px solid var(--color-primary); color: var(--color-primary);"
+                onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-primary) 8%,transparent)'"
+                onmouseout="this.style.backgroundColor='transparent'">
+                    <span class="material-symbols-outlined text-[17px]">add_box</span>
+                    Stock-In
+                </a>
 
             {# Add Product — admin / co-admin only #}
             <template x-if="canManage">

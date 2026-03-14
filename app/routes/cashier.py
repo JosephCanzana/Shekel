@@ -61,12 +61,14 @@ def lookup():
 
     # 1. exact product barcode
     product = Product.query.get(query)
+    scanned_as_bundle = False
 
     if not product:
         # 2. exact bundle barcode
         bundle = ProductBundle.query.get(query)
         if bundle:
             product = Product.query.get(bundle.product_id)
+            scanned_as_bundle = True
 
     if not product:
         # 3. partial name match (active only)
@@ -98,6 +100,7 @@ def lookup():
         "product_price": float(product.product_price),
         "stock":         stock,
         "bundle":        bundle_info,
+        "scanned_as_bundle": scanned_as_bundle
     })
 
 
