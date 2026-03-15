@@ -86,6 +86,9 @@ def add():
 @role_required("admin", "co-admin")
 def edit(user_id):
     user = User.get_by_id(user_id)
+    if user.role == 'admin':
+        flash("Can't edit admin!", "danger")
+        return redirect(url_for("manage_users.index"))
     if not user:
         flash("User not found.", "danger")
         return redirect(url_for("manage_users.index"))

@@ -19,7 +19,7 @@
     'admin': [
         {'url': url_for('admin.dashboard'), 'icon': 'home', 'label': 'Dashboard'},
         {'url': url_for('inventory.index'), 'icon': 'inventory', 'label': 'Inventory'},
-        {'url': '#', 'icon': 'report_problem', 'label': 'Defects/Returns'},
+        {'url': url_for('defects.index'), 'icon': 'report_problem', 'label': 'Defects/Returns'},
         {'url': url_for('manage_users.index'), 'icon': 'group',     'label': 'Users'},
         {'url': url_for('manage_categories.index'), 'icon': 'category',  'label': 'Categories'},
         {'url': '#', 'icon': 'monitoring','label': 'Reports'},
@@ -27,10 +27,13 @@
     ],
 
     'co-admin': [
-        {'url': '#', 'icon': 'home',      'label': 'Dashboard'},
-        {'url': '#', 'icon': 'inventory', 'label': 'Inventory'},
+        {'url': url_for('admin.dashboard'), 'icon': 'home', 'label': 'Dashboard'},
+        {'url': url_for('inventory.index'), 'icon': 'inventory', 'label': 'Inventory'},
+        {'url': url_for('defects.index'), 'icon': 'report_problem', 'label': 'Defects/Returns'},
+        {'url': url_for('manage_users.index'), 'icon': 'group',     'label': 'Users'},
+        {'url': url_for('manage_categories.index'), 'icon': 'category',  'label': 'Categories'},
         {'url': '#', 'icon': 'monitoring','label': 'Reports'},
-        {'url': '#', 'icon': 'group',     'label': 'Users'},
+        {'url': '#', 'icon': 'history','label': 'Audit log'},
     ],
 
     'cashier': [
@@ -40,9 +43,9 @@
     ],
 
     'stocking': [
-        {'url': url_for("stocking.dashboard"), 'icon': 'home',           'label': 'Dashboard'},
+        {'url': url_for('stocking.dashboard'), 'icon': 'home',           'label': 'Dashboard'},
         {'url': url_for('inventory.index'), 'icon': 'inventory',      'label': 'Inventory'},
-        {'url': '#', 'icon': 'report_problem', 'label': 'Defects'},
+        {'url': url_for('defects.index'), 'icon': 'report_problem', 'label': 'Defects'},
     ],
 
 } %}

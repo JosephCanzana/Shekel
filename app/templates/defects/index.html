@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Defects & Returns — Shekel{% endblock %}
+{% block nav_title %}Defects & Returns{% endblock %}
+
+{% block body %}
+
+<div class="flex flex-col gap-4" style="margin-top: -17px;">
+
+    {# ── toolbar ── #}
+    <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-2">
+            {# sort / filter placeholder #}
+            <button class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition"
+                    style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[15px]">sort</span>
+                Sort
+            </button>
+            <button class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition"
+                    style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[15px]">search</span>
+                Search
+            </button>
+        </div>
+        <a href="{{ url_for('defects.log') }}"
+           class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition"
+           style="background-color:var(--color-error); color:#fff;"
+           onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+            <span class="material-symbols-outlined text-[17px]">add_circle</span>
+            Log Defect / Return
+        </a>
+    </div>
+
+    {# ── table card ── #}
+    <div class="rounded-2xl overflow-hidden"
+         style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
+        {# column headers #}
+        <div class="grid grid-cols-[2fr_1.5fr_1fr_1fr_80px] px-5 py-3
+                    text-xs font-bold uppercase tracking-wider"
+             style="background-color:var(--color-surface-alt);
+                    border-bottom:1px solid var(--color-border);
+                    color:var(--color-txt-muted);">
+            <span>Product Name</span>
+            <span>Barcode</span>
+            <span class="text-center">Bundle</span>
+            <span class="text-center">Total Defect Units</span>
+            <span class="text-center">Action</span>
+        </div>
+
+        {# rows #}
+        {% if defect_rows %}
+            {% for row in defect_rows %}
+            <div class="grid grid-cols-[2fr_1.5fr_1fr_1fr_80px] items-center px-5 py-3.5
+                        transition"
+                 style="border-top:1px solid var(--color-border);"
+                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+
+                <p class="text-sm font-medium" style="color:var(--color-txt-primary);">
+                    {{ row.product_name }}
+                </p>
+                <p class="text-xs font-mono" style="color:var(--color-txt-secondary);">
+                    {{ row.product_id }}
+                </p>
+                <p class="text-sm text-center" style="color:var(--color-txt-secondary);">
+                    {% if row.bundle_count %}×{{ row.bundle_count }}{% else %}—{% endif %}
+                </p>
+                <p class="text-sm text-center font-semibold tabular-nums" style="color:var(--color-error);">
+                    {{ row.total_units }}
+                </p>
+                <div class="flex items-center justify-center">
+                    <a href="{{ url_for('defects.product_history', product_id=row.product_id) }}"
+                       class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                       style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
+                              color:var(--color-warning);"
+                       onmouseover="this.style.background='color-mix(in srgb,var(--color-warning) 28%,transparent)'"
+                       onmouseout="this.style.background='color-mix(in srgb,var(--color-warning) 15%,transparent)'"
+                       title="View history">
+                        <span class="material-symbols-outlined text-[16px]">history</span>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="flex flex-col items-center justify-center gap-3 py-20">
+                <span class="material-symbols-outlined text-[52px]"
+                      style="color:var(--color-border-strong);">report_problem</span>
+                <p class="text-sm font-medium" style="color:var(--color-txt-muted);">
+                    No defects or returns logged yet
+                </p>
+                <a href="{{ url_for('defects.log') }}"
+                   class="mt-1 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
+                   style="background-color:var(--color-error); color:#fff;">
+                    <span class="material-symbols-outlined text-[16px]">add_circle</span>
+                    Log first defect
+                </a>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,966 @@
+{% extends "base.html" %}
+{% block title %}Log Defects — Shekel{% endblock %}
+{% block nav_title %}Log Defects / Returns{% endblock %}
+
+{% block body %}
+
+<style>
+  .desktop-layout { display: flex; }
+  .mobile-layout  { display: none; }
+  @media (max-width: 1023px) {
+    .desktop-layout { display: none !important; }
+    .mobile-layout  { display: flex !important; }
+  }
+  .mob-panel           { display: none; }
+  .mob-panel.is-active { display: flex; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+</style>
+
+<div x-data="{
+
+    items:           [],
+    editingId:       null,
+    searchQuery:     '',
+    searching:       false,
+    suggestions:     [],
+    product:         null,
+    bundleQty:       0,
+    unitQty:         1,
+    itemReason:      'defect',
+    itemCompensation:'pending',
+    panelError:      '',
+    globalError:     '',
+    showReceipt:     false,
+    receipt:         null,
+    mobileTab:       'scan',
+    confirmComplete: false,
+    confirmCancel:   false,
+
+    reasons:       ['defect', 'damage', 'expired', 'change_of_mind'],
+    compensations: ['pending', 'loss', 'returned', 'replacement'],
+
+    reasonLabel(r)       { return r.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) },
+    compensationLabel(c) { return c.charAt(0).toUpperCase()+c.slice(1) },
+
+    get totalUnits() {
+        if (!this.product) return 0
+        const bc = this.product.bundle ? this.product.bundle.bundle_count : 0
+        return (parseInt(this.bundleQty) || 0) * bc + (parseInt(this.unitQty) || 0)
+    },
+    get panelSubtotal() {
+        if (!this.product || this.totalUnits <= 0) return 0
+        return this.product.product_price * this.totalUnits
+    },
+    get totalLogging() {
+        return this.items.reduce((s, i) => s + i.qty, 0)
+    },
+    get totalAmount() {
+        return this.items.reduce((s, i) => s + i.product_price * i.qty, 0)
+    },
+    get canComplete() { return this.items.length > 0 },
+
+    fmt(n) { return '₱' + parseFloat(n).toFixed(2) },
+
+    async fetchSuggestions() {
+        const q = this.searchQuery.trim()
+        if (!q) { this.suggestions = []; return }
+        try {
+            const res = await fetch('/defects/api/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json',
+                           'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                body: JSON.stringify({ query: q })
+            })
+            this.suggestions = res.ok ? await res.json() : []
+        } catch(e) { this.suggestions = [] }
+    },
+
+    selectSuggestion(s) {
+        this.searchQuery = s.product_id
+        this.suggestions = []
+        this.lookupProduct()
+    },
+
+    focusSuggestion(i) {
+        const el = this.$refs['suggestion_' + i]
+        if (el) el.focus()
+    },
+
+    async lookupProduct() {
+        const q = this.searchQuery.trim()
+        if (!q) return
+        this.panelError = ''; this.product = null
+        this.bundleQty = 0; this.unitQty = 1; this.searching = true; this.editingId = null
+        try {
+            const res  = await fetch('/defects/api/lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json',
+                           'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                body: JSON.stringify({ query: q })
+            })
+            const data = await res.json()
+            if (!res.ok) {
+                this.panelError = data.error || 'Product not found.'
+            } else {
+                this.product = data; this.suggestions = []
+                if (data.scanned_as_bundle && data.bundle) {
+                    this.bundleQty = 1; this.unitQty = 0
+                } else {
+                    this.bundleQty = 0; this.unitQty = 1
+                }
+            }
+        } catch(e) { this.panelError = 'Network error. Please try again.' }
+        this.searching = false
+        this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
+    },
+
+    addItem() {
+        if (!this.product || this.totalUnits <= 0) return
+        this.panelError = ''
+        if (this.editingId && this.editingId === this.product.product_id) {
+            const row = this.items.find(i => i.product_id === this.editingId)
+            if (row) {
+                row.qty          = this.totalUnits
+                row.bundleQty    = parseInt(this.bundleQty) || 0
+                row.unitQty      = parseInt(this.unitQty)   || 0
+                row.reason       = this.itemReason
+                row.compensation = this.itemCompensation
+            }
+            this.editingId = null
+        } else {
+            const existing = this.items.find(i => i.product_id === this.product.product_id)
+            if (existing) {
+                existing.qty      += this.totalUnits
+                existing.bundleQty = (existing.bundleQty||0) + (parseInt(this.bundleQty)||0)
+                existing.unitQty   = (existing.unitQty||0)   + (parseInt(this.unitQty)||0)
+                existing.reason       = this.itemReason
+                existing.compensation = this.itemCompensation
+            } else {
+                this.items.push({
+                    product_id:    this.product.product_id,
+                    product_name:  this.product.product_name,
+                    product_price: this.product.product_price,
+                    unit_price:    this.product.unit_price,
+                    revenue_price: this.product.revenue_price,
+                    stock:         this.product.stock,
+                    bundle:        this.product.bundle || null,
+                    qty:           this.totalUnits,
+                    bundleQty:     parseInt(this.bundleQty) || 0,
+                    unitQty:       parseInt(this.unitQty)   || 0,
+                    reason:        this.itemReason,
+                    compensation:  this.itemCompensation,
+                })
+            }
+        }
+        this.product = null; this.searchQuery = ''; this.bundleQty = 0; this.unitQty = 1
+        this.itemReason = 'defect'; this.itemCompensation = 'pending'
+        this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
+    },
+
+    editRow(item) {
+        this.editingId        = item.product_id
+        this.searchQuery      = item.product_id
+        this.panelError       = ''
+        this.itemReason       = item.reason
+        this.itemCompensation = item.compensation
+        this.product = { product_id: item.product_id, product_name: item.product_name,
+                         product_price: item.product_price, unit_price: item.unit_price,
+                         revenue_price: item.revenue_price, stock: item.stock,
+                         bundle: item.bundle || null }
+        this.bundleQty = item.bundleQty !== undefined ? item.bundleQty : 0
+        this.unitQty   = item.unitQty   !== undefined ? item.unitQty   : item.qty
+        this.mobileTab = 'scan'
+    },
+
+    cancelEdit() {
+        this.editingId = null; this.product = null; this.searchQuery = ''
+        this.bundleQty = 0; this.unitQty = 1
+        this.itemReason = 'defect'; this.itemCompensation = 'pending'; this.panelError = ''
+        this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
+    },
+
+    removeRow(item) {
+        this.items = this.items.filter(i => i.product_id !== item.product_id)
+        if (this.editingId === item.product_id) this.cancelEdit()
+    },
+
+    cancelAll() {
+        this.items = []; this.product = null; this.searchQuery = ''; this.bundleQty = 0
+        this.unitQty = 1; this.editingId = null; this.globalError = ''; this.panelError = ''
+        this.itemReason = 'defect'; this.itemCompensation = 'pending'; this.confirmCancel = false
+        this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
+    },
+
+    async completeLog() {
+        if (!this.canComplete) return
+        this.globalError = ''
+        try {
+            const res = await fetch('/defects/api/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json',
+                           'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                body: JSON.stringify({
+                    items: this.items.map(i => ({
+                        product_id:   i.product_id,
+                        qty:          i.qty,
+                        reason:       i.reason,
+                        compensation: i.compensation,
+                    }))
+                })
+            })
+            const data = await res.json()
+            if (!res.ok) { this.globalError = data.error || 'Failed to complete.' }
+            else { this.receipt = data; this.showReceipt = true; this.confirmComplete = false }
+        } catch(e) { this.globalError = 'Network error. Please try again.' }
+    },
+
+    closeReceipt() { this.showReceipt = false; this.receipt = null; this.cancelAll() }
+
+}" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+
+    {# ═══════════ DESKTOP LAYOUT ═══════════ #}
+    <div class="desktop-layout gap-4"
+         style="height: calc(95vh - var(--navbar-height, 64px) - 2.5rem); margin-top: -17px;">
+
+        {# ── LEFT: Product Return List ── #}
+        <div class="flex flex-col rounded-2xl overflow-hidden flex-[3]"
+             style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
+            <div class="shrink-0 px-4 py-3 flex items-center justify-between"
+                 style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                <h2 class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
+                    Product Return / Defect
+                    <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]"
+                          style="background:color-mix(in srgb,var(--color-error) 15%,transparent);color:var(--color-error);"
+                          x-text="items.length"></span>
+                </h2>
+                <button x-show="items.length > 0" @click="confirmCancel = true"
+                        class="flex items-center gap-1 text-xs transition" style="color:var(--color-txt-muted);"
+                        onmouseover="this.style.color='var(--color-error)'" onmouseout="this.style.color='var(--color-txt-muted)'">
+                    <span class="material-symbols-outlined text-[14px]">delete_sweep</span> Clear
+                </button>
+            </div>
+
+            {# column headers — matches reference image #}
+            <div class="shrink-0 grid grid-cols-[2.5fr_1fr_1fr_1fr_80px] px-4 py-2.5
+                        text-xs font-semibold uppercase tracking-wider"
+                 style="color:var(--color-txt-muted); border-bottom:1px solid var(--color-border);
+                        background-color:var(--color-surface-alt);">
+                <span>Product Name</span>
+                <span class="text-center">Total Unit</span>
+                <span class="text-right">Price</span>
+                <span class="text-right">Subtotal</span>
+                <span class="text-center">Action</span>
+            </div>
+
+            <div class="flex-1 overflow-y-auto">
+                <template x-if="items.length === 0">
+                    <div class="h-full flex flex-col items-center justify-center gap-2" style="color:var(--color-txt-muted);">
+                        <span class="material-symbols-outlined text-[48px]" style="color:var(--color-border-strong);">report_problem</span>
+                        <p class="text-sm">Scan or search a product to begin</p>
+                    </div>
+                </template>
+                <template x-for="item in items" :key="item.product_id">
+                    <div class="grid grid-cols-[2.5fr_1fr_1fr_1fr_80px] items-center px-4 py-3"
+                         :style="editingId===item.product_id
+                                 ? 'border-top:1px solid var(--color-border);background:color-mix(in srgb,var(--color-accent) 7%,transparent)'
+                                 : 'border-top:1px solid var(--color-border)'">
+                        <div>
+                            <p class="text-sm font-medium leading-tight" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
+                            <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                      :style="item.reason==='expired'
+                                              ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
+                                              : item.reason==='change_of_mind'
+                                                ? 'background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)'
+                                                : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                                      x-text="reasonLabel(item.reason)"></span>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                      :style="item.compensation==='loss'
+                                              ? 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'
+                                              : item.compensation==='returned'
+                                                ? 'background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)'
+                                                : item.compensation==='replacement'
+                                                  ? 'background:color-mix(in srgb,var(--color-primary) 12%,transparent);color:var(--color-primary)'
+                                                  : 'background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)'"
+                                      x-text="compensationLabel(item.compensation)"></span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-center font-semibold tabular-nums" style="color:var(--color-error);" x-text="item.qty"></p>
+                        <p class="text-sm text-right tabular-nums" style="color:var(--color-txt-secondary);" x-text="fmt(item.product_price)"></p>
+                        <p class="text-sm text-right font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(item.product_price * item.qty)"></p>
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button @click="removeRow(item)" class="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                                    style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
+                                    onmouseover="this.style.background='color-mix(in srgb,var(--color-error) 22%,transparent)'"
+                                    onmouseout="this.style.background='color-mix(in srgb,var(--color-error) 12%,transparent)'">
+                                <span class="material-symbols-outlined text-[15px]">delete</span>
+                            </button>
+                            <button @click="editRow(item)" class="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                                    style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning);"
+                                    onmouseover="this.style.background='color-mix(in srgb,var(--color-warning) 28%,transparent)'"
+                                    onmouseout="this.style.background='color-mix(in srgb,var(--color-warning) 15%,transparent)'">
+                                <span class="material-symbols-outlined text-[15px]">edit</span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="shrink-0 px-4 py-3 flex items-center justify-between"
+                 style="border-top:2px solid var(--color-border); background-color:var(--color-surface-alt);">
+                <span class="text-sm font-semibold" style="color:var(--color-txt-muted);">
+                    Total <span class="ml-2 text-xs font-normal" x-text="'(' + totalLogging + ' units)'"></span>
+                </span>
+                <span class="text-2xl font-bold tabular-nums" style="color:var(--color-txt-primary);"
+                      x-text="fmt(totalAmount)"></span>
+            </div>
+        </div>{# /left #}
+
+        {# ── RIGHT: Search + Controls ── #}
+        <div class="flex flex-col gap-4 flex-[2]">
+
+            {# Search + Product Details card #}
+            <div class="flex flex-col rounded-2xl flex-1 overflow-hidden"
+                 style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
+                <div class="shrink-0 px-4 py-3"
+                     style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                    <h2 class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">Product Search</h2>
+                </div>
+
+                {# search bar #}
+                <div class="shrink-0 px-4 pt-3 pb-2">
+                    <div class="relative">
+                        <div class="flex gap-2">
+                            <div class="relative flex-1">
+                                <span class="material-symbols-outlined text-[15px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:var(--color-txt-muted);">search</span>
+                                <input type="text" x-ref="searchField" x-model="searchQuery"
+                                       @input.debounce.250ms="fetchSuggestions()"
+                                       @keydown.enter.prevent="lookupProduct()"
+                                       @keydown.escape="suggestions=[]"
+                                       @keydown.arrow-down.prevent="focusSuggestion(0)"
+                                       @blur="setTimeout(()=>suggestions=[], 150)"
+                                       placeholder="Search by name or barcode..."
+                                       autocomplete="off"
+                                       class="w-full pl-8 pr-3 py-2 rounded-xl text-sm focus:outline-none transition"
+                                       style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                       onfocus="this.style.borderColor='var(--color-accent)'; this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                                       onblur="this.style.borderColor='var(--color-border)'; this.style.boxShadow='none'">
+                            </div>
+                            <button @click="lookupProduct()" :disabled="searching || !searchQuery.trim()"
+                                    class="px-3 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                                    style="background-color:var(--color-primary); color:var(--color-bg);"
+                                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-primary-hover)'"
+                                    onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                                <span x-show="!searching" class="material-symbols-outlined text-[18px]">search</span>
+                                <span x-show="searching" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+                            </button>
+                        </div>
+                        <template x-if="suggestions.length > 0">
+                            <div class="absolute left-0 right-10 mt-1 rounded-xl overflow-hidden z-20 shadow-lg"
+                                 style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                                <template x-for="(s, i) in suggestions" :key="s.product_id">
+                                    <button x-ref="'suggestion_' + i" @click="selectSuggestion(s)"
+                                            @keydown.arrow-down.prevent="focusSuggestion(i+1)"
+                                            @keydown.arrow-up.prevent="i===0 ? $refs.searchField.focus() : focusSuggestion(i-1)"
+                                            @keydown.enter.prevent="selectSuggestion(s)"
+                                            class="w-full flex items-center justify-between px-4 py-2.5 text-left text-sm transition"
+                                            style="border-top:1px solid var(--color-border);" :style="i===0 ? 'border-top:none' : ''"
+                                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
+                                        <div>
+                                            <p class="font-medium leading-tight" style="color:var(--color-txt-primary);" x-text="s.product_name"></p>
+                                            <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="s.product_id"></p>
+                                        </div>
+                                        <p class="text-xs tabular-nums shrink-0 ml-3" style="color:var(--color-txt-muted);" x-text="s.stock + ' in stock'"></p>
+                                    </button>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="panelError" x-transition class="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
+                         style="background:color-mix(in srgb,var(--color-error) 10%,transparent); color:var(--color-error);">
+                        <span class="material-symbols-outlined text-[14px]">error</span>
+                        <span x-text="panelError"></span>
+                    </div>
+                </div>
+
+                {# Product Details #}
+                <div class="shrink-0 px-4 pt-2 pb-2" style="border-top:1px solid var(--color-border);">
+                    <p class="text-[11px] font-bold uppercase tracking-wider mb-2" style="color:var(--color-txt-muted);">Product Details</p>
+                    <template x-if="!product">
+                        <div class="flex items-center justify-center rounded-xl py-5" style="border:1px dashed var(--color-border);">
+                            <p class="text-xs" style="color:var(--color-border-strong);">No product selected</p>
+                        </div>
+                    </template>
+                    <template x-if="product">
+                        <div class="flex gap-3">
+                            {# left: info grid — matches reference #}
+                            <div class="flex-1 space-y-1.5 text-xs">
+                                <p style="color:var(--color-txt-primary);">
+                                    <span style="color:var(--color-txt-muted);">Product Name: </span>
+                                    <span class="font-semibold" x-text="product.product_name"></span>
+                                </p>
+                                <p style="color:var(--color-txt-primary);">
+                                    <span style="color:var(--color-txt-muted);">Barcode: </span>
+                                    <span class="font-mono" x-text="product.product_id"></span>
+                                </p>
+                                <p style="color:var(--color-txt-primary);">
+                                    <span style="color:var(--color-txt-muted);">Price: </span>
+                                    <span class="font-semibold tabular-nums" x-text="fmt(product.product_price)"></span>
+                                </p>
+                                <p style="color:var(--color-txt-primary);">
+                                    <span style="color:var(--color-txt-muted);">In Stock: </span>
+                                    <span class="font-semibold tabular-nums"
+                                          :style="product.stock===0 ? 'color:var(--color-error)' : ''"
+                                          x-text="product.stock + ' units'"></span>
+                                </p>
+                                <template x-if="product.bundle">
+                                    <p style="color:var(--color-txt-primary);">
+                                        <span style="color:var(--color-txt-muted);">Bundle: </span>
+                                        <span class="font-medium" style="color:var(--color-accent);"
+                                              x-text="product.bundle.bundle_name + ' (×' + product.bundle.bundle_count + ')'"></span>
+                                    </p>
+                                </template>
+                            </div>
+
+                            {# right: bundle + unit inputs — matches reference layout #}
+                            <div class="w-32 shrink-0 space-y-2">
+                                <div>
+                                    <label class="text-[10px] uppercase tracking-wide block mb-1" style="color:var(--color-txt-muted);">
+                                        Bundle
+                                        <template x-if="product.bundle">
+                                            <span style="color:var(--color-accent);" x-text="'(×'+product.bundle.bundle_count+')'"></span>
+                                        </template>
+                                    </label>
+                                    <div class="flex items-center gap-1">
+                                        <button @click="if(product.bundle && bundleQty>0) bundleQty--" :disabled="!product.bundle || bundleQty<=0"
+                                                class="w-7 h-7 rounded-md flex items-center justify-center transition shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);"
+                                                onmouseover="if(!this.disabled) this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+                                            <span class="material-symbols-outlined text-[13px]">remove</span>
+                                        </button>
+                                        <input type="number" x-model="bundleQty" :disabled="!product.bundle" min="0" @focus="$event.target.select()"
+                                               class="flex-1 min-w-0 py-1 rounded-md text-xs text-center font-bold focus:outline-none transition disabled:opacity-35 disabled:cursor-not-allowed"
+                                               style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                               onfocus="this.style.borderColor='var(--color-accent)'" onblur="this.style.borderColor='var(--color-border)'">
+                                        <button @click="if(product.bundle) bundleQty++" :disabled="!product.bundle"
+                                                class="w-7 h-7 rounded-md flex items-center justify-center transition shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);"
+                                                onmouseover="if(!this.disabled) this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+                                            <span class="material-symbols-outlined text-[13px]">add</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] uppercase tracking-wide block mb-1" style="color:var(--color-txt-muted);">Unit</label>
+                                    <div class="flex items-center gap-1">
+                                        <button @click="if(unitQty>0) unitQty--" :disabled="unitQty<=0"
+                                                class="w-7 h-7 rounded-md flex items-center justify-center transition shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);"
+                                                onmouseover="if(!this.disabled) this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+                                            <span class="material-symbols-outlined text-[13px]">remove</span>
+                                        </button>
+                                        <input type="number" x-model="unitQty" min="0" @focus="$event.target.select()"
+                                               class="flex-1 min-w-0 py-1 rounded-md text-xs text-center font-bold focus:outline-none transition"
+                                               style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                               onfocus="this.style.borderColor='var(--color-accent)'" onblur="this.style.borderColor='var(--color-border)'">
+                                        <button @click="unitQty++"
+                                                class="w-7 h-7 rounded-md flex items-center justify-center transition shrink-0"
+                                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);"
+                                                onmouseover="this.style.borderColor='var(--color-accent)'" onmouseout="this.style.borderColor='var(--color-border)'">
+                                            <span class="material-symbols-outlined text-[13px]">add</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="rounded-md py-1.5 text-center" style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
+                                    <p class="text-[10px]" style="color:var(--color-txt-muted);">Total Unit(s)</p>
+                                    <p class="text-base font-bold tabular-nums leading-tight"
+                                       :style="totalUnits > 0 && totalUnits > product.stock ? 'color:var(--color-error)' : 'color:var(--color-txt-primary)'"
+                                       x-text="totalUnits"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                {# Reason — shown when product is selected, matches reference #}
+                <div class="shrink-0 px-4 pb-3" x-show="product">
+                    <label class="text-xs font-semibold mb-1.5 block" style="color:var(--color-txt-primary);">
+                        Reason:
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <select x-model="itemReason"
+                                class="flex-1 px-3 py-2 rounded-xl text-sm font-semibold focus:outline-none transition"
+                                style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                onfocus="this.style.borderColor='var(--color-accent)'" onblur="this.style.borderColor='var(--color-border)'">
+                            <template x-for="r in reasons" :key="r">
+                                <option :value="r" x-text="reasonLabel(r)"></option>
+                            </template>
+                        </select>
+                        <select x-model="itemCompensation"
+                                class="flex-1 px-3 py-2 rounded-xl text-sm font-semibold focus:outline-none transition"
+                                style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                onfocus="this.style.borderColor='var(--color-accent)'" onblur="this.style.borderColor='var(--color-border)'">
+                            <template x-for="c in compensations" :key="c">
+                                <option :value="c" x-text="compensationLabel(c)"></option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+
+                {# Subtotal — matches reference "Subtotal: ₱50.00" #}
+                <div class="shrink-0 px-4 pb-3 flex items-center justify-between" x-show="product">
+                    <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">
+                        Subtotal: <span class="tabular-nums" x-text="fmt(panelSubtotal)"></span>
+                    </p>
+                </div>
+
+                <div class="flex-1"></div>
+
+                {# footer: Add Return Product button — matches reference #}
+                <div class="shrink-0 px-4 py-3 flex items-center justify-between gap-3"
+                     style="border-top:2px solid var(--color-border); background-color:var(--color-surface-alt);">
+                    <div class="flex items-center gap-2">
+                        <button x-show="editingId" @click="cancelEdit()"
+                                class="text-xs transition px-2 py-1.5 rounded-lg"
+                                style="color:var(--color-txt-muted); border:1px solid var(--color-border);"
+                                onmouseover="this.style.color='var(--color-error)';this.style.borderColor='var(--color-error)'"
+                                onmouseout="this.style.color='var(--color-txt-muted)';this.style.borderColor='var(--color-border)'">Cancel</button>
+                    </div>
+                    <button @click="addItem()" :disabled="!product || totalUnits <= 0"
+                            class="px-5 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-[.97]"
+                            style="background-color:var(--color-success); color:#fff;"
+                            onmouseover="if(!this.disabled) this.style.opacity='0.85'"
+                            onmouseout="this.style.opacity='1'"
+                            x-text="editingId ? 'Update Item' : 'Add Return Product'">
+                    </button>
+                </div>
+            </div>{# /search card #}
+
+            {# Action buttons card — matches reference layout #}
+            <div class="shrink-0 rounded-2xl p-4 flex flex-col gap-2"
+                 style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
+                <div x-show="globalError" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs mb-1"
+                     style="background:color-mix(in srgb,var(--color-error) 10%,transparent); color:var(--color-error);">
+                    <span class="material-symbols-outlined text-[14px]">error</span>
+                    <span x-text="globalError"></span>
+                </div>
+
+                <button @click="confirmComplete = true" :disabled="!canComplete"
+                        class="w-full py-3 rounded-xl font-bold text-sm tracking-wide transition active:scale-[.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                        style="background-color:var(--color-success); color:#fff;"
+                        onmouseover="if(!this.disabled) this.style.opacity='0.85'"
+                        onmouseout="this.style.opacity='1'">
+                    Complete Return Items
+                </button>
+                <button @click="confirmCancel = true" x-show="items.length > 0"
+                        class="w-full py-3 rounded-xl font-bold text-sm tracking-wide transition active:scale-[.98]"
+                        style="background-color:var(--color-error); color:#fff;"
+                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    Cancel Transaction
+                </button>
+            </div>
+
+        </div>{# /right #}
+    </div>{# /desktop #}
+
+
+    {# ═══════════ MOBILE LAYOUT ═══════════ #}
+    <div class="mobile-layout flex-col w-full"
+         style="height: calc(100vh - var(--navbar-height, 64px)); margin-top: -17px;">
+
+        <div class="shrink-0 flex items-center justify-center gap-3 py-3"
+             style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+            <button @click="mobileTab='scan'"
+                    class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition"
+                    :style="mobileTab==='scan'
+                            ? 'background:var(--color-error);color:#fff'
+                            : 'background:var(--color-surface);border:1.5px solid var(--color-border);color:var(--color-txt-muted)'">
+                <span class="material-symbols-outlined text-[16px]">barcode_scanner</span>
+                Scan &amp; List
+                <template x-if="items.length > 0">
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                          :style="mobileTab==='scan' ? 'background:rgba(255,255,255,0.25);color:#fff' : 'background:var(--color-error);color:#fff'"
+                          x-text="items.length"></span>
+                </template>
+            </button>
+            <span class="w-1.5 h-1.5 rounded-full" style="background-color:var(--color-border);"></span>
+            <button @click="mobileTab='complete'"
+                    class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition"
+                    :style="mobileTab==='complete'
+                            ? 'background:var(--color-error);color:#fff'
+                            : 'background:var(--color-surface);border:1.5px solid var(--color-border);color:var(--color-txt-muted)'">
+                <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                Complete
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-hidden">
+
+            {# ── SCAN + LIST TAB ── #}
+            <div class="mob-panel flex-col h-full" :class="mobileTab==='scan' ? 'is-active' : ''"
+                 style="background-color:var(--color-surface);">
+
+                <div class="shrink-0 flex flex-col" style="border-bottom:2px solid var(--color-border);">
+                    <div class="flex items-center justify-between px-4 pt-3 pb-2">
+                        <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);"
+                           x-text="editingId ? 'Editing Item' : 'Scan / Search'"></p>
+                    </div>
+                    <div class="px-4 pb-3">
+                        <div class="relative">
+                            <div class="flex gap-2">
+                                <div class="relative flex-1">
+                                    <span class="material-symbols-outlined text-[16px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:var(--color-txt-muted);">search</span>
+                                    <input type="text" x-ref="searchField" x-model="searchQuery"
+                                           @input.debounce.250ms="fetchSuggestions()"
+                                           @keydown.enter.prevent="lookupProduct()"
+                                           @keydown.escape="suggestions=[]"
+                                           @blur="setTimeout(()=>suggestions=[], 150)"
+                                           placeholder="Barcode or product name..."
+                                           autocomplete="off"
+                                           class="w-full pl-9 pr-3 py-2.5 rounded-2xl text-sm focus:outline-none transition"
+                                           style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary); font-size:16px;"
+                                           onfocus="this.style.borderColor='var(--color-accent)'; this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                                           onblur="this.style.borderColor='var(--color-border)'; this.style.boxShadow='none'">
+                                </div>
+                                <button @click="lookupProduct()" :disabled="searching || !searchQuery.trim()"
+                                        class="w-11 rounded-2xl flex items-center justify-center transition disabled:opacity-40"
+                                        style="background-color:var(--color-error); color:#fff;">
+                                    <span x-show="!searching" class="material-symbols-outlined text-[19px]">search</span>
+                                    <span x-show="searching" class="material-symbols-outlined text-[19px] animate-spin">progress_activity</span>
+                                </button>
+                            </div>
+                            <template x-if="suggestions.length > 0">
+                                <div class="absolute left-0 right-13 mt-1 rounded-2xl overflow-hidden z-20 shadow-xl"
+                                     style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                                    <template x-for="(s, i) in suggestions" :key="s.product_id">
+                                        <button @click="selectSuggestion(s)"
+                                                class="w-full flex items-center justify-between px-4 py-3 text-left transition"
+                                                style="border-top:1px solid var(--color-border);" :style="i===0 ? 'border-top:none' : ''"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
+                                            <div>
+                                                <p class="text-sm font-medium" style="color:var(--color-txt-primary);" x-text="s.product_name"></p>
+                                                <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="s.product_id"></p>
+                                            </div>
+                                            <p class="text-xs shrink-0 ml-3" style="color:var(--color-txt-muted);" x-text="s.stock + ' in stock'"></p>
+                                        </button>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                        <div x-show="panelError" class="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
+                             style="background:color-mix(in srgb,var(--color-error) 10%,transparent); color:var(--color-error);">
+                            <span class="material-symbols-outlined text-[15px]">error</span>
+                            <span x-text="panelError"></span>
+                        </div>
+                    </div>
+
+                    {# mobile product card #}
+                    <template x-if="product">
+                        <div class="mx-4 mb-3 rounded-2xl overflow-hidden" style="border:1px solid var(--color-border);">
+                            <div class="flex items-start justify-between gap-3 px-4 py-3"
+                                 style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-bold truncate" style="color:var(--color-txt-primary);" x-text="product.product_name"></p>
+                                    <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="product.product_id"></p>
+                                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                                       x-text="fmt(product.product_price) + ' · ' + product.stock + ' in stock'"></p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 px-3 py-2.5">
+                                <div class="flex flex-col items-center gap-1" :style="product.bundle ? '' : 'opacity:0.3;pointer-events:none'">
+                                    <p class="text-[10px] font-semibold uppercase" style="color:var(--color-txt-muted);">Bundle<template x-if="product.bundle"><span style="color:var(--color-accent);" x-text="' ×'+product.bundle.bundle_count"></span></template></p>
+                                    <div class="flex items-center gap-1">
+                                        <button @click="if(bundleQty>0) bundleQty--" :disabled="bundleQty<=0" class="w-8 h-8 rounded-xl flex items-center justify-center transition disabled:opacity-30" style="background:var(--color-surface-alt); border:1px solid var(--color-border); color:var(--color-txt-muted);"><span class="material-symbols-outlined text-[15px]">remove</span></button>
+                                        <input type="number" x-model="bundleQty" min="0" @focus="$event.target.select()" class="w-10 py-1.5 rounded-xl text-sm text-center font-bold focus:outline-none" style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                                        <button @click="bundleQty++" class="w-8 h-8 rounded-xl flex items-center justify-center transition" style="background:var(--color-surface-alt); border:1px solid var(--color-border); color:var(--color-txt-muted);"><span class="material-symbols-outlined text-[15px]">add</span></button>
+                                    </div>
+                                </div>
+                                <div class="self-stretch w-px mx-1" style="background-color:var(--color-border);"></div>
+                                <div class="flex flex-col items-center gap-1">
+                                    <p class="text-[10px] font-semibold uppercase" style="color:var(--color-txt-muted);">Unit</p>
+                                    <div class="flex items-center gap-1">
+                                        <button @click="if(unitQty>0) unitQty--" :disabled="unitQty<=0" class="w-8 h-8 rounded-xl flex items-center justify-center transition disabled:opacity-30" style="background:var(--color-surface-alt); border:1px solid var(--color-border); color:var(--color-txt-muted);"><span class="material-symbols-outlined text-[15px]">remove</span></button>
+                                        <input type="number" x-model="unitQty" min="0" @focus="$event.target.select()" class="w-10 py-1.5 rounded-xl text-sm text-center font-bold focus:outline-none" style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                                        <button @click="unitQty++" class="w-8 h-8 rounded-xl flex items-center justify-center transition" style="background:var(--color-surface-alt); border:1px solid var(--color-border); color:var(--color-txt-muted);"><span class="material-symbols-outlined text-[15px]">add</span></button>
+                                    </div>
+                                </div>
+                                <div class="self-stretch w-px mx-1" style="background-color:var(--color-border);"></div>
+                                <div class="flex-1 flex flex-col items-center gap-1">
+                                    <p class="text-[10px] font-semibold uppercase" style="color:var(--color-txt-muted);">Total</p>
+                                    <p class="text-lg font-bold" style="color:var(--color-txt-primary);" x-text="totalUnits"></p>
+                                </div>
+                                <div class="self-stretch w-px" style="background-color:var(--color-border);"></div>
+                                <div class="flex flex-col gap-1.5 shrink-0">
+                                    <button @click="addItem()" :disabled="!product || totalUnits <= 0"
+                                            class="px-4 py-2 rounded-xl text-xs font-bold transition disabled:opacity-40 active:scale-[.97]"
+                                            style="background-color:var(--color-success); color:#fff;"
+                                            x-text="editingId ? 'Update' : 'Add'"></button>
+                                    <template x-if="editingId">
+                                        <button @click="cancelEdit()" class="px-4 py-1.5 rounded-xl text-xs font-semibold"
+                                                style="background:color-mix(in srgb,var(--color-error) 10%,transparent); color:var(--color-error); border:1px solid color-mix(in srgb,var(--color-error) 20%,transparent);">Cancel</button>
+                                    </template>
+                                </div>
+                            </div>
+                            {# mobile reason + compensation #}
+                            <div class="grid grid-cols-2 gap-2 px-3 pb-3">
+                                <div>
+                                    <p class="text-[10px] uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);">Reason</p>
+                                    <select x-model="itemReason" class="w-full px-2 py-1.5 rounded-xl text-xs font-semibold focus:outline-none"
+                                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                                        <template x-for="r in reasons" :key="r"><option :value="r" x-text="reasonLabel(r)"></option></template>
+                                    </select>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);">Compensation</p>
+                                    <select x-model="itemCompensation" class="w-full px-2 py-1.5 rounded-xl text-xs font-semibold focus:outline-none"
+                                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                                        <template x-for="c in compensations" :key="c"><option :value="c" x-text="compensationLabel(c)"></option></template>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                {# mobile list #}
+                <div class="flex-1 overflow-y-auto flex flex-col min-h-0">
+                    <div class="shrink-0 flex items-center justify-between px-4 py-2"
+                         style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                        <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
+                            Return List
+                            <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]"
+                                  style="background:color-mix(in srgb,var(--color-error) 15%,transparent); color:var(--color-error);"
+                                  x-text="items.length"></span>
+                        </p>
+                        <button x-show="items.length > 0" @click="confirmCancel = true"
+                                class="flex items-center gap-1 text-xs transition" style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[13px]">delete_sweep</span> Clear
+                        </button>
+                    </div>
+                    <template x-if="items.length === 0">
+                        <div class="flex-1 flex flex-col items-center justify-center gap-2" style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[40px]" style="color:var(--color-border-strong);">report_problem</span>
+                            <p class="text-sm">No items added yet</p>
+                        </div>
+                    </template>
+                    <template x-for="item in items" :key="item.product_id">
+                        <div class="flex items-center gap-3 px-4 py-3"
+                             :style="editingId===item.product_id
+                                     ? 'border-bottom:1px solid var(--color-border);background:color-mix(in srgb,var(--color-accent) 6%,transparent)'
+                                     : 'border-bottom:1px solid var(--color-border)'">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
+                                <p class="text-xs tabular-nums mt-0.5" style="color:var(--color-txt-muted);"
+                                   x-text="item.qty + ' × ' + fmt(item.product_price)"></p>
+                                <div class="flex gap-1 mt-0.5 flex-wrap">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full"
+                                          style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
+                                          x-text="reasonLabel(item.reason)"></span>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full"
+                                          style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);"
+                                          x-text="compensationLabel(item.compensation)"></span>
+                                </div>
+                            </div>
+                            <p class="text-sm font-bold tabular-nums shrink-0" style="color:var(--color-txt-primary);"
+                               x-text="fmt(item.product_price * item.qty)"></p>
+                            <div class="flex gap-1.5 shrink-0">
+                                <button @click="editRow(item)" class="w-8 h-8 rounded-xl flex items-center justify-center"
+                                        style="background:color-mix(in srgb,var(--color-warning) 15%,transparent); color:var(--color-warning);">
+                                    <span class="material-symbols-outlined text-[15px]">edit</span>
+                                </button>
+                                <button @click="removeRow(item)" class="w-8 h-8 rounded-xl flex items-center justify-center"
+                                        style="background:color-mix(in srgb,var(--color-error) 12%,transparent); color:var(--color-error);">
+                                    <span class="material-symbols-outlined text-[15px]">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="shrink-0 flex items-center justify-between px-4 py-3"
+                     style="border-top:2px solid var(--color-border); background-color:var(--color-surface-alt);">
+                    <div>
+                        <p class="text-xs" style="color:var(--color-txt-muted);" x-text="totalLogging + ' units'"></p>
+                        <p class="text-xl font-bold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(totalAmount)"></p>
+                    </div>
+                    <button @click="mobileTab='complete'" x-show="items.length > 0"
+                            class="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm transition active:scale-[.97]"
+                            style="background-color:var(--color-success); color:#fff;">
+                        Complete
+                        <span class="material-symbols-outlined text-[17px]">arrow_forward</span>
+                    </button>
+                </div>
+            </div>{# /scan tab #}
+
+            {# ── COMPLETE TAB ── #}
+            <div class="mob-panel flex-col h-full overflow-y-auto" :class="mobileTab==='complete' ? 'is-active' : ''"
+                 style="background-color:var(--color-surface);">
+                <div class="shrink-0 px-4 py-3" style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                    <p class="text-sm font-bold" style="color:var(--color-txt-primary);">Complete Return Items</p>
+                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="items.length + ' item(s) · ' + totalLogging + ' units'"></p>
+                </div>
+                <div class="flex-1 flex flex-col gap-4 px-4 py-4">
+                    <div class="rounded-2xl overflow-hidden" style="border:1px solid var(--color-border);">
+                        <div class="px-4 py-2.5" style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                            <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">Summary</p>
+                        </div>
+                        <template x-for="item in items" :key="item.product_id">
+                            <div class="px-4 py-2.5" style="border-bottom:1px solid var(--color-border);">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-sm" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
+                                    <p class="text-sm font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(item.product_price * item.qty)"></p>
+                                </div>
+                                <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                                   x-text="item.qty + ' × ' + fmt(item.product_price) + ' · ' + reasonLabel(item.reason)"></p>
+                            </div>
+                        </template>
+                        <div class="flex items-center justify-between px-4 py-3">
+                            <p class="text-sm font-bold" style="color:var(--color-txt-primary);">Total</p>
+                            <p class="text-xl font-bold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(totalAmount)"></p>
+                        </div>
+                    </div>
+                    <div x-show="globalError" class="rounded-2xl px-4 py-3 flex items-center gap-2 text-sm"
+                         style="background:color-mix(in srgb,var(--color-error) 10%,transparent); color:var(--color-error);">
+                        <span class="material-symbols-outlined text-[16px]">error</span>
+                        <span x-text="globalError"></span>
+                    </div>
+                </div>
+                <div class="shrink-0 flex flex-col gap-2 px-4 py-4"
+                     style="border-top:1px solid var(--color-border); background-color:var(--color-surface-alt);">
+                    <button @click="confirmComplete = true" :disabled="!canComplete"
+                            class="w-full py-4 rounded-2xl font-bold text-base transition active:scale-[.98] disabled:opacity-40"
+                            style="background-color:var(--color-success); color:#fff;">
+                        Complete Return Items
+                    </button>
+                    <button @click="confirmCancel = true" x-show="items.length > 0"
+                            class="w-full py-3 rounded-2xl font-semibold text-sm transition active:scale-[.98]"
+                            style="background-color:var(--color-error); color:#fff;">
+                        Cancel Transaction
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>{# /mobile #}
+
+
+    {# ═══════════ RECEIPT MODAL ═══════════ #}
+    <template x-if="showReceipt && receipt">
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+             style="background:rgba(0,0,0,0.6);">
+            <div class="rounded-2xl w-full max-w-sm flex flex-col max-h-[90vh]"
+                 style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                <div class="flex items-center justify-between px-6 py-4" style="border-bottom:1px solid var(--color-border);">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[22px]" style="color:var(--color-success);">check_circle</span>
+                        <h3 class="font-bold text-base" style="color:var(--color-txt-primary);">Return / Defect Logged</h3>
+                    </div>
+                    <span class="text-xs font-mono px-2 py-0.5 rounded"
+                          style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent); color:var(--color-txt-muted);"
+                          x-text="'#' + receipt.defect_id"></span>
+                </div>
+                <div class="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+                    <div class="text-center space-y-0.5">
+                        <p class="font-bold" style="color:var(--color-txt-primary);">Shekel</p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);" x-text="receipt.datetime"></p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);" x-text="'Logged by: ' + receipt.recorded_by"></p>
+                    </div>
+                    <div style="border-top:1px dashed var(--color-border);"></div>
+                    <div class="space-y-2">
+                        <template x-for="item in receipt.logged" :key="item.product_name">
+                            <div class="flex items-start justify-between gap-2 text-sm">
+                                <div>
+                                    <p style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
+                                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                                       x-text="item.reason + ' · ' + item.compensation + ' · now: ' + item.new_stock + ' in stock'"></p>
+                                </div>
+                                <span class="text-sm font-semibold tabular-nums shrink-0" style="color:var(--color-txt-primary);"
+                                      x-text="'×' + item.qty"></span>
+                            </div>
+                        </template>
+                    </div>
+                    <div style="border-top:1px dashed var(--color-border);"></div>
+                    <div class="flex justify-between text-sm font-bold">
+                        <span style="color:var(--color-txt-muted);">Total Units</span>
+                        <span style="color:var(--color-txt-primary);" x-text="receipt.total_units"></span>
+                    </div>
+                </div>
+                <div class="px-6 py-4" style="border-top:1px solid var(--color-border);">
+                    <button @click="closeReceipt()"
+                            class="w-full py-3 rounded-xl text-sm font-semibold transition active:scale-[.98]"
+                            style="background-color:var(--color-success); color:#fff;">
+                        Done
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    {# ═══════════ CONFIRM COMPLETE MODAL ═══════════ #}
+    <template x-if="confirmComplete">
+        <div class="fixed inset-0 z-50 flex items-center justify-center px-4"
+             style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);">
+            <div class="w-full max-w-sm rounded-2xl p-7 text-center"
+                 style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+                     style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);">
+                    <span class="material-symbols-outlined text-[24px]" style="color:var(--color-warning);">warning</span>
+                </div>
+                <h2 class="text-lg font-bold mb-2" style="color:var(--color-txt-primary);">Complete Return Items?</h2>
+                <p class="text-sm mb-7" style="color:var(--color-txt-muted);">
+                    <span x-text="totalLogging"></span> unit(s) will be removed from inventory. This cannot be undone.
+                </p>
+                <div class="flex gap-3">
+                    <button @click="confirmComplete = false"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                            style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
+                    <button @click="completeLog()"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                            style="background-color:var(--color-success); color:#fff;"
+                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    {# ═══════════ CONFIRM CANCEL MODAL ═══════════ #}
+    <template x-if="confirmCancel">
+        <div class="fixed inset-0 z-50 flex items-center justify-center px-4"
+             style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);">
+            <div class="w-full max-w-sm rounded-2xl p-7 text-center"
+                 style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+                     style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);">
+                    <span class="material-symbols-outlined text-[24px]" style="color:var(--color-warning);">delete_sweep</span>
+                </div>
+                <h2 class="text-lg font-bold mb-2" style="color:var(--color-txt-primary);">Cancel Transaction?</h2>
+                <p class="text-sm mb-7" style="color:var(--color-txt-muted);">
+                    All <span x-text="items.length"></span> item(s) will be cleared.
+                </p>
+                <div class="flex gap-3">
+                    <button @click="confirmCancel = false"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                            style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">Go Back</button>
+                    <button @click="cancelAll()"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                            style="background-color:var(--color-error); color:#fff;"
+                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Yes, Cancel</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+</div>
+{% endblock %}

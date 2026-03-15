@@ -53,6 +53,9 @@ def create_app():
     from app.routes.inventory import inventory_bp
     app.register_blueprint(inventory_bp)
 
+    from app.routes.defects import defects_bp
+    app.register_blueprint(defects_bp)
+
     @app.route("/test")
     def test():
         return render_template("test.html")

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}{{ product.product_name|capitalize }} — Defect History{% endblock %}
+{% block nav_title %}Defect History{% endblock %}
+
+{% block body %}
+
+<div class="flex flex-col gap-4" style="margin-top: -17px;">
+
+    {# ── back + header ── #}
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('defects.index') }}"
+           class="w-8 h-8 rounded-xl flex items-center justify-center transition shrink-0"
+           style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+           onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+           onmouseout="this.style.backgroundColor='transparent'">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        </a>
+        <div>
+            <h1 class="text-lg font-bold" style="color:var(--color-txt-primary);">
+                {{ product.product_name|capitalize }}
+            </h1>
+            <p class="text-xs font-mono" style="color:var(--color-txt-muted);">
+                {{ product.product_id }}
+                {% if product.bundle %}
+                · Bundle: {{ product.bundle.bundle_name }} (×{{ product.bundle.bundle_count }})
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    {# ── table card ── #}
+    <div class="rounded-2xl overflow-hidden"
+         style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
+        {# column headers #}
+        <div class="grid grid-cols-[1.5fr_1fr_1fr_1fr_2fr_2fr_80px] px-5 py-3
+                    text-xs font-bold uppercase tracking-wider"
+             style="background-color:var(--color-surface-alt);
+                    border-bottom:1px solid var(--color-border);
+                    color:var(--color-txt-muted);">
+            <span>Date</span>
+            <span class="text-center">Bundle</span>
+            <span class="text-center">Unit</span>
+            <span class="text-center">Total</span>
+            <span>Reason</span>
+            <span>Compensation</span>
+            <span class="text-center">Action</span>
+        </div>
+
+        {% if rows %}
+            {% for row in rows %}
+            <div class="grid grid-cols-[1.5fr_1fr_1fr_1fr_2fr_2fr_80px] items-center px-5 py-3.5 transition"
+                 style="border-top:1px solid var(--color-border);"
+                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                 onmouseout="this.style.backgroundColor='transparent'">
+
+                <p class="text-sm" style="color:var(--color-txt-primary);">{{ row.date }}</p>
+                <p class="text-sm text-center tabular-nums" style="color:var(--color-txt-secondary);">{{ row.bundle_qty }}</p>
+                <p class="text-sm text-center tabular-nums" style="color:var(--color-txt-secondary);">{{ row.unit_qty }}</p>
+                <p class="text-sm text-center font-semibold tabular-nums" style="color:var(--color-error);">{{ row.total_units }}</p>
+
+                {# reason badge #}
+                <div>
+                    <span class="text-xs px-2.5 py-1 rounded-full font-medium"
+                          style="{% if row.reason_raw == 'expired' %}
+                                     background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
+                                 {% elif row.reason_raw == 'change_of_mind' %}
+                                     background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)
+                                 {% else %}
+                                     background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                                 {% endif %}">
+                        {{ row.reason }}
+                    </span>
+                </div>
+
+                {# compensation badge #}
+                <div>
+                    <span class="text-xs px-2.5 py-1 rounded-full font-medium"
+                          style="{% if row.compensation_raw == 'loss' %}
+                                     background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                                 {% elif row.compensation_raw == 'returned' %}
+                                     background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)
+                                 {% elif row.compensation_raw == 'replacement' %}
+                                     background:color-mix(in srgb,var(--color-primary) 12%,transparent);color:var(--color-primary)
+                                 {% else %}
+                                     background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)
+                                 {% endif %}">
+                        {{ row.compensation }}
+                    </span>
+                </div>
+
+                {# edit compensation button #}
+                <div class="flex items-center justify-center">
+                    <button onclick="openEditModal({{ row.defect_detail_id }}, '{{ row.compensation_raw }}')"
+                            class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                            style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
+                                   color:var(--color-warning);"
+                            onmouseover="this.style.background='color-mix(in srgb,var(--color-warning) 28%,transparent)'"
+                            onmouseout="this.style.background='color-mix(in srgb,var(--color-warning) 15%,transparent)'"
+                            title="Edit compensation">
+                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="flex flex-col items-center justify-center gap-2 py-16">
+                <span class="material-symbols-outlined text-[48px]" style="color:var(--color-border-strong);">inventory_2</span>
+                <p class="text-sm" style="color:var(--color-txt-muted);">No defect records found for this product.</p>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
+
+{# ── Edit Compensation Modal ── #}
+<div id="editModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+     style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);">
+    <div class="w-full max-w-sm rounded-2xl p-7"
+         style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+        <h2 class="text-base font-bold mb-1" style="color:var(--color-txt-primary);">Update Compensation</h2>
+        <p class="text-xs mb-5" style="color:var(--color-txt-muted);">Change the compensation status for this defect record.</p>
+
+        <form id="editForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <label class="text-xs font-semibold uppercase tracking-wide block mb-1.5"
+                   style="color:var(--color-txt-muted);">Compensation Status</label>
+            <select name="compensation" id="editCompensation"
+                    class="w-full px-3 py-2.5 rounded-xl text-sm font-semibold focus:outline-none transition mb-6"
+                    style="border:1px solid var(--color-border);
+                           background-color:var(--color-surface-alt);
+                           color:var(--color-txt-primary);"
+                    onfocus="this.style.borderColor='var(--color-accent)'"
+                    onblur="this.style.borderColor='var(--color-border)'">
+                <option value="pending">Pending</option>
+                <option value="loss">Loss</option>
+                <option value="returned">Returned</option>
+                <option value="replacement">Replacement</option>
+            </select>
+
+            <div class="flex gap-3">
+                <button type="button" onclick="closeEditModal()"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                        style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
+                <button type="submit"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                        style="background-color:var(--color-warning); color:var(--color-bg);"
+                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditModal(detailId, currentCompensation) {
+    const modal = document.getElementById('editModal')
+    const form  = document.getElementById('editForm')
+    const sel   = document.getElementById('editCompensation')
+    form.action = `/defects/detail/${detailId}/edit`
+    sel.value   = currentCompensation
+    modal.style.display = 'flex'
+}
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none'
+}
+// close on backdrop click
+document.getElementById('editModal').addEventListener('click', function(e) {
+    if (e.target === this) closeEditModal()
+})
+</script>
+
+{% endblock %}

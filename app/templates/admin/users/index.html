@@ -193,8 +193,29 @@ class="space-y-5">
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
 
+                                <template x-if="user.role === 'admin'">
+                                    <div class="flex items-center gap-1">
+
+                                        <button @click='$dispatch("confirm", {
+                                                    title:   "Reset Password",
+                                                    message: `Reset password for ${user.first_name} ${user.last_name}?`,
+                                                    action:  `/admin/users/${user.user_id}/reset_password`,
+                                                    fields:  []
+                                                })'
+                                                title="Reset password"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                                style="color: var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-info)'"
+                                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">lock_reset</span>
+                                        </button>
+
+                                    </div>
+
+                                </template>
+
                                 {# ── normal actions (not archived) ── #}
-                                <template x-if="user.status !== 'archived'">
+                                <template x-if="user.status !== 'archived' && user.role !== 'admin'">
                                     <div class="flex items-center gap-1">
 
                                         <a :href="`/admin/users/${user.user_id}/edit`" title="Edit"

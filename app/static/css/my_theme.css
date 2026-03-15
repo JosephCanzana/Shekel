@@ -7,23 +7,23 @@
 
 @theme {
   /* brand */
-  --color-primary:       #18181B;
-  --color-primary-hover: #09090B;
-  --color-primary-soft:  #F4F4F5;
+  --color-primary:       #2A2A2E;
+  --color-primary-hover: #1C1C20;
+  --color-primary-soft:  #F5F5F7;
 
   /* backgrounds */
-  --color-bg:            #FCFCFC;
+  --color-bg:            #FAFAFB;
   --color-surface:       #FFFFFF;
-  --color-surface-alt:   #F7F7F8;
+  --color-surface-alt:   #F3F4F6;
 
   /* text */
-  --color-txt-primary:   #111111;
-  --color-txt-secondary: #52525B;
-  --color-txt-muted:     #A1A1AA;
+  --color-txt-primary:   #1F1F23;
+  --color-txt-secondary: #5A5A61;
+  --color-txt-muted:     #9A9AA1;
 
   /* borders */
-  --color-border:        #EBEBEB;
-  --color-border-strong: #D4D4D8;
+  --color-border:        #E7E7EA;
+  --color-border-strong: #D6D6DB;
 
   /* states */
   --color-success:       #16A34A;
@@ -31,10 +31,10 @@
   --color-warning:       #D97706;
   --color-info:          #2563EB;
 
-  /* accent (cool indigo instead of orange) */
-  --color-accent:        #4F46E5;
-  --color-accent-hover:  #4338CA;
-  --color-accent-soft:   #EEF2FF;
+  /* accent (professional blue) */
+  --color-accent:        #3B82F6;
+  --color-accent-hover:  #2563EB;
+  --color-accent-soft:   #EFF6FF;
 
   /* font */
   --font-main:           'Main', sans-serif;
@@ -44,22 +44,22 @@
 .dark {
   /* brand */
   --color-primary:       #FFFFFF;
-  --color-primary-hover: #E4E4E7;
-  --color-primary-soft:  #1C1C1F;
+  --color-primary-hover: #E5E7EB;
+  --color-primary-soft:  #1F1F23;
 
   /* backgrounds */
-  --color-bg:            #0C0C0D;
-  --color-surface:       #141415;
-  --color-surface-alt:   #1A1A1E;
+  --color-bg:            #0F0F11;
+  --color-surface:       #18181B;
+  --color-surface-alt:   #202024;
 
   /* text */
-  --color-txt-primary:   #FFFFFF;
+  --color-txt-primary:   #F4F4F5;
   --color-txt-secondary: #B4B4BB;
-  --color-txt-muted:     #606068;
+  --color-txt-muted:     #71717A;
 
   /* borders */
-  --color-border:        #232326;
-  --color-border-strong: #2E2E33;
+  --color-border:        #2A2A2E;
+  --color-border-strong: #3A3A3F;
 
   /* states */
   --color-success:       #22C55E;
@@ -68,7 +68,7 @@
   --color-info:          #60A5FA;
 
   /* accent */
-  --color-accent:        #6366F1;
-  --color-accent-hover:  #818CF8;
-  --color-accent-soft:   #1A1B3A;
+  --color-accent:        #60A5FA;
+  --color-accent-hover:  #93C5FD;
+  --color-accent-soft:   #1E293B;
 }
