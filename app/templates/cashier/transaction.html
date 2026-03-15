@@ -184,6 +184,11 @@
         this.globalError = ''; this.panelError = ''; this.confirmCancel = false
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
+    get stockWarnings() {
+    return this.cart
+        .filter(item => item.qty > item.stock) // check if trying to sell more than available
+        .map(item => `${item.product_name}: only ${item.stock} in stock, selling ${item.qty}.`);
+    },
 
     async completeSale() {
         if (!this.canComplete) return
@@ -998,6 +1003,18 @@
                      style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);">
                     <span class="material-symbols-outlined text-[24px]" style="color:var(--color-warning);">warning</span>
                 </div>
+                <!-- WARNING MESSAGES -->
+                <template x-if="stockWarnings.length">
+                    <div class="space-y-1 mb-4">
+                        <template x-for="w in stockWarnings" :key="w">
+                            <div class="flex items-start gap-1.5 text-xs px-3 py-2 rounded-lg"
+                                style="background:color-mix(in srgb,var(--color-warning) 10%,transparent); color:var(--color-warning);">
+                                <span class="material-symbols-outlined text-[14px] mt-0.5 shrink-0">warning</span>
+                                <span x-text="w"></span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
                 <h2 class="text-lg font-bold mb-2" style="color:var(--color-txt-primary);">Complete Sale?</h2>
                 <p class="text-sm mb-2" style="color:var(--color-txt-muted);">
                     Total: <span class="font-bold" style="color:var(--color-txt-primary);" x-text="fmt(totalAmount)"></span>
