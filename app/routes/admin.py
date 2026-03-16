@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template
 from flask_login import login_required
 from app.utils.decorator import role_required
-from app.utils.tmp_functions import *
 from app.utils.index_helpers import *
 
 admin_bp = Blueprint("admin", __name__, url_prefix='/admin')

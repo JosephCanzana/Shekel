@@ -176,7 +176,7 @@ def reset_password(user_id):
 
 @manage_users_bp.route("/<int:user_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin")
+@role_required("admin", "co-admin")
 def delete(user_id):
     user = User.get_by_id(user_id)
     if not user:
@@ -193,5 +193,7 @@ def delete(user_id):
         flash(f"{name} has been permanently deleted.", "success")
     except IntegrityError:
         db.session.rollback()
-        flash(f"Cannot delete user because it is referenced by other records", "danger")
+        flash("Cannot delete user because it is referenced by other records", "danger")
+        return redirect(url_for("manage_users.index"))
+    
     return redirect(url_for("manage_users.index"))
