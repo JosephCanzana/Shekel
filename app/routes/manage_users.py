@@ -1,10 +1,10 @@
-import re
 from flask import Blueprint, render_template, redirect, request, url_for, flash
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
 from app.extensions import db
 from app.models.user import User
 from app.utils.helpers import validate_name, validate_password
+from sqlalchemy.exc import IntegrityError
 
 manage_users_bp = Blueprint("manage_users", __name__, url_prefix="/admin/users")
 
@@ -188,6 +188,10 @@ def delete(user_id):
         return redirect(url_for("manage_users.index"))
 
     name = f"{user.first_name} {user.last_name}"
-    user.delete()
-    flash(f"{name} has been permanently deleted.", "success")
+    try:
+        user.delete()
+        flash(f"{name} has been permanently deleted.", "success")
+    except IntegrityError:
+        db.session.rollback()
+        flash(f"Cannot delete user because it is referenced by other records", "danger")
     return redirect(url_for("manage_users.index"))

@@ -7,7 +7,7 @@ from app.models.product_bundle import ProductBundle
 from app.models.inventory import Inventory
 from app.models.stock_in import StockIn
 from app.extensions import db
-from app.utils.tmp_functions import *
+from app.utils.index_helpers import *
 
 stocking_bp = Blueprint("stocking", __name__, url_prefix="/stocking")
 

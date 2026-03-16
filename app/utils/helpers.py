@@ -1,12 +1,36 @@
+import re
+import pytz
+from datetime import datetime
 from flask import render_template
 from flask_login import current_user
-import re
 from app.models.category import Category
 from app.models.product import Product
 from app.models.product_bundle import ProductBundle
 
+PHT = pytz.timezone("Asia/Manila")
+
 def message(num=400, message="Error occur"):
     return render_template("message.html", message=message, error_code=num)
+
+def to_pht(utc_dt):
+    """Convert a naive UTC datetime to PHT."""
+    return utc_dt.replace(tzinfo=pytz.utc).astimezone(PHT)
+
+def pht_now():
+    """Get current datetime in PHT."""
+    return datetime.now(PHT)
+
+def pht_today():
+    """Get today's date in PHT."""
+    return datetime.now(PHT).date()
+
+def get_time_of_day():
+    hour = pht_now().hour
+    if hour < 12:
+        return "morning"
+    elif hour < 18:
+        return "afternoon"
+    return "evening"
 
 # User
 def validate_password(password):

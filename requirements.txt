@@ -11,3 +11,4 @@ weasyprint
 pymysql
 cryptography
 python-dotenv
+pytz

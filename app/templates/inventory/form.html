@@ -203,12 +203,13 @@
                 <div class="space-y-1.5">
                     <label class="text-xs font-semibold uppercase tracking-wider"
                            style="color: var(--color-txt-muted);">
-                        Item Name <span style="color: var(--color-error);">*</span>
+                            Item Name
+                              <span style="color: var(--color-error);">*</span>
                     </label>
                     <input type="text"
                            name="product_name"
                            value="{{ product.product_name | capitalize if product is defined else '' }}"
-                           placeholder="e.g. Coca-Cola"
+                           placeholder="e.g. CocaCola Softdrink Regular 330ml Can"
                            required
                            {% if product is defined %}autofocus{% endif %}
                            class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
@@ -219,6 +220,9 @@
                                     this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                            onblur="this.style.borderColor='var(--color-border)';
                                    this.style.boxShadow='none'">
+                    <p class="text-xs" style="color: var(--color-txt-muted);">
+                        Recommended format: Brand Product Variant Size Packaging
+                    </p>
                 </div>
 
                 {# Category #}

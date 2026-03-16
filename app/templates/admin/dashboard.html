@@ -43,13 +43,13 @@
             </div>
         </div>
 
-        {# Inventory Value #}
+        {# New Added Product #}
         <div class="rounded-2xl p-5 space-y-3"
              style="background-color: var(--color-surface);
                     border: 1px solid var(--color-border);">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold uppercase tracking-wider"
-                      style="color: var(--color-txt-muted);">Inventory Value</span>
+                      style="color: var(--color-txt-muted);">New Added Product</span>
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center"
                      style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
                     <span class="material-symbols-outlined text-[17px]"
@@ -59,10 +59,10 @@
             <div>
                 <p class="text-2xl font-bold tracking-tight"
                    style="color: var(--color-txt-primary);">
-                    ₱{{ stats.inventory_value | default('0.00') }}
+                    {{ stats.new_added_product | default(0) }}
                 </p>
                 <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
-                    {{ stats.total_products | default(0) }} product{{ 's' if stats.total_products != 1 else '' }} tracked
+                    this month
                 </p>
             </div>
         </div>

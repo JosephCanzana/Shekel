@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, redirect, request, url_for, flash
-from flask_login import login_required, current_user
+from flask import Blueprint, render_template
+from flask_login import login_required
 from app.utils.decorator import role_required
-from app.models.user import User
 from app.utils.tmp_functions import *
+from app.utils.index_helpers import *
 
 admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
 
@@ -10,11 +10,12 @@ admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
 @login_required
 @role_required("admin", "co-admin")
 def dashboard():
+    stats = get_admin_stats()
     return render_template(
         "admin/dashboard.html",
         time_of_day         = get_time_of_day(),
-        stats               = get_admin_stats(),
-        recent_transactions = get_recent_transactions(),
+        stats               = stats,
+        recent_transactions = stats["recent_transactions"],  # ← reuse stats
         low_stock_items     = get_low_stock_items(),
         defects             = get_defects(),
     )
