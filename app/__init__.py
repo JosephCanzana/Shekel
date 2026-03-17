@@ -56,6 +56,9 @@ def create_app():
     from app.routes.defects import defects_bp
     app.register_blueprint(defects_bp)
 
+    from app.routes.profile import profile_bp
+    app.register_blueprint(profile_bp)
+
     @app.route("/test")
     def test():
         return render_template("test.html")

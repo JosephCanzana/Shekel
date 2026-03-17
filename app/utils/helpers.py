@@ -109,3 +109,11 @@ def barcode_in_use(barcode, exclude_product_id=None, exclude_bundle_id=None):
         return f'"{barcode}" is already used as a Bundle ID ({bundle.bundle_name})'
 
     return None
+
+
+# Profile
+def _is_admin():
+    return current_user.role == "admin"
+
+def _can_change_password():
+    return current_user.role in ("admin", "co-admin")
