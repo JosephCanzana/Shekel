@@ -1,6 +1,6 @@
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, request, url_for, flash
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app.utils.decorator import role_required
 from app.models.product import Product
 from app.models.product_bundle import ProductBundle
@@ -329,8 +329,11 @@ def status_update(product_id):
 
 @inventory_bp.route("/<string:product_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin")
+@role_required("admin", "co-admin")
 def delete(product_id):
+    if current_user.role == "co-admin":
+        flash("Co-admin can't delete a product", "info")
+        return redirect(url_for("inventory.index"))
     product = get_product(product_id)
     if not product:
         flash("Product not found.", "danger")
