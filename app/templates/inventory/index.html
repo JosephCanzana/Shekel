@@ -13,19 +13,39 @@
     search: "",
     filterStatus: "all",
     filterCategory: "all",
+    filterLowStock: false,
     rows: PRODUCTS_DATA,
     canManage: CAN_MANAGE,
     page: 1,
     perPage: 10,
+    selectedProduct: null,
+    mobileDetailOpen: false,
+
     titleCase(str) {
         return str ? str.charAt(0).toUpperCase() + str.slice(1) : ""
     },
+
+    openDetail(product) {
+        this.selectedProduct = product;
+        this.mobileDetailOpen = true;
+    },
+
+    closeDetail() {
+        this.mobileDetailOpen = false;
+        setTimeout(() => this.selectedProduct = null, 300);
+    },
+
     get categories() {
         const seen = new Set()
         return this.rows
             .map(r => ({ id: r.category_id, name: r.category_name }))
             .filter(c => c.name !== "—" && !seen.has(c.id) && seen.add(c.id))
     },
+
+    get lowStockCount() {
+        return this.rows.filter(r => r.stock <= r.low_reorder_threshold && r.status === "active").length
+    },
+
     get filtered() {
         const q = this.search.toLowerCase()
         return this.rows.filter(r => {
@@ -35,7 +55,8 @@
                                   r.product_id.toLowerCase().includes(q)
             const matchStatus   = this.filterStatus   === "all" || r.status === this.filterStatus
             const matchCategory = this.filterCategory === "all" || String(r.category_id) === this.filterCategory
-            return matchSearch && matchStatus && matchCategory
+            const matchLowStock = !this.filterLowStock || (r.stock <= r.low_reorder_threshold && r.status === "active")
+            return matchSearch && matchStatus && matchCategory && matchLowStock
         })
     },
     get paginated() {
@@ -62,24 +83,24 @@ class="space-y-5">
         <div class="flex items-center gap-2">
             {# Stock-In — all roles #}
             <a href="{{ url_for('stocking.stock_in') }}"
-                title="Stock-In"
-                class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition"
-                style="border: 1px solid var(--color-primary); color: var(--color-primary);"
-                onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-primary) 8%,transparent)'"
-                onmouseout="this.style.backgroundColor='transparent'">
-                    <span class="material-symbols-outlined text-[17px]">add_box</span>
-                    Stock-In
-                </a>
+               title="Stock-In"
+               class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
+               style="border: 1px solid var(--color-primary); color: var(--color-primary);"
+               onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-primary) 8%,transparent)'"
+               onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[17px]">add_box</span>
+                <span class="hidden sm:inline">Stock-In</span>
+            </a>
 
             {# Add Product — admin / co-admin only #}
             <template x-if="canManage">
                 <a href="{{ url_for('inventory.add') }}"
-                   class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition"
+                   class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
                    style="background-color: var(--color-primary); color: var(--color-bg);"
                    onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
                    onmouseout="this.style.backgroundColor='var(--color-primary)'">
                     <span class="material-symbols-outlined text-[17px]">add</span>
-                    Add Product
+                    <span class="hidden sm:inline">Add Product</span>
                 </a>
             </template>
         </div>
@@ -87,6 +108,8 @@ class="space-y-5">
 
     {# ── Search + Filters ── #}
     <div class="flex flex-col sm:flex-row gap-3">
+
+        {# Search bar #}
         <div class="relative flex-1">
             <span class="material-symbols-outlined text-[18px]
                          absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -105,30 +128,53 @@ class="space-y-5">
                            this.style.boxShadow='none'">
         </div>
 
-        <select x-model="filterCategory" @change="resetPage()"
-                class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
-                style="border: 1px solid var(--color-border);
-                       background-color: var(--color-surface);
-                       color: var(--color-txt-primary);">
-            <option value="all">All Categories</option>
-            <template x-for="cat in categories" :key="cat.id">
-                <option :value="String(cat.id)" x-text="titleCase(cat.name)"></option>
-            </template>
-        </select>
+        {# Filters — wrap on mobile, inline on desktop #}
+        <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center">
 
-        <select x-model="filterStatus" @change="resetPage()"
-                class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
-                style="border: 1px solid var(--color-border);
-                       background-color: var(--color-surface);
-                       color: var(--color-txt-primary);">
-            <option value="all">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="archived">Archived</option>
-        </select>
+            <select x-model="filterCategory" @change="resetPage()"
+                    class="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                    style="border: 1px solid var(--color-border);
+                           background-color: var(--color-surface);
+                           color: var(--color-txt-primary);">
+                <option value="all">All Categories</option>
+                <template x-for="cat in categories" :key="cat.id">
+                    <option :value="String(cat.id)" x-text="titleCase(cat.name)"></option>
+                </template>
+            </select>
+
+            <select x-model="filterStatus" @change="resetPage()"
+                    class="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                    style="border: 1px solid var(--color-border);
+                           background-color: var(--color-surface);
+                           color: var(--color-txt-primary);">
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="archived">Archived</option>
+            </select>
+
+            {# Low Stock toggle pill #}
+            <button @click="filterLowStock = !filterLowStock; resetPage()"
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
+                           whitespace-nowrap transition-all duration-150"
+                    :style="filterLowStock
+                        ? 'background-color:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning);border:1px solid var(--color-warning)'
+                        : 'border:1px solid var(--color-border);color:var(--color-txt-muted);background-color:var(--color-surface)'">
+                <span class="material-symbols-outlined text-[16px]">warning</span>
+                <span>Low Stock</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none"
+                      :style="filterLowStock
+                          ? 'background-color:var(--color-warning);color:var(--color-bg)'
+                          : 'background-color:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'"
+                      x-text="lowStockCount">
+                </span>
+            </button>
+        </div>
     </div>
 
-    {# ── Table ── #}
-    <div class="rounded-xl overflow-x-auto"
+    {# ══════════════════════════════════════════════
+       DESKTOP TABLE (sm and above)
+    ══════════════════════════════════════════════ #}
+    <div class="hidden sm:block rounded-xl overflow-x-auto"
          style="border: 1px solid var(--color-border);">
         <table class="w-full text-sm">
             <thead>
@@ -172,69 +218,50 @@ class="space-y-5">
 
                         <td class="px-4 py-3 text-xs"
                             style="color: var(--color-txt-muted);"
-                            x-text="(page - 1) * perPage + index + 1">
-                        </td>
+                            x-text="(page - 1) * perPage + index + 1"></td>
 
-                        {# item name + low stock badge #}
                         <td class="px-4 py-3 font-medium"
                             style="color: var(--color-txt-primary);">
                             <span x-text="titleCase(p.product_name)"></span>
                             <template x-if="p.stock <= p.low_reorder_threshold && p.status === 'active'">
                                 <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold"
                                       style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
-                                             color:var(--color-warning);">
-                                    Low Stock
-                                </span>
+                                             color:var(--color-warning);">Low Stock</span>
                             </template>
                         </td>
 
-                        {# product id (barcode/SKU) #}
                         <td class="px-4 py-3 font-mono text-xs"
                             style="color: var(--color-txt-muted);"
-                            x-text="p.product_id">
-                        </td>
+                            x-text="p.product_id"></td>
 
-                        {# bundle — show name + count if exists #}
                         <td class="px-4 py-3 text-xs"
                             style="color: var(--color-txt-muted);">
                             <template x-if="p.bundle_id">
-                                <div>
-                                    <span x-text="p.bundle_name" class="font-medium"
-                                          style="color: var(--color-txt-secondary);"></span>
-                                    <!-- <span x-text="'×' + p.bundle_count"
-                                          class="ml-1" style="color: var(--color-txt-muted);"></span> -->
-                                </div>
+                                <span x-text="p.bundle_name" class="font-medium"
+                                      style="color: var(--color-txt-secondary);"></span>
                             </template>
                             <template x-if="!p.bundle_id">
                                 <span>—</span>
                             </template>
                         </td>
 
-                        {# units in stock #}
                         <td class="px-4 py-3"
                             :style="p.stock <= p.low_reorder_threshold
                                 ? 'color:var(--color-warning);font-weight:600'
                                 : 'color:var(--color-txt-secondary)'"
-                            x-text="p.stock + ' units'">
-                        </td>
+                            x-text="p.stock + ' units'"></td>
 
-                        {# unit price #}
                         <td class="px-4 py-3"
                             style="color: var(--color-txt-secondary);"
-                            x-text="'₱' + p.unit_price.toFixed(2)">
-                        </td>
+                            x-text="'₱' + p.unit_price.toFixed(2)"></td>
 
-                        {# revenue = revenue_price × stock #}
                         <td class="px-4 py-3"
                             style="color: var(--color-txt-secondary);"
-                            x-text="'₱' + (p.revenue_price).toFixed(2)">
-                        </td>
+                            x-text="'₱' + (p.revenue_price).toFixed(2)"></td>
 
-                        {# actions #}
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
 
-                                {# stocking: edit (stock adjust only) #}
                                 <template x-if="!canManage">
                                     <a :href="`/inventory/${p.product_id}/edit`"
                                        title="Adjust Stock"
@@ -246,7 +273,6 @@ class="space-y-5">
                                     </a>
                                 </template>
 
-                                {# admin/co-admin: active #}
                                 <template x-if="canManage && p.status !== 'archived'">
                                     <div class="flex items-center gap-1">
                                         <a :href="`/inventory/${p.product_id}/edit`"
@@ -273,7 +299,6 @@ class="space-y-5">
                                     </div>
                                 </template>
 
-                                {# admin/co-admin: archived #}
                                 <template x-if="canManage && p.status === 'archived'">
                                     <div class="flex items-center gap-1">
                                         <button @click='$dispatch("confirm", {
@@ -309,9 +334,71 @@ class="space-y-5">
                         </td>
                     </tr>
                 </template>
-
             </tbody>
         </table>
+    </div>
+
+    {# ══════════════════════════════════════════════
+       MOBILE CARD LIST (below sm)
+    ══════════════════════════════════════════════ #}
+    <div class="sm:hidden space-y-2">
+
+        <template x-if="filtered.length === 0">
+            <div class="rounded-xl py-14 text-center"
+                 style="border: 1px solid var(--color-border); background-color: var(--color-surface);">
+                <span class="material-symbols-outlined text-[40px] block mb-2"
+                      style="color: var(--color-border-strong);">inventory_2</span>
+                <p class="text-sm" style="color: var(--color-txt-muted);">No products match your search.</p>
+            </div>
+        </template>
+
+        <template x-for="(p, index) in paginated" :key="p.product_id">
+            <button @click="openDetail(p)"
+                    class="w-full text-left rounded-xl px-4 py-3 transition-colors"
+                    style="border: 1px solid var(--color-border); background-color: var(--color-surface);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='var(--color-surface)'">
+                <div class="flex items-center justify-between gap-3">
+
+                    {# Name + low stock badge #}
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="text-sm font-semibold truncate"
+                               style="color: var(--color-txt-primary);"
+                               x-text="titleCase(p.product_name)"></p>
+                            <template x-if="p.stock <= p.low_reorder_threshold && p.status === 'active'">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0"
+                                      style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
+                                             color:var(--color-warning);">Low Stock</span>
+                            </template>
+                        </div>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span class="font-mono text-xs"
+                                  style="color: var(--color-txt-muted);"
+                                  x-text="p.product_id"></span>
+                            <span class="text-xs"
+                                  :style="p.stock <= p.low_reorder_threshold
+                                      ? 'color:var(--color-warning);font-weight:600'
+                                      : 'color:var(--color-txt-muted)'"
+                                  x-text="p.stock + ' units'"></span>
+                        </div>
+                    </div>
+
+                    {# Price + chevron #}
+                    <div class="flex items-center gap-2 shrink-0">
+                        <div class="text-right">
+                            <p class="text-sm font-semibold"
+                               style="color: var(--color-txt-primary);"
+                               x-text="'₱' + p.unit_price.toFixed(2)"></p>
+                            <p class="text-xs"
+                               style="color: var(--color-txt-muted);">unit price</p>
+                        </div>
+                        <span class="material-symbols-outlined text-[18px]"
+                              style="color: var(--color-txt-muted);">chevron_right</span>
+                    </div>
+                </div>
+            </button>
+        </template>
     </div>
 
     {# ── Pagination ── #}
@@ -354,6 +441,197 @@ class="space-y-5">
                 <span class="material-symbols-outlined text-[18px]">chevron_right</span>
             </button>
         </div>
+    </div>
+
+
+    {# ══════════════════════════════════════════════
+       MOBILE DETAIL BOTTOM SHEET
+    ══════════════════════════════════════════════ #}
+
+    {# Backdrop #}
+    <div x-show="mobileDetailOpen"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="closeDetail()"
+         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] sm:hidden">
+    </div>
+
+    {# Bottom sheet panel #}
+    <div x-show="mobileDetailOpen"
+         x-transition:enter="transition-transform duration-300 ease-out"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition-transform duration-250 ease-in"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full"
+         class="fixed bottom-0 left-0 right-0 z-50 sm:hidden
+                rounded-t-2xl shadow-2xl overflow-hidden"
+         style="background-color: var(--color-surface); border-top: 1px solid var(--color-border);">
+
+        <template x-if="selectedProduct">
+            <div>
+                {# Drag handle #}
+                <div class="flex justify-center pt-3 pb-1">
+                    <div class="w-10 h-1 rounded-full"
+                         style="background-color: var(--color-border-strong);"></div>
+                </div>
+
+                {# Product header #}
+                <div class="flex items-start gap-3 px-5 py-4"
+                     style="border-bottom: 1px solid var(--color-border);">
+                    <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                         style="background-color: var(--color-surface-alt); border: 1px solid var(--color-border);">
+                        <span class="material-symbols-outlined text-[22px]"
+                              style="color: var(--color-txt-muted);">inventory_2</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="font-semibold text-base"
+                               style="color: var(--color-txt-primary);"
+                               x-text="titleCase(selectedProduct.product_name)"></p>
+                            <template x-if="selectedProduct.stock <= selectedProduct.low_reorder_threshold && selectedProduct.status === 'active'">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                                      style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
+                                             color:var(--color-warning);">Low Stock</span>
+                            </template>
+                        </div>
+                        <p class="font-mono text-xs mt-0.5"
+                           style="color: var(--color-txt-muted);"
+                           x-text="selectedProduct.product_id"></p>
+                    </div>
+                    <button @click="closeDetail()"
+                            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                            style="color: var(--color-txt-muted);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                {# Stats grid #}
+                <div class="grid grid-cols-3 divide-x px-0 py-0"
+                     style="border-bottom: 1px solid var(--color-border);
+                            --tw-divide-color: var(--color-border);">
+
+                    <div class="flex flex-col items-center py-3 px-2 gap-0.5">
+                        <p class="text-xs" style="color: var(--color-txt-muted);">Units</p>
+                        <p class="text-base font-bold"
+                           :style="selectedProduct.stock <= selectedProduct.low_reorder_threshold
+                               ? 'color:var(--color-warning)'
+                               : 'color:var(--color-txt-primary)'"
+                           x-text="selectedProduct.stock"></p>
+                    </div>
+
+                    <div class="flex flex-col items-center py-3 px-2 gap-0.5">
+                        <p class="text-xs" style="color: var(--color-txt-muted);">Unit Price</p>
+                        <p class="text-base font-bold"
+                           style="color: var(--color-txt-primary);"
+                           x-text="'₱' + selectedProduct.unit_price.toFixed(2)"></p>
+                    </div>
+
+                    <div class="flex flex-col items-center py-3 px-2 gap-0.5">
+                        <p class="text-xs" style="color: var(--color-txt-muted);">Revenue</p>
+                        <p class="text-base font-bold"
+                           style="color: var(--color-txt-primary);"
+                           x-text="'₱' + selectedProduct.revenue_price.toFixed(2)"></p>
+                    </div>
+                </div>
+
+                {# Extra details #}
+                <div class="px-5 py-3 flex flex-wrap gap-x-5 gap-y-1 text-xs"
+                     style="border-bottom: 1px solid var(--color-border);">
+                    <span style="color: var(--color-txt-muted);">
+                        Category:
+                        <span style="color: var(--color-txt-secondary);"
+                              x-text="titleCase(selectedProduct.category_name)"></span>
+                    </span>
+                    <template x-if="selectedProduct.bundle_id">
+                        <span style="color: var(--color-txt-muted);">
+                            Bundle:
+                            <span style="color: var(--color-txt-secondary);"
+                                  x-text="selectedProduct.bundle_name"></span>
+                        </span>
+                    </template>
+                    <span style="color: var(--color-txt-muted);">
+                        Status:
+                        <span :style="selectedProduct.status === 'active'
+                                  ? 'color:var(--color-success)'
+                                  : 'color:var(--color-txt-muted)'"
+                              x-text="titleCase(selectedProduct.status)"></span>
+                    </span>
+                </div>
+
+                {# Actions #}
+                <div class="px-4 py-4 space-y-2 pb-8">
+
+                    {# Stocking role — adjust stock only #}
+                    <template x-if="!canManage">
+                        <a :href="`/inventory/${selectedProduct.product_id}/edit`"
+                           class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                           style="border: 1px solid var(--color-border); color: var(--color-accent); background-color: color-mix(in srgb,var(--color-accent) 8%,transparent);">
+                            <span class="material-symbols-outlined text-[20px]">edit</span>
+                            Adjust Stock
+                        </a>
+                    </template>
+
+                    {# Admin / co-admin — active product #}
+                    <template x-if="canManage && selectedProduct.status !== 'archived'">
+                        <div class="space-y-2">
+                            <a :href="`/inventory/${selectedProduct.product_id}/edit`"
+                               class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                               style="border: 1px solid var(--color-border); color: var(--color-accent); background-color: color-mix(in srgb,var(--color-accent) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">edit</span>
+                                Edit Product
+                            </a>
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Archive Product",
+                                        message: `Archive "${titleCase(selectedProduct.product_name)}"? It will be hidden from the POS.`,
+                                        action:  `/inventory/${selectedProduct.product_id}/status_update`,
+                                        fields:  [{ name: "status", value: "archived" }]
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-error); background-color: color-mix(in srgb,var(--color-error) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">archive</span>
+                                Archive Product
+                            </button>
+                        </div>
+                    </template>
+
+                    {# Admin / co-admin — archived product #}
+                    <template x-if="canManage && selectedProduct.status === 'archived'">
+                        <div class="space-y-2">
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Restore Product",
+                                        message: `Restore "${titleCase(selectedProduct.product_name)}" to active?`,
+                                        action:  `/inventory/${selectedProduct.product_id}/status_update`,
+                                        fields:  [{ name: "status", value: "active" }]
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-success); background-color: color-mix(in srgb,var(--color-success) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">unarchive</span>
+                                Restore Product
+                            </button>
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Delete Product",
+                                        message: `Permanently delete "${titleCase(selectedProduct.product_name)}"? This cannot be undone.`,
+                                        action:  `/inventory/${selectedProduct.product_id}/delete`,
+                                        fields:  []
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-error); background-color: color-mix(in srgb,var(--color-error) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">delete_forever</span>
+                                Delete Permanently
+                            </button>
+                        </div>
+                    </template>
+
+                </div>
+            </div>
+        </template>
     </div>
 
 </div>
