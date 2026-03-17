@@ -11,15 +11,27 @@
 <div x-data='{
     search: "",
     filterRole: "all",
-    filterStatus: "all",
+    filterStatus: "activated",
     rows: USERS_DATA,
     page: 1,
     perPage: 10,
-    
+    selectedUser: null,
+    mobileDetailOpen: false,
+
     titleCase(str) {
         return str ? str.charAt(0).toUpperCase() + str.slice(1) : ""
     },
-    
+
+    openDetail(user) {
+        this.selectedUser = user;
+        this.mobileDetailOpen = true;
+    },
+
+    closeDetail() {
+        this.mobileDetailOpen = false;
+        setTimeout(() => this.selectedUser = null, 300);
+    },
+
     get filtered() {
         const q = this.search.toLowerCase()
         return this.rows.filter(r => {
@@ -59,7 +71,8 @@ class="space-y-5">
            onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
            onmouseout="this.style.backgroundColor='var(--color-primary)'">
             <span class="material-symbols-outlined text-[17px]">person_add</span>
-            Add User
+            <span class="hidden sm:inline">Add User</span>
+            <span class="sm:hidden">Add</span>
         </a>
     </div>
 
@@ -84,42 +97,46 @@ class="space-y-5">
                            this.style.boxShadow='none'">
         </div>
 
-        <select x-model="filterRole"
-                @change="resetPage()"
-                class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
-                style="border: 1px solid var(--color-border);
-                       background-color: var(--color-surface);
-                       color: var(--color-txt-primary);">
-            <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="co-admin">Co-Admin</option>
-            <option value="cashier">Cashier</option>
-            <option value="stocking">Stocking</option>
-        </select>
+        <div class="flex gap-3">
+            <select x-model="filterRole"
+                    @change="resetPage()"
+                    class="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                    style="border: 1px solid var(--color-border);
+                           background-color: var(--color-surface);
+                           color: var(--color-txt-primary);">
+                <option value="all">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="co-admin">Co-Admin</option>
+                <option value="cashier">Cashier</option>
+                <option value="stocking">Stocking</option>
+            </select>
 
-        <select x-model="filterStatus"
-                @change="resetPage()"
-                class="px-3 py-2 rounded-lg text-sm focus:outline-none transition"
-                style="border: 1px solid var(--color-border);
-                       background-color: var(--color-surface);
-                       color: var(--color-txt-primary);">
-            <option value="all">All Statuses</option>
-            <option value="activated">Activated</option>
-            <option value="not_activated">Not Activated</option>
-            <option value="suspended">Suspended</option>
-            <option value="archived">Archived</option>
-        </select>
+            <select x-model="filterStatus"
+                    @change="resetPage()"
+                    class="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                    style="border: 1px solid var(--color-border);
+                           background-color: var(--color-surface);
+                           color: var(--color-txt-primary);">
+                <option value="all">All Statuses</option>
+                <option value="activated">Activated</option>
+                <option value="not_activated">Not Activated</option>
+                <option value="suspended">Suspended</option>
+                <option value="archived">Archived</option>
+            </select>
+        </div>
     </div>
 
-    {# ── Table ── #}
-    <div class="rounded-xl overflow-hidden"
+    {# ══════════════════════════════════════════════
+       DESKTOP TABLE (sm and above)
+    ══════════════════════════════════════════════ #}
+    <div class="hidden sm:block rounded-xl overflow-hidden"
          style="border: 1px solid var(--color-border);">
         <table class="w-full text-sm">
             <thead>
                 <tr style="background-color: var(--color-surface-alt);
                            border-bottom: 1px solid var(--color-border);">
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                        style="color: var(--color-txt-muted);">id</th>
+                        style="color: var(--color-txt-muted);">ID</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">First Name</th>
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
@@ -134,7 +151,6 @@ class="space-y-5">
             </thead>
             <tbody style="background-color: var(--color-surface);">
 
-                {# empty state #}
                 <template x-if="filtered.length === 0">
                     <tr>
                         <td colspan="6" class="px-4 py-14 text-center"
@@ -146,7 +162,6 @@ class="space-y-5">
                     </tr>
                 </template>
 
-                {# rows — paginated #}
                 <template x-for="(user, index) in paginated" :key="user.user_id">
                     <tr style="border-top: 1px solid var(--color-border);"
                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -154,48 +169,39 @@ class="space-y-5">
 
                         <td class="px-4 py-3 text-xs"
                             style="color: var(--color-txt-muted);"
-                            x-text="user.user_id">
-                        </td>
+                            x-text="user.user_id"></td>
 
                         <td class="px-4 py-3 font-medium"
                             style="color: var(--color-txt-primary);"
-                            x-text="titleCase(user.first_name)">
-                        </td>
+                            x-text="titleCase(user.first_name)"></td>
 
                         <td class="px-4 py-3"
                             style="color: var(--color-txt-secondary);"
-                            x-text="titleCase(user.last_name)">
-                        </td>
+                            x-text="titleCase(user.last_name)"></td>
 
-                        {# role badge #}
                         <td class="px-4 py-3">
                             <span class="px-2.5 py-1 rounded-full text-xs font-medium capitalize"
                                   :style='user.role === "admin"    ? "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)"   :
                                           user.role === "co-admin" ? "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)"        :
                                           user.role === "cashier"  ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"  :
                                                                      "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"'
-                                  x-text="user.role">
-                            </span>
+                                  x-text="user.role"></span>
                         </td>
 
-                        {# status badge #}
                         <td class="px-4 py-3">
                             <span class="px-2.5 py-1 rounded-full text-xs font-medium"
                                   :style='user.status === "activated"     ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"   :
                                           user.status === "not_activated" ? "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"   :
                                           user.status === "suspended"     ? "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)"       :
                                                                             "background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted)"'
-                                  x-text="user.status.replace('_', ' ')">
-                            </span>
+                                  x-text="user.status.replace('_', ' ')"></span>
                         </td>
 
-                        {# actions #}
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
 
                                 <template x-if="user.role === 'admin'">
                                     <div class="flex items-center gap-1">
-
                                         <button @click='$dispatch("confirm", {
                                                     title:   "Reset Password",
                                                     message: `Reset password for ${user.first_name} ${user.last_name}?`,
@@ -209,15 +215,11 @@ class="space-y-5">
                                                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">lock_reset</span>
                                         </button>
-
                                     </div>
-
                                 </template>
 
-                                {# ── normal actions (not archived) ── #}
                                 <template x-if="user.status !== 'archived' && user.role !== 'admin'">
                                     <div class="flex items-center gap-1">
-
                                         <a :href="`/admin/users/${user.user_id}/edit`" title="Edit"
                                            class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
                                            style="color: var(--color-txt-muted);"
@@ -225,7 +227,6 @@ class="space-y-5">
                                            onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">edit</span>
                                         </a>
-
                                         <button @click='$dispatch("confirm", {
                                                     title:   "Reset Password",
                                                     message: `Reset password for ${user.first_name} ${user.last_name}?`,
@@ -239,7 +240,6 @@ class="space-y-5">
                                                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">lock_reset</span>
                                         </button>
-
                                         <button @click='$dispatch("confirm", {
                                                     title:   user.status === "suspended" ? "Unsuspend User" : "Suspend User",
                                                     message: user.status === "suspended"
@@ -254,10 +254,8 @@ class="space-y-5">
                                                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-warning)'"
                                                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]"
-                                                  x-text='user.status === "suspended" ? "lock_open" : "block"'>
-                                            </span>
+                                                  x-text='user.status === "suspended" ? "lock_open" : "block"'></span>
                                         </button>
-
                                         <button @click='$dispatch("confirm", {
                                                     title:   "Archive User",
                                                     message: `Archive ${user.first_name}? This will deactivate their account.`,
@@ -271,14 +269,11 @@ class="space-y-5">
                                                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">archive</span>
                                         </button>
-
                                     </div>
                                 </template>
 
-                                {# ── archived actions only ── #}
                                 <template x-if="user.status === 'archived'">
                                     <div class="flex items-center gap-1">
-
                                         <button @click='$dispatch("confirm", {
                                                     title:   "Unarchive User",
                                                     message: `Restore ${user.first_name}?`,
@@ -292,7 +287,6 @@ class="space-y-5">
                                                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">unarchive</span>
                                         </button>
-
                                         <button @click='$dispatch("confirm", {
                                                     title:   "Delete User",
                                                     message: `Permanently delete ${user.first_name} ${user.last_name}? This cannot be undone.`,
@@ -306,7 +300,6 @@ class="space-y-5">
                                                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">delete_forever</span>
                                         </button>
-
                                     </div>
                                 </template>
 
@@ -314,9 +307,66 @@ class="space-y-5">
                         </td>
                     </tr>
                 </template>
-
             </tbody>
         </table>
+    </div>
+
+    {# ══════════════════════════════════════════════
+       MOBILE CARD LIST (below sm)
+    ══════════════════════════════════════════════ #}
+    <div class="sm:hidden space-y-2">
+
+        <template x-if="filtered.length === 0">
+            <div class="rounded-xl py-14 text-center"
+                 style="border: 1px solid var(--color-border); background-color: var(--color-surface);">
+                <span class="material-symbols-outlined text-[40px] block mb-2"
+                      style="color: var(--color-border-strong);">person_off</span>
+                <p class="text-sm" style="color: var(--color-txt-muted);">No users match your search.</p>
+            </div>
+        </template>
+
+        <template x-for="(user, index) in paginated" :key="user.user_id">
+            <button @click="openDetail(user)"
+                    class="w-full text-left rounded-xl px-4 py-3 transition-colors"
+                    style="border: 1px solid var(--color-border); background-color: var(--color-surface);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='var(--color-surface)'">
+                <div class="flex items-center justify-between gap-3">
+
+                    {# Avatar + name #}
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center
+                                    text-sm font-bold"
+                             style="background-color: var(--color-secondary); color: var(--color-txt-primary);"
+                             x-text="(user.first_name[0] + user.last_name[0]).toUpperCase()">
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold truncate"
+                               style="color: var(--color-txt-primary);"
+                               x-text="titleCase(user.first_name) + ' ' + titleCase(user.last_name)">
+                            </p>
+                            <p class="text-xs capitalize mt-0.5"
+                               style="color: var(--color-txt-muted);"
+                               x-text="user.role">
+                            </p>
+                        </div>
+                    </div>
+
+                    {# Status badge + chevron #}
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                              :style='user.status === "activated"     ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"   :
+                                      user.status === "not_activated" ? "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"   :
+                                      user.status === "suspended"     ? "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)"       :
+                                                                        "background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted)"'
+                              x-text="user.status.replace('_', ' ')">
+                        </span>
+                        <span class="material-symbols-outlined text-[18px]"
+                              style="color: var(--color-txt-muted);">chevron_right</span>
+                    </div>
+                </div>
+            </button>
+        </template>
     </div>
 
     {# ── Pagination ── #}
@@ -325,12 +375,12 @@ class="space-y-5">
 
         <p style="color: var(--color-txt-muted);">
             Showing
-            <span x-text="Math.min((page - 1) * perPage + 1, filtered.length)"></span>–<span x-text="Math.min(page * perPage, filtered.length)"></span>
+            <span x-text="Math.min((page - 1) * perPage + 1, filtered.length)"></span>–<span
+                  x-text="Math.min(page * perPage, filtered.length)"></span>
             of <span x-text="filtered.length"></span>
         </p>
 
         <div class="flex items-center gap-1">
-
             <button @click="page = Math.max(1, page - 1)"
                     :disabled="page === 1"
                     class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors
@@ -362,8 +412,198 @@ class="space-y-5">
                     onmouseout="this.style.backgroundColor='transparent'">
                 <span class="material-symbols-outlined text-[18px]">chevron_right</span>
             </button>
-
         </div>
+    </div>
+
+
+    {# ══════════════════════════════════════════════
+       MOBILE DETAIL BOTTOM SHEET
+       Slides up from bottom when a card is tapped.
+    ══════════════════════════════════════════════ #}
+
+    {# Backdrop #}
+    <div x-show="mobileDetailOpen"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="closeDetail()"
+         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] sm:hidden">
+    </div>
+
+    {# Bottom sheet panel #}
+    <div x-show="mobileDetailOpen"
+         x-transition:enter="transition-transform duration-300 ease-out"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition-transform duration-250 ease-in"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full"
+         class="fixed bottom-0 left-0 right-0 z-50 sm:hidden
+                rounded-t-2xl shadow-2xl overflow-hidden"
+         style="background-color: var(--color-surface); border-top: 1px solid var(--color-border);">
+
+        <template x-if="selectedUser">
+            <div>
+                {# Drag handle #}
+                <div class="flex justify-center pt-3 pb-1">
+                    <div class="w-10 h-1 rounded-full"
+                         style="background-color: var(--color-border-strong);"></div>
+                </div>
+
+                {# User info header #}
+                <div class="flex items-center gap-3 px-5 py-4"
+                     style="border-bottom: 1px solid var(--color-border);">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center
+                                text-base font-bold shrink-0"
+                         style="background-color: var(--color-secondary); color: var(--color-txt-primary);"
+                         x-text="(selectedUser.first_name[0] + selectedUser.last_name[0]).toUpperCase()">
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold text-base truncate"
+                           style="color: var(--color-txt-primary);"
+                           x-text="titleCase(selectedUser.first_name) + ' ' + titleCase(selectedUser.last_name)">
+                        </p>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            {# Role badge #}
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize"
+                                  :style='selectedUser.role === "admin"    ? "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)"   :
+                                          selectedUser.role === "co-admin" ? "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)"        :
+                                          selectedUser.role === "cashier"  ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"  :
+                                                                             "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"'
+                                  x-text="selectedUser.role">
+                            </span>
+                            {# Status badge #}
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium"
+                                  :style='selectedUser.status === "activated"     ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"   :
+                                          selectedUser.status === "not_activated" ? "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"   :
+                                          selectedUser.status === "suspended"     ? "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)"       :
+                                                                                    "background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted)"'
+                                  x-text="selectedUser.status.replace('_', ' ')">
+                            </span>
+                        </div>
+                    </div>
+                    {# Close button #}
+                    <button @click="closeDetail()"
+                            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                            style="color: var(--color-txt-muted);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                {# Meta row #}
+                <div class="px-5 py-3 flex items-center gap-2 text-xs"
+                     style="color: var(--color-txt-muted); border-bottom: 1px solid var(--color-border);">
+                    <span class="material-symbols-outlined text-[14px]">tag</span>
+                    <span>User ID: <span x-text="selectedUser.user_id"
+                                         style="color: var(--color-txt-secondary);"></span></span>
+                </div>
+
+                {# Actions #}
+                <div class="px-4 py-4 space-y-2 pb-8">
+
+                    {# Admin — reset password only #}
+                    <template x-if="selectedUser.role === 'admin'">
+                        <button @click='closeDetail(); $dispatch("confirm", {
+                                    title:   "Reset Password",
+                                    message: `Reset password for ${selectedUser.first_name} ${selectedUser.last_name}?`,
+                                    action:  `/admin/users/${selectedUser.user_id}/reset_password`,
+                                    fields:  []
+                                })'
+                                class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                style="border: 1px solid var(--color-border); color: var(--color-info); background-color: color-mix(in srgb,var(--color-info) 8%,transparent);">
+                            <span class="material-symbols-outlined text-[20px]">lock_reset</span>
+                            Reset Password
+                        </button>
+                    </template>
+
+                    {# Normal (non-admin, non-archived) actions #}
+                    <template x-if="selectedUser.status !== 'archived' && selectedUser.role !== 'admin'">
+                        <div class="space-y-2">
+                            <a :href="`/admin/users/${selectedUser.user_id}/edit`"
+                               class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                               style="border: 1px solid var(--color-border); color: var(--color-accent); background-color: color-mix(in srgb,var(--color-accent) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">edit</span>
+                                Edit User
+                            </a>
+
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Reset Password",
+                                        message: `Reset password for ${selectedUser.first_name} ${selectedUser.last_name}?`,
+                                        action:  `/admin/users/${selectedUser.user_id}/reset_password`,
+                                        fields:  []
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-info); background-color: color-mix(in srgb,var(--color-info) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">lock_reset</span>
+                                Reset Password
+                            </button>
+
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   selectedUser.status === "suspended" ? "Unsuspend User" : "Suspend User",
+                                        message: selectedUser.status === "suspended"
+                                            ? `Restore access for ${selectedUser.first_name}?`
+                                            : `Suspend ${selectedUser.first_name}? They will lose access.`,
+                                        action:  `/admin/users/${selectedUser.user_id}/status_update`,
+                                        fields:  [{ name: "status", value: selectedUser.status === "suspended" ? "activated" : "suspended" }]
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-warning); background-color: color-mix(in srgb,var(--color-warning) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]"
+                                      x-text='selectedUser.status === "suspended" ? "lock_open" : "block"'></span>
+                                <span x-text='selectedUser.status === "suspended" ? "Unsuspend User" : "Suspend User"'></span>
+                            </button>
+
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Archive User",
+                                        message: `Archive ${selectedUser.first_name}? This will deactivate their account.`,
+                                        action:  `/admin/users/${selectedUser.user_id}/status_update`,
+                                        fields:  [{ name: "status", value: "archived" }]
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-error); background-color: color-mix(in srgb,var(--color-error) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">archive</span>
+                                Archive User
+                            </button>
+                        </div>
+                    </template>
+
+                    {# Archived actions #}
+                    <template x-if="selectedUser.status === 'archived'">
+                        <div class="space-y-2">
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Unarchive User",
+                                        message: `Restore ${selectedUser.first_name}?`,
+                                        action:  `/admin/users/${selectedUser.user_id}/status_update`,
+                                        fields:  [{ name: "status", value: "not_activated" }]
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-warning); background-color: color-mix(in srgb,var(--color-warning) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">unarchive</span>
+                                Unarchive User
+                            </button>
+
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Delete User",
+                                        message: `Permanently delete ${selectedUser.first_name} ${selectedUser.last_name}? This cannot be undone.`,
+                                        action:  `/admin/users/${selectedUser.user_id}/delete`,
+                                        fields:  []
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-error); background-color: color-mix(in srgb,var(--color-error) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">delete_forever</span>
+                                Delete Permanently
+                            </button>
+                        </div>
+                    </template>
+
+                </div>
+            </div>
+        </template>
     </div>
 
 </div>

@@ -50,8 +50,7 @@
             transition-all duration-300"
      x-data
      :class="$store.sidebar.expanded ? 'sm:pl-56' : 'sm:pl-16'">
-
-        <main class="flex-1 px-6 py-5">
+        <main class="flex-1 px-3 sm:px-6 py-4 sm:py-5 pb-6 md:pb-14">
             {% block body %}{% endblock %}
         </main>
         
