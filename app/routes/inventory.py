@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy import text
 from flask import Blueprint, render_template, redirect, request, url_for, flash
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
@@ -144,7 +145,7 @@ def add():
 
 @inventory_bp.route("/<string:product_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking")   # ← stocking allowed
+@role_required("admin", "co-admin", "stocking")  
 def edit(product_id):
     product    = get_product(product_id)
     categories = get_active_categories()
@@ -180,6 +181,7 @@ def edit(product_id):
                 return redirect(url_for("inventory.index"))
 
             # ── admin / co-admin: full edit ───────────────────────────────────────
+            product_id_new = request.form.get("product_id", "").strip()
             product_name  = request.form.get("product_name",  "").strip()
             category_id   = request.form.get("category_id",   "").strip()
             unit_price    = request.form.get("unit_price",    "").strip()
@@ -193,7 +195,7 @@ def edit(product_id):
             if not bundle_count:
                 bundle_name = ""
 
-            if not all([product_name, unit_price, revenue_price, low_reorder]):
+            if not all([product_id_new, product_name, unit_price, revenue_price, low_reorder]):
                 flash("Name, prices, and low stock threshold are required.", "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
 
@@ -214,11 +216,28 @@ def edit(product_id):
 
             try:
                 low_reorder = int(low_reorder)
-                if low_reorder < 0 or low_reorder > 2_147_483_647:  # ← missing
+                if low_reorder < 0 or low_reorder > 2_147_483_647:
                     raise ValueError
             except ValueError:
                 flash("Low stock threshold must be a positive whole number.", "danger")
-                return redirect(url_for("inventory.add"))
+                return redirect(url_for("inventory.edit", product_id=product_id))
+
+            # ── check if product_id is being changed ──────────────────────────────
+            id_changing = product_id_new != product_id
+            if id_changing:
+                id_conflict = Product.query.filter_by(product_id=product_id_new).first()
+                if id_conflict:
+                    flash(f'Barcode "{product_id_new}" is already in use by another product.', "danger")
+                    return redirect(url_for("inventory.edit", product_id=product_id))
+
+                err = barcode_in_use(
+                    product_id_new,
+                    exclude_product_id=product_id,
+                    exclude_bundle_id=product.bundle.bundle_id if product.bundle else None
+                )
+                if err:
+                    flash(err, "danger")
+                    return redirect(url_for("inventory.edit", product_id=product_id))
 
             existing = Product.query.filter(
                 Product.product_name.ilike(product_name),
@@ -241,6 +260,31 @@ def edit(product_id):
             unit_price    = float(unit_price)
             revenue_price = float(revenue_price)
             product_price = round(unit_price + revenue_price, 2)
+
+            # ── apply product_id rename ───────────────────────────────────────────
+            # MySQL has no ON UPDATE CASCADE on Inventory/ProductBundles FKs, so
+            # letting the ORM rename the PK causes an IntegrityError on autoflush.
+            # Fix: disable FK checks, update PK + every child table via raw SQL,
+            # re-enable checks, then expire + re-fetch the ORM object under new PK.
+            if id_changing:
+                with db.session.no_autoflush:
+                    db.session.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
+                    db.session.execute(
+                        text("UPDATE Products SET product_id = :new WHERE product_id = :old"),
+                        {"new": product_id_new, "old": product_id}
+                    )
+                    db.session.execute(
+                        text("UPDATE Inventory SET product_id = :new WHERE product_id = :old"),
+                        {"new": product_id_new, "old": product_id}
+                    )
+                    db.session.execute(
+                        text("UPDATE ProductBundles SET product_id = :new WHERE product_id = :old"),
+                        {"new": product_id_new, "old": product_id}
+                    )
+                    db.session.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
+                # Expire the stale ORM object and re-fetch under the new PK
+                db.session.expire(product)
+                product = db.session.get(Product, product_id_new)
 
             product.product_name          = product_name.lower()
             product.category_id           = int(category_id) if category_id else None
@@ -283,7 +327,7 @@ def edit(product_id):
                 else:
                     db.session.add(ProductBundle(
                         bundle_id    = bundle_id,
-                        product_id   = product_id,
+                        product_id   = product_id_new,
                         bundle_name  = bundle_name,
                         bundle_count = bundle_count
                     ))
@@ -291,13 +335,13 @@ def edit(product_id):
                 if product.bundle:
                     db.session.delete(product.bundle)
 
-            
             db.session.commit()
+
         except DataError:
             db.session.rollback()
             flash("One or more values are out of range. Please check your input.", "danger")
-            return redirect(url_for("inventory.edit"))
-        
+            return redirect(url_for("inventory.edit", product_id=product_id))
+
         flash(f'Product "{product_name}" has been updated.', "success")
         return redirect(url_for("inventory.index"))
 
