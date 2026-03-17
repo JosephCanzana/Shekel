@@ -24,8 +24,20 @@
           revenuePrice: {{ product.revenue_price | float if product is defined else 0 }},
           hasBundle:    {{ 'true' if product is defined and product.bundle else 'false' }},
           editingStock: {{ 'true' if not can_manage else 'false' }},
+          originalStock: {{ product.inventory.quantity_available if product is defined and product.inventory else 0 }},
+
           get productPrice() {
               return (parseFloat(this.unitPrice || 0) + parseFloat(this.revenuePrice || 0)).toFixed(2)
+          },
+
+          cancelStockEdit() {
+              this.editingStock = false;
+              this.$nextTick(() => {
+                  const qtyInput   = this.$el.querySelector('[name=quantity_available]');
+                  const notesInput = this.$el.querySelector('[name=adjustment_notes]');
+                  if (qtyInput)   qtyInput.value   = this.originalStock;
+                  if (notesInput) notesInput.value  = '';
+              });
           }
       }">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -311,21 +323,6 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <!-- <div class="space-y-1.5">
-                            <label class="text-xs font-semibold uppercase tracking-wider"
-                                   style="color: var(--color-txt-muted);">Bundle Name</label>
-                            <input type="text" name="bundle_name"
-                                   value="{{ product.bundle.bundle_name if product is defined and product.bundle else '' }}"
-                                   placeholder="e.g. 12-pack"
-                                   class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                                   style="border: 1px solid var(--color-border);
-                                          background-color: var(--color-surface-alt);
-                                          color: var(--color-txt-primary);"
-                                   onfocus="this.style.borderColor='var(--color-accent)';
-                                            this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                                   onblur="this.style.borderColor='var(--color-border)';
-                                           this.style.boxShadow='none'">
-                        </div> -->
                         <div class="space-y-1.5">
                             <label class="text-xs font-semibold uppercase tracking-wider"
                                    style="color: var(--color-txt-muted);">Units per Bundle</label>
@@ -439,7 +436,7 @@
                     <h2 class="text-xs font-bold uppercase tracking-wider"
                         style="color: var(--color-txt-muted);">Stock</h2>
                     <button type="button"
-                            @click="editingStock = !editingStock"
+                            @click="editingStock ? cancelStockEdit() : editingStock = true"
                             class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
                             :style="editingStock
                                 ? 'background:color-mix(in srgb,var(--color-warning) 12%,transparent); color:var(--color-warning)'
@@ -489,12 +486,14 @@
                                   Regular stock-in should go through the Stock-In module.</span>
                         </div>
 
+                        {# ── quantity_available: disabled when not editing so it won't submit ── #}
                         <div class="space-y-1.5">
                             <label class="text-xs font-semibold uppercase tracking-wider"
                                    style="color: var(--color-txt-muted);">New Stock Count</label>
                             <input type="number"
                                    name="quantity_available"
-                                   value="{{ product.inventory.quantity_available }}"
+                                   :value="originalStock"
+                                   :disabled="!editingStock"
                                    min="0" step="1"
                                    class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
                                    style="border: 1px solid var(--color-border);
@@ -506,6 +505,7 @@
                                            this.style.boxShadow='none'">
                         </div>
 
+                        {# ── adjustment_notes: disabled when not editing so it won't submit ── #}
                         <div class="space-y-1.5">
                             <label class="text-xs font-semibold uppercase tracking-wider"
                                    style="color: var(--color-txt-muted);">
@@ -515,6 +515,7 @@
                             </label>
                             <input type="text"
                                    name="adjustment_notes"
+                                   :disabled="!editingStock"
                                    placeholder="e.g. Physical count mismatch, damage found..."
                                    class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
                                    style="border: 1px solid var(--color-border);
