@@ -14,9 +14,23 @@
     rows: CATEGORIES_DATA,
     page: 1,
     perPage: 10,
+    selectedCat: null,
+    mobileDetailOpen: false,
+
     titleCase(str) {
         return str ? str.charAt(0).toUpperCase() + str.slice(1) : ""
     },
+
+    openDetail(cat) {
+        this.selectedCat = cat;
+        this.mobileDetailOpen = true;
+    },
+
+    closeDetail() {
+        this.mobileDetailOpen = false;
+        setTimeout(() => this.selectedCat = null, 300);
+    },
+
     get filtered() {
         const q = this.search.toLowerCase()
         return this.rows.filter(r => {
@@ -48,12 +62,13 @@ class="space-y-5">
             </p>
         </div>
         <a href="{{ url_for('manage_categories.add') }}"
-           class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition duration-150"
+           class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition duration-150"
            style="background-color: var(--color-primary); color: var(--color-bg);"
            onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
            onmouseout="this.style.backgroundColor='var(--color-primary)'">
             <span class="material-symbols-outlined text-[17px]">add</span>
-            Add Category
+            <span class="hidden sm:inline">Add Category</span>
+            <span class="sm:hidden">Add</span>
         </a>
     </div>
 
@@ -88,8 +103,10 @@ class="space-y-5">
         </select>
     </div>
 
-    {# ── Table ── #}
-    <div class="rounded-xl overflow-hidden"
+    {# ══════════════════════════════════════════════
+       DESKTOP TABLE (sm and above)
+    ══════════════════════════════════════════════ #}
+    <div class="hidden sm:block rounded-xl overflow-hidden"
          style="border: 1px solid var(--color-border);">
         <table class="w-full text-sm">
             <thead>
@@ -109,7 +126,6 @@ class="space-y-5">
             </thead>
             <tbody style="background-color: var(--color-surface);">
 
-                {# empty state #}
                 <template x-if="filtered.length === 0">
                     <tr>
                         <td colspan="5" class="px-4 py-14 text-center"
@@ -121,7 +137,6 @@ class="space-y-5">
                     </tr>
                 </template>
 
-                {# rows #}
                 <template x-for="(cat, index) in paginated" :key="cat.category_id">
                     <tr style="border-top: 1px solid var(--color-border);"
                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -129,20 +144,16 @@ class="space-y-5">
 
                         <td class="px-4 py-3 text-xs"
                             style="color: var(--color-txt-muted);"
-                            x-text="(page - 1) * perPage + index + 1">
-                        </td>
+                            x-text="(page - 1) * perPage + index + 1"></td>
 
                         <td class="px-4 py-3 font-medium"
                             style="color: var(--color-txt-primary);"
-                            x-text="titleCase(cat.name)">
-                        </td>
+                            x-text="titleCase(cat.name)"></td>
 
                         <td class="px-4 py-3 max-w-xs truncate"
                             style="color: var(--color-txt-muted);"
-                            x-text="cat.description || '—'">
-                        </td>
+                            x-text="cat.description || '—'"></td>
 
-                        {# status badge #}
                         <td class="px-4 py-3">
                             <span class="px-2.5 py-1 rounded-full text-xs font-medium capitalize"
                                   :style='cat.status === "active"
@@ -152,23 +163,19 @@ class="space-y-5">
                             </span>
                         </td>
 
-                       {# actions #}
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
 
-                                {# ── active / normal actions ── #}
                                 <template x-if="cat.status !== 'inactive'">
                                     <div class="flex items-center gap-1">
-
                                         <a :href="`/admin/categories/${cat.category_id}/edit`"
-                                        title="Edit"
-                                        class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                                        style="color: var(--color-txt-muted);"
-                                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-accent)'"
-                                        onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                                           title="Edit"
+                                           class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                           style="color: var(--color-txt-muted);"
+                                           onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-accent)'"
+                                           onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">edit</span>
                                         </a>
-
                                         <button @click='$dispatch("confirm", {
                                                     title:   "Deactivate Category",
                                                     message: `Deactivate "${titleCase(cat.name)}"? It will be hidden from products.`,
@@ -182,14 +189,11 @@ class="space-y-5">
                                                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">toggle_on</span>
                                         </button>
-
                                     </div>
                                 </template>
 
-                                {# ── inactive actions only ── #}
                                 <template x-if="cat.status === 'inactive'">
                                     <div class="flex items-center gap-1">
-
                                         <button @click='$dispatch("confirm", {
                                                     title:   "Activate Category",
                                                     message: `Activate "${titleCase(cat.name)}"?`,
@@ -203,7 +207,6 @@ class="space-y-5">
                                                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">toggle_off</span>
                                         </button>
-
                                         <button @click='$dispatch("confirm", {
                                                     title:   "Delete Category",
                                                     message: `Permanently delete "${titleCase(cat.name)}"? This cannot be undone.`,
@@ -217,7 +220,6 @@ class="space-y-5">
                                                 onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">delete_forever</span>
                                         </button>
-
                                     </div>
                                 </template>
 
@@ -225,9 +227,63 @@ class="space-y-5">
                         </td>
                     </tr>
                 </template>
-
             </tbody>
         </table>
+    </div>
+
+    {# ══════════════════════════════════════════════
+       MOBILE CARD LIST (below sm)
+    ══════════════════════════════════════════════ #}
+    <div class="sm:hidden space-y-2">
+
+        <template x-if="filtered.length === 0">
+            <div class="rounded-xl py-14 text-center"
+                 style="border: 1px solid var(--color-border); background-color: var(--color-surface);">
+                <span class="material-symbols-outlined text-[40px] block mb-2"
+                      style="color: var(--color-border-strong);">category</span>
+                <p class="text-sm" style="color: var(--color-txt-muted);">No categories match your search.</p>
+            </div>
+        </template>
+
+        <template x-for="(cat, index) in paginated" :key="cat.category_id">
+            <button @click="openDetail(cat)"
+                    class="w-full text-left rounded-xl px-4 py-3 transition-colors"
+                    style="border: 1px solid var(--color-border); background-color: var(--color-surface);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='var(--color-surface)'">
+                <div class="flex items-center justify-between gap-3">
+
+                    {# Icon + name + description #}
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center"
+                             style="background-color: var(--color-surface-alt); border: 1px solid var(--color-border);">
+                            <span class="material-symbols-outlined text-[18px]"
+                                  style="color: var(--color-txt-muted);">category</span>
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold truncate"
+                               style="color: var(--color-txt-primary);"
+                               x-text="titleCase(cat.name)"></p>
+                            <p class="text-xs truncate mt-0.5"
+                               style="color: var(--color-txt-muted);"
+                               x-text="cat.description || 'No description'"></p>
+                        </div>
+                    </div>
+
+                    {# Status badge + chevron #}
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize"
+                              :style='cat.status === "active"
+                                  ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"
+                                  : "background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted)"'
+                              x-text="cat.status">
+                        </span>
+                        <span class="material-symbols-outlined text-[18px]"
+                              style="color: var(--color-txt-muted);">chevron_right</span>
+                    </div>
+                </div>
+            </button>
+        </template>
     </div>
 
     {# ── Pagination ── #}
@@ -235,7 +291,8 @@ class="space-y-5">
          x-show="filtered.length > perPage">
         <p style="color: var(--color-txt-muted);">
             Showing
-            <span x-text="Math.min((page - 1) * perPage + 1, filtered.length)"></span>–<span x-text="Math.min(page * perPage, filtered.length)"></span>
+            <span x-text="Math.min((page - 1) * perPage + 1, filtered.length)"></span>–<span
+                  x-text="Math.min(page * perPage, filtered.length)"></span>
             of <span x-text="filtered.length"></span>
         </p>
         <div class="flex items-center gap-1">
@@ -269,6 +326,138 @@ class="space-y-5">
                 <span class="material-symbols-outlined text-[18px]">chevron_right</span>
             </button>
         </div>
+    </div>
+
+
+    {# ══════════════════════════════════════════════
+       MOBILE DETAIL BOTTOM SHEET
+    ══════════════════════════════════════════════ #}
+
+    {# Backdrop #}
+    <div x-show="mobileDetailOpen"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="closeDetail()"
+         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] sm:hidden">
+    </div>
+
+    {# Bottom sheet #}
+    <div x-show="mobileDetailOpen"
+         x-transition:enter="transition-transform duration-300 ease-out"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition-transform duration-250 ease-in"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full"
+         class="fixed bottom-0 left-0 right-0 z-50 sm:hidden rounded-t-2xl shadow-2xl overflow-hidden"
+         style="background-color: var(--color-surface); border-top: 1px solid var(--color-border);">
+
+        <template x-if="selectedCat">
+            <div>
+                {# Drag handle #}
+                <div class="flex justify-center pt-3 pb-1">
+                    <div class="w-10 h-1 rounded-full"
+                         style="background-color: var(--color-border-strong);"></div>
+                </div>
+
+                {# Category header #}
+                <div class="flex items-center gap-3 px-5 py-4"
+                     style="border-bottom: 1px solid var(--color-border);">
+                    <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                         style="background-color: var(--color-surface-alt); border: 1px solid var(--color-border);">
+                        <span class="material-symbols-outlined text-[22px]"
+                              style="color: var(--color-txt-muted);">category</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold text-base truncate"
+                           style="color: var(--color-txt-primary);"
+                           x-text="titleCase(selectedCat.name)"></p>
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize mt-1 inline-block"
+                              :style='selectedCat.status === "active"
+                                  ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"
+                                  : "background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted)"'
+                              x-text="selectedCat.status">
+                        </span>
+                    </div>
+                    <button @click="closeDetail()"
+                            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                            style="color: var(--color-txt-muted);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                {# Description #}
+                <template x-if="selectedCat.description">
+                    <div class="px-5 py-3 text-xs"
+                         style="color: var(--color-txt-muted); border-bottom: 1px solid var(--color-border);">
+                        <p class="font-semibold uppercase tracking-wide mb-1">Description</p>
+                        <p x-text="selectedCat.description"></p>
+                    </div>
+                </template>
+
+                {# Actions #}
+                <div class="px-4 py-4 space-y-2 pb-8">
+
+                    {# Active category actions #}
+                    <template x-if="selectedCat.status !== 'inactive'">
+                        <div class="space-y-2">
+                            <a :href="`/admin/categories/${selectedCat.category_id}/edit`"
+                               class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                               style="border: 1px solid var(--color-border); color: var(--color-accent); background-color: color-mix(in srgb,var(--color-accent) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">edit</span>
+                                Edit Category
+                            </a>
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Deactivate Category",
+                                        message: `Deactivate "${titleCase(selectedCat.name)}"? It will be hidden from products.`,
+                                        action:  `/admin/categories/${selectedCat.category_id}/status_update`,
+                                        fields:  [{ name: "status", value: "inactive" }]
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-warning); background-color: color-mix(in srgb,var(--color-warning) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">toggle_on</span>
+                                Deactivate Category
+                            </button>
+                        </div>
+                    </template>
+
+                    {# Inactive category actions #}
+                    <template x-if="selectedCat.status === 'inactive'">
+                        <div class="space-y-2">
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Activate Category",
+                                        message: `Activate "${titleCase(selectedCat.name)}"?`,
+                                        action:  `/admin/categories/${selectedCat.category_id}/status_update`,
+                                        fields:  [{ name: "status", value: "active" }]
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-success); background-color: color-mix(in srgb,var(--color-success) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">toggle_off</span>
+                                Activate Category
+                            </button>
+                            <button @click='closeDetail(); $dispatch("confirm", {
+                                        title:   "Delete Category",
+                                        message: `Permanently delete "${titleCase(selectedCat.name)}"? This cannot be undone.`,
+                                        action:  `/admin/categories/${selectedCat.category_id}/delete`,
+                                        fields:  []
+                                    })'
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                                    style="border: 1px solid var(--color-border); color: var(--color-error); background-color: color-mix(in srgb,var(--color-error) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">delete_forever</span>
+                                Delete Permanently
+                            </button>
+                        </div>
+                    </template>
+
+                </div>
+            </div>
+        </template>
     </div>
 
 </div>
