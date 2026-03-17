@@ -86,15 +86,15 @@ from app.models.stock_in import StockIn
 
 def get_recent_stockins():
     recent = StockIn.query.order_by(StockIn.stockin_datetime.desc()).limit(5).all()
-
     return [
         {
-            "name":       item.product.product_name.capitalize(),
+            "name":       item.product.product_name.capitalize() if item.product else "Deleted Product",
             "stocked_by": item.user.full_name if item.user else "Unknown",
             "date":       to_pht(item.stockin_datetime).strftime("%b %d, %Y %I:%M %p"),
             "qty":        item.quantity_received,
         }
         for item in recent
+        if item.product is not None  # skip fully broken records
     ]
 
 def get_stocking_stats():
