@@ -3,11 +3,14 @@ from dotenv import load_dotenv
 from config import DevelopmentConfig
 from app.extensions import db, login_manager, migrate, csrf
 
-def create_app():
+def create_app(test_config=None):
     load_dotenv()
 
     app = Flask(__name__)
     app.config.from_object(DevelopmentConfig)
+    # For pytesting
+    if test_config:
+        app.config.update(test_config)
 
     # # ─── Bind Extensions to App ───────────────────────────────
     db.init_app(app)

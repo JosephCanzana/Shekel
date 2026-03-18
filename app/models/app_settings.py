@@ -30,32 +30,42 @@ class AppSettings(db.Model):
         """
         Generate the next user ID in the format [counter][year].
         e.g. 10012026, 10022026, 10032026
-
+        Always based on the actual last existing user ID, so if the last
+        user is deleted, the next ID picks up from the new max.
         Resets counter to 1000 when the year changes.
         Uses row-level lock to prevent duplicates under concurrent requests.
         """
+        from app.models.user import User
+
         settings = cls.query.with_for_update().first()
         if not settings:
             settings = cls(id=1, counter_year=datetime.utcnow().year)
             db.session.add(settings)
 
         current_year = datetime.utcnow().year
+        year_str = str(current_year)
 
         # reset counter if year has changed
         if settings.counter_year != current_year:
             settings.counter_year = current_year
             settings.user_counter = 1000
 
-        # build the ID: counter + year as a single integer
-        # e.g. counter=1001, year=2026 → "10012026" → 10012026
-        generated_id = int(f"{settings.user_counter}{current_year}")
+        # derive next counter from actual max user in DB
+        last_user_id = db.session.query(db.func.max(User.user_id)).scalar()
 
-        # increment for next use
-        settings.user_counter += 1
+        if last_user_id and str(last_user_id).endswith(year_str):
+            counter = int(str(last_user_id)[: -len(year_str)])
+            next_counter = counter + 1
+        else:
+            # no users yet this year, start at 1000
+            next_counter = 1000
+
+        # keep user_counter in sync for reference
+        settings.user_counter = next_counter
         settings.updated_at = datetime.utcnow()
-
         db.session.commit()
-        return generated_id
+
+        return int(f"{next_counter}{current_year}")
 
     @classmethod
     def get_default_password(cls):
