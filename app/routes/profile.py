@@ -2,9 +2,9 @@ from flask               import render_template, request, flash, redirect, url_f
 from flask_login         import login_required, current_user
 from sqlalchemy.exc      import DataError
 from app.extensions      import db
-from app.models.user     import User
+from app.utils.decorator import role_required
 from app.models.recovery_detail import RecoveryDetail
-from app.utils.helpers   import _is_admin, _can_change_password
+from app.utils.helpers import validate_password,validate_email, validate_phone
 
 profile_bp = Blueprint("profile", __name__, url_prefix="/profile")
 
@@ -15,18 +15,15 @@ def index():
     return render_template(
         "profile/index.html",
         user            = current_user,
-        can_change_pw   = _can_change_password(),
-        is_admin        = _is_admin(),
+        can_change_pw   = current_user.role in ("admin", "co-admin"),
+        is_admin        = current_user.role == "admin",
     )
 
 
 @profile_bp.route("/change-password", methods=["POST"])
 @login_required
+@role_required("admin", "co-admin")
 def change_password():
-    """Admin and co-admin only."""
-    if not _can_change_password():
-        flash("You do not have permission to change your password.", "danger")
-        return redirect(url_for("profile.index"))
 
     current_pw  = request.form.get("current_password",  "").strip()
     new_pw      = request.form.get("new_password",       "").strip()
@@ -52,6 +49,11 @@ def change_password():
         flash("New password must be different from the current one.", "danger")
         return redirect(url_for("profile.index"))
 
+    ok, err = validate_password(new_pw)
+    if not ok:
+        flash(err, "danger")
+        return redirect(url_for("profile.index"))
+    
     try:
         current_user.set_password(new_pw)
         db.session.commit()
@@ -65,12 +67,8 @@ def change_password():
 
 @profile_bp.route("/recovery", methods=["POST"])
 @login_required
+@role_required("admin")
 def update_recovery():
-    """Admin only — add or update recovery email / phone."""
-    if not _is_admin():
-        flash("Only the admin can manage recovery details.", "danger")
-        return redirect(url_for("profile.index"))
-
     email  = request.form.get("email",        "").strip()
     phone  = request.form.get("phone_number", "").strip()
 
@@ -78,9 +76,14 @@ def update_recovery():
         flash("Recovery email is required.", "danger")
         return redirect(url_for("profile.index"))
 
-    # basic email sanity check (no heavy dependency)
-    if "@" not in email or "." not in email.split("@")[-1]:
-        flash("Please enter a valid email address.", "danger")
+    ok, err = validate_email(email)
+    if not ok:
+        flash(err, "danger")
+        return redirect(url_for("profile.index"))
+    
+    ok, err = validate_phone(phone)
+    if not ok:
+        flash(err, "danger")
         return redirect(url_for("profile.index"))
 
     try:

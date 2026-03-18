@@ -51,6 +51,67 @@ def validate_password(password):
     return True, None
 
 
+def validate_password(password):
+    """
+    Returns (True, None) if valid.
+    Returns (False, error_message) if invalid.
+    """
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters."
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain at least one uppercase letter."
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain at least one lowercase letter."
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least one number."
+    if not re.search(r"[@$!%*?&_#\-]", password):
+        return False, "Password must contain at least one special character (@$!%*?&_#-)."
+    return True, None
+ 
+ 
+def validate_email(email):
+    """
+    Validates a Gmail address.
+    Returns (True, None) if valid.
+    Returns (False, error_message) if invalid.
+    Enforces Gmail only since this is used as the admin recovery email.
+    """
+    if not email:
+        return False, "Email is required."
+ 
+    # basic structure check
+    pattern = r"^[\w\.\+\-]+@[\w\-]+\.[\w\.\-]+$"
+    if not re.match(pattern, email):
+        return False, "Please enter a valid email address."
+ 
+    # enforce Gmail only for recovery
+    if not email.lower().endswith("@gmail.com"):
+        return False, "Recovery email must be a Gmail address (@gmail.com)."
+ 
+    return True, None
+ 
+ 
+def validate_phone(phone):
+    """
+    Validates a Philippine mobile number.
+    Accepts formats: +63XXXXXXXXXX, 09XXXXXXXXX, 9XXXXXXXXX
+    Returns (True, None) if valid.
+    Returns (False, error_message) if invalid.
+    Phone is optional — pass empty string to skip validation.
+    """
+    if not phone:
+        return True, None  # optional field
+ 
+    # strip spaces and dashes for normalisation
+    cleaned = re.sub(r"[\s\-]", "", phone)
+ 
+    pattern = r"^(\+639\d{9}|09\d{9}|9\d{9})$"
+    if not re.match(pattern, cleaned):
+        return False, "Phone must be a valid Philippine mobile number (e.g. +63 912 345 6789 or 09123456789)."
+ 
+    return True, None
+
+
 def validate_name(value, field_label):
     """
     Returns (True, None) if valid.
@@ -110,10 +171,3 @@ def barcode_in_use(barcode, exclude_product_id=None, exclude_bundle_id=None):
 
     return None
 
-
-# Profile
-def _is_admin():
-    return current_user.role == "admin"
-
-def _can_change_password():
-    return current_user.role in ("admin", "co-admin")
