@@ -53,7 +53,7 @@
 {# ── Bottom utility buttons (always visible for all roles) ── #}
 {% set utilities = [
     {'type': 'button', 'action': 'theme-toggle',  'icon': 'light_mode',  'label': 'Theme'},
-    {'type': 'link',   'url': '#',                 'icon': 'info',        'label': 'Info'},
+    {'type': 'link',   'url': url_for('info.index'),                 'icon': 'info',        'label': 'Info'},
     {'type': 'link',   'url': url_for('auth.logout'), 'icon': 'logout',   'label': 'Logout'},
 ] %}
 

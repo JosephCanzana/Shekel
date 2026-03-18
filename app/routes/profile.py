@@ -72,10 +72,6 @@ def update_recovery():
     email  = request.form.get("email",        "").strip()
     phone  = request.form.get("phone_number", "").strip()
 
-    if not email:
-        flash("Recovery email is required.", "danger")
-        return redirect(url_for("profile.index"))
-
     ok, err = validate_email(email)
     if not ok:
         flash(err, "danger")

@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+{% block title %}About — Shekel{% endblock %}
+{% block nav_title %}About{% endblock %}
+
+{% block body %}
+
+<div class="max-w-3xl mx-auto space-y-5 pb-6">
+
+    {# ══════════════════════════════════════════════
+       HERO — App identity
+    ══════════════════════════════════════════════ #}
+    <div class="relative rounded-2xl overflow-hidden"
+         style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+        {# Subtle gradient backdrop #}
+        <div class="absolute inset-0 pointer-events-none"
+             style="background: radial-gradient(ellipse at top left,
+                        color-mix(in srgb, var(--color-primary) 8%, transparent),
+                        transparent 65%);"></div>
+
+        <div class="relative px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+
+            {# Logo mark — real image with gradient icon fallback #}
+            <div class="w-16 h-16 shrink-0 flex items-center justify-center">
+                <img src="{{ url_for('static', filename='img/shekel_logo.png') }}"
+                     alt="Shekel logo"
+                     class="w-16 h-16 object-contain"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                {# Fallback if image fails to load #}
+                <div class="w-16 h-16 rounded-2xl flex items-center justify-center"
+                     style="display:none;
+                            background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                            box-shadow: 0 4px 24px color-mix(in srgb, var(--color-primary) 25%, transparent);">
+                    <span class="material-symbols-outlined text-[32px]"
+                          style="color: var(--color-bg);">storefront</span>
+                </div>
+            </div>
+
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <h1 class="text-2xl font-bold tracking-tight"
+                        style="color: var(--color-txt-primary);">Shekel</h1>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                          style="background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+                                 color: var(--color-primary);
+                                 border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);">
+                        v1.0
+                    </span>
+                </div>
+                <p class="text-sm mt-1.5 leading-relaxed"
+                   style="color: var(--color-txt-muted);">
+                    A Sales and Inventory Management System designed for a supermarket
+                    businesses — built to streamline transactions, track stock, and manage
+                    operations across multiple user roles.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════════
+       ROLE GUIDE
+    ══════════════════════════════════════════════ #}
+    <div class="rounded-2xl overflow-hidden"
+         style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+        <div class="px-5 py-3.5 flex items-center gap-2"
+             style="background-color: var(--color-surface-alt);
+                    border-bottom: 1px solid var(--color-border);">
+            <span class="material-symbols-outlined text-[16px]"
+                  style="color: var(--color-txt-muted);">manage_accounts</span>
+            <h2 class="text-xs font-bold uppercase tracking-wider"
+                style="color: var(--color-txt-muted);">Role Permissions</h2>
+        </div>
+
+        <div class="divide-y-0 grid grid-cols-1 sm:grid-cols-2">
+
+            {# Admin #}
+            <div class="px-5 py-4"
+                 style="border-bottom: 1px solid var(--color-border);">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-2 h-2 rounded-full shrink-0"
+                          style="background-color: var(--color-accent);"></span>
+                    <p class="text-xs font-bold uppercase tracking-wider"
+                       style="color: var(--color-accent);">Admin</p>
+                </div>
+                <ul class="space-y-1.5">
+                    {% for item in [
+                        "Dashboard",
+                        "Full user management",
+                        "Full inventory access",
+                        "Defects & returns",
+                        "Manage categories",
+                        "Reports",
+                        "Audit log"
+                    ] %}
+                    <li class="flex items-start gap-2 text-xs"
+                        style="color: var(--color-txt-secondary);">
+                        <span class="material-symbols-outlined text-[13px] mt-0.5 shrink-0"
+                              style="color: var(--color-success);">check</span>
+                        {{ item }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            {# Co-Admin #}
+            <div class="px-5 py-4"
+                 style="border-bottom: 1px solid var(--color-border);
+                        border-left: 1px solid var(--color-border);">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-2 h-2 rounded-full shrink-0"
+                          style="background-color: var(--color-info);"></span>
+                    <p class="text-xs font-bold uppercase tracking-wider"
+                       style="color: var(--color-info);">Co-Admin</p>
+                </div>
+                <ul class="space-y-1.5">
+                    {% for item in [
+                        "Same access as Admin",
+                        "Can archive users & products",
+                        "Cannot force-delete users or products"
+                    ] %}
+                    <li class="flex items-start gap-2 text-xs"
+                        style="color: var(--color-txt-secondary);">
+                        <span class="material-symbols-outlined text-[13px] mt-0.5 shrink-0"
+                              style="color: var(--color-success);">check</span>
+                        {{ item }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            {# Cashier #}
+            <div class="px-5 py-4"
+                 style="border-top: 1px solid var(--color-border);">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-2 h-2 rounded-full shrink-0"
+                          style="background-color: var(--color-success);"></span>
+                    <p class="text-xs font-bold uppercase tracking-wider"
+                       style="color: var(--color-success);">Cashier</p>
+                </div>
+                <ul class="space-y-1.5">
+                    {% for item in [
+                        "Transaction / POS",
+                        "Add defects & returns",
+                        "Own sales history"
+                    ] %}
+                    <li class="flex items-start gap-2 text-xs"
+                        style="color: var(--color-txt-secondary);">
+                        <span class="material-symbols-outlined text-[13px] mt-0.5 shrink-0"
+                              style="color: var(--color-success);">check</span>
+                        {{ item }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            {# Stocking #}
+            <div class="px-5 py-4"
+                 style="border-top: 1px solid var(--color-border);
+                        border-left: 1px solid var(--color-border);">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-2 h-2 rounded-full shrink-0"
+                          style="background-color: var(--color-warning);"></span>
+                    <p class="text-xs font-bold uppercase tracking-wider"
+                       style="color: var(--color-warning);">Stocking</p>
+                </div>
+                <ul class="space-y-1.5">
+                    {% for item in [
+                        "Dashboard",
+                        "Limited inventory editing",
+                        "Manage defects"
+                    ] %}
+                    <li class="flex items-start gap-2 text-xs"
+                        style="color: var(--color-txt-secondary);">
+                        <span class="material-symbols-outlined text-[13px] mt-0.5 shrink-0"
+                              style="color: var(--color-success);">check</span>
+                        {{ item }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════════
+       ACADEMIC CONTEXT + TEAM
+    ══════════════════════════════════════════════ #}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+        {# Academic context #}
+        <div class="rounded-2xl overflow-hidden"
+             style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+            <div class="px-5 py-3.5 flex items-center gap-2"
+                 style="background-color: var(--color-surface-alt);
+                        border-bottom: 1px solid var(--color-border);">
+                <span class="material-symbols-outlined text-[16px]"
+                      style="color: var(--color-txt-muted);">school</span>
+                <h2 class="text-xs font-bold uppercase tracking-wider"
+                    style="color: var(--color-txt-muted);">Academic Context</h2>
+            </div>
+
+            <div class="px-5 py-4 space-y-3">
+
+                <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                       style="color: var(--color-txt-muted);">Institution</p>
+                    <p class="text-sm font-medium leading-snug"
+                       style="color: var(--color-txt-primary);">
+                        Holy Cross College
+                    </p>
+                    <p class="text-xs" style="color: var(--color-txt-muted);">
+                        Sta. Rosa, Nueva Ecija
+                    </p>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                       style="color: var(--color-txt-muted);">Program</p>
+                    <p class="text-sm font-medium leading-snug"
+                       style="color: var(--color-txt-primary);">
+                        BS Computer Science
+                    </p>
+                    <p class="text-xs" style="color: var(--color-txt-muted);">
+                        2nd Year
+                    </p>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-wider mb-1"
+                       style="color: var(--color-txt-muted);">Submitted For</p>
+                    <ul class="space-y-1">
+                        {% for subj in [
+                            ("IM",   "Information Management"),
+                            ("SAD",  "Systems Analysis & Design"),
+                            ("SYS",  "Systems Fundamentals"),
+                            ("QMS",  "Quantitative Methods & Data Analysis")
+                        ] %}
+                        <li class="flex items-start gap-2">
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 mt-0.5"
+                                  style="background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+                                         color: var(--color-primary);">{{ subj[0] }}</span>
+                            <span class="text-xs leading-snug"
+                                  style="color: var(--color-txt-secondary);">{{ subj[1] }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
+                       style="color: var(--color-txt-muted);">Academic Year</p>
+                    <p class="text-sm font-medium"
+                       style="color: var(--color-txt-primary);">2024 – 2025</p>
+                </div>
+
+            </div>
+        </div>
+
+        {# Team #}
+        <div class="rounded-2xl overflow-hidden"
+             style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+            <div class="px-5 py-3.5 flex items-center gap-2"
+                 style="background-color: var(--color-surface-alt);
+                        border-bottom: 1px solid var(--color-border);">
+                <span class="material-symbols-outlined text-[16px]"
+                      style="color: var(--color-txt-muted);">group</span>
+                <h2 class="text-xs font-bold uppercase tracking-wider"
+                    style="color: var(--color-txt-muted);">The Team</h2>
+            </div>
+
+            <div class="px-5 py-4 space-y-0">
+
+                {% set members = [
+                    ("Joseph Canzana",   "Lead Developer & Project Manager", "primary"),
+                    ("Kclyn Castro",     "Research Lead & Documentation",    "info"),
+                    ("Anthony Dichoso",  "QA Engineer & Systems Analyst",    "info"),
+                    ("Erich Manucot",    "Research Assistant",               "info"),
+                    ("Justine Neri",     "Team Lead & QA Support",           "info"),
+                    ("Vasty Tubera",     "Research Support",                 "info"),
+                ] %}
+
+                {% for name, role, color in members %}
+                <div class="flex items-center gap-3 py-2.5
+                            {% if not loop.last %}border-b{% endif %}"
+                     style="{% if not loop.last %}border-color: var(--color-border);{% endif %}">
+                    {# Initials #}
+                    <div class="w-8 h-8 rounded-full shrink-0 flex items-center
+                                justify-center text-[11px] font-bold"
+                         style="background: color-mix(in srgb, var(--color-{{ color }}) 12%, transparent);
+                                color: var(--color-{{ color }});">
+                        {{ name.split()[0][0] }}{{ name.split()[1][0] }}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold truncate leading-tight"
+                           style="color: var(--color-txt-primary);">{{ name }}</p>
+                        <p class="text-[11px] truncate"
+                           style="color: var(--color-txt-muted);">{{ role }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+
+            </div>
+        </div>
+
+    </div>
+
+    {# ══════════════════════════════════════════════
+       FOOTER NOTE
+    ══════════════════════════════════════════════ #}
+    <div class="rounded-2xl px-5 py-4 flex items-start gap-3"
+         style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+        <span class="material-symbols-outlined text-[18px] shrink-0 mt-0.5"
+              style="color: var(--color-txt-muted);">info</span>
+        <div>
+            <p class="text-xs leading-relaxed" style="color: var(--color-txt-muted);">
+                Shekel was developed in partial fulfillment of the course requirements for
+                <strong style="color: var(--color-txt-secondary);">IM, SAD, SYS, and QMS</strong>
+                at Holy Cross College, Sta. Rosa, Nueva Ecija.
+                All rights reserved &copy; 2024–2025.
+            </p>
+            <p class="text-xs mt-1.5" style="color: var(--color-txt-muted);">
+                For inquiries:
+                <span style="color: var(--color-txt-secondary);">
+                    Holy Cross College, Sta. Rosa, Nueva Ecija
+                </span>
+            </p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
