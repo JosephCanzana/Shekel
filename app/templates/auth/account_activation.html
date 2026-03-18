@@ -97,12 +97,21 @@
 
       {# mobile logo #}
       <div class="lg:hidden flex items-center gap-2 mb-8">
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center"
-             style="background-color: var(--color-primary);">
-          <span class="text-sm font-bold" style="color: var(--color-bg);">S</span>
-        </div>
-        <span class="text-base font-semibold tracking-widest uppercase"
-              style="color: var(--color-txt-muted);">Shekel</span>
+          <div class="w-8 h-8 shrink-0 flex items-center justify-center">
+              <img src="{{ url_for('static', filename='img/shekel_logo.png') }}"
+                  alt="Shekel logo"
+                  class="w-8 h-8 object-contain"
+                  onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              {# Fallback #}
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style="display:none; background-color: var(--color-primary);">
+                  <span class="text-sm font-bold" style="color: var(--color-bg);">S</span>
+              </div>
+          </div>
+          <span class="text-base font-semibold tracking-widest uppercase"
+                style="color: var(--color-txt-muted);">
+              Shekel
+          </span>
       </div>
 
       {# card #}
