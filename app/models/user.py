@@ -27,6 +27,7 @@ class User(BaseModel, UserMixin):
     defects = db.relationship("Defect", back_populates="user")
     audit_logs = db.relationship("AuditLog", back_populates="user")
 
+
     # Flask-Login requires get_id() to return a string
     def get_id(self):
         return str(self.user_id)

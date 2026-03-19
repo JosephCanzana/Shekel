@@ -27,6 +27,8 @@
 > docker ps
 3. Access mysql
 > docker compose exec db mysql -u root -p
+4. Access container os
+> docker exec -it shekel-web-1 bash
 
 ## Tailwind
 1. Install Tailwind

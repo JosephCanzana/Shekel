@@ -83,6 +83,7 @@ def login():
 @auth_bp.route("/login/<int:user_id>/account_activation", methods=["GET", "POST"])
 def account_activation(user_id):
     user = User.get_by_id(user_id)
+    
     if not user:
         flash("User not found.", "danger")
         return redirect(url_for("auth.login"))
@@ -120,6 +121,10 @@ def account_activation(user_id):
 
         if password != password_confirm:
             flash("Passwords do not match.", "danger")
+            return redirect(url_for("auth.account_activation", user_id=user_id))
+        
+        if password == User.get_default_password():
+            flash("Default password is not allowed.", "danger")
             return redirect(url_for("auth.account_activation", user_id=user_id))
 
         user.set_password(password)

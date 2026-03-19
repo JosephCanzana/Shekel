@@ -7,6 +7,7 @@ from app.utils.helpers import validate_name, validate_password
 from sqlalchemy.exc import IntegrityError
 
 manage_users_bp = Blueprint("manage_users", __name__, url_prefix="/admin/users")
+VALID_ROLES = {"admin", "co-admin", "cashier", "stocking"}
 
 @manage_users_bp.route("/")
 @login_required
@@ -23,6 +24,7 @@ def index():
 @login_required
 @role_required("admin", "co-admin")
 def add():
+    global VALID_ROLES
     if request.method == "POST":
         first_name = request.form.get("first_name", "").strip().lower()
         last_name  = request.form.get("last_name",  "").strip().lower()
@@ -44,6 +46,10 @@ def add():
         if not ok:
             flash(err, "danger")
             return redirect(url_for("manage_users.add"))
+        
+        if role not in VALID_ROLES:
+            flash("Invalid role selected.", "danger")
+            return redirect(url_for("manage_users.add"))
 
         # password: validate if provided, otherwise use default
         if password:
@@ -53,6 +59,7 @@ def add():
                 return redirect(url_for("manage_users.add"))
         else:
             password = User.get_default_password()
+
 
         # duplicate check
         existing_user = User.query.filter_by(
@@ -85,12 +92,14 @@ def add():
 @login_required
 @role_required("admin", "co-admin")
 def edit(user_id):
+    global VALID_ROLES
+
     user = User.get_by_id(user_id)
-    if user.role == 'admin':
-        flash("Can't edit admin!", "danger")
-        return redirect(url_for("manage_users.index"))
     if not user:
         flash("User not found.", "danger")
+        return redirect(url_for("manage_users.index"))
+    if user.role == 'admin':
+        flash("Can't edit admin!", "danger")
         return redirect(url_for("manage_users.index"))
 
     if request.method == "POST":
@@ -118,6 +127,10 @@ def edit(user_id):
                 flash(err, "danger")
                 return redirect(url_for("manage_users.edit", user_id=user_id))
             user.set_password(password)
+
+        if role not in VALID_ROLES:
+            flash("Invalid role selected.", "danger")
+            return redirect(url_for("manage_users.edit", user_id=user_id))
 
         user.first_name = first_name
         user.last_name  = last_name

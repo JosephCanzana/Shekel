@@ -87,6 +87,7 @@ def app():
         "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
         "SQLALCHEMY_TRACK_MODIFICATIONS": False,
         "WTF_CSRF_ENABLED": False,
+        "SECRET_KEY": "test-secret-key-not-for-production",  
     })
 
     with app.app_context():
@@ -413,3 +414,34 @@ def recovery_detail(app, user):
     )
     rd.save()
     return rd
+
+
+# ---------------------------------------------------------------------------
+# Per role
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def admin_client(client, user):
+    """Authenticated client as admin."""
+    client.post("/", data={
+        "full_name": f"{user.first_name} {user.last_name}",
+        "password": "shekel123",
+    })
+    return client
+
+@pytest.fixture
+def cashier_client(client, cashier_user):
+    """Authenticated client as cashier."""
+    client.post("/", data={
+        "full_name": f"{cashier_user.first_name} {cashier_user.last_name}",
+        "password": "shekel123",
+    })
+    return client
+
+@pytest.fixture
+def stocking_client(client, stocking_user):
+    """Authenticated client as stocking staff."""
+    client.post("/", data={
+        "full_name": f"{stocking_user.first_name} {stocking_user.last_name}",
+        "password": "shekel123",
+    })
+    return client
