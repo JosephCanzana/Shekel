@@ -20,8 +20,8 @@ class Product(BaseModel):
     inventory      = db.relationship("Inventory",     back_populates="product", uselist=False)
     bundle         = db.relationship("ProductBundle", back_populates="product", uselist=False)
     stock_ins      = db.relationship("StockIn",       back_populates="product")
-    sale_details   = db.relationship("SaleDetail",    back_populates="product")
-    defect_details = db.relationship("DefectDetail",  back_populates="product")
+    sale_details   = db.relationship("SaleDetail",    back_populates="product", passive_deletes=True)
+    defect_details = db.relationship("DefectDetail",  back_populates="product", passive_deletes=True)
 
     def to_dict(self):
         return {
