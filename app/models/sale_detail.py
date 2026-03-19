@@ -16,5 +16,5 @@ class SaleDetail(BaseModel):
     subtotal_revenue     = db.Column(db.Numeric(10, 2), nullable=False)
     subtotal_amount      = db.Column(db.Numeric(10, 2), nullable=False)
 
-    sale    = db.relationship("Sale",    back_populates="sale_details")
+    sale    = db.relationship("Sale",    back_populates="sale_details", passive_deletes=True)
     product = db.relationship("Product", back_populates="sale_details", passive_deletes=True)

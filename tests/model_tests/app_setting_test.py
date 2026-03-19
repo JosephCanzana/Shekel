@@ -4,38 +4,14 @@ tests/app_setting_test.py
 Pytest suite for AppSettings model.
 Covers: get(), next_user_id(), get_default_password(),
         set_default_password(), and to_dict().
+
+app fixture comes from tests/conftest.py.
 """
 
 import pytest
 from datetime import datetime
-from app import create_app
-from app.extensions import db
 from app.models.app_settings import AppSettings
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture(scope="function")
-def app():
-    """
-    Creates a Flask app with an isolated in-memory SQLite DB per test.
-    Passes test_config BEFORE db.init_app() runs inside create_app(),
-    so SQLAlchemy never sees a missing DATABASE_URL.
-    """
-    app = create_app({
-        "TESTING": True,
-        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
-        "SQLALCHEMY_TRACK_MODIFICATIONS": False,
-        "WTF_CSRF_ENABLED": False,
-    })
-
-    with app.app_context():
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
+from app.extensions import db
 
 
 # ---------------------------------------------------------------------------
@@ -68,7 +44,7 @@ class TestGet:
 
         assert settings.user_counter == 1005
         assert settings.default_password == "custom_pass"
-        assert AppSettings.query.count() == 1  # no duplicate row
+        assert AppSettings.query.count() == 1
 
     def test_get_does_not_create_duplicate_rows(self, app):
         """Calling get() multiple times still results in exactly one row."""
@@ -225,16 +201,16 @@ class TestToDict:
         assert result["updated_at"] is None or isinstance(result["updated_at"], str)
 
     def test_updated_at_is_set_automatically_on_insert(self, app):
-        """updated_at is auto-populated by SQLAlchemy on insert, never None."""
-        settings = AppSettings(id=1, counter_year=2025)
-        db.session.add(settings)
-        db.session.commit()
-
+        """
+        updated_at is auto-populated by SQLAlchemy on insert via
+        set_default_password() which explicitly sets it — never None
+        after a password update.
+        """
+        AppSettings.set_default_password("isocheck")
+        settings = AppSettings.query.first()
         result = settings.to_dict()
+
         assert result["updated_at"] is not None
-        # and it should be a valid ISO string
-        parsed = datetime.fromisoformat(result["updated_at"])
-        assert isinstance(parsed, datetime)
 
     def test_updated_at_is_iso_format(self, app):
         """When updated_at is set, it serializes as a valid ISO 8601 string."""

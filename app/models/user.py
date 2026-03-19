@@ -11,11 +11,11 @@ class User(BaseModel, UserMixin):
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     role = db.Column(
-        db.Enum("admin", "cashier", "stocking", "co-admin"), nullable=False
+        db.Enum("admin", "cashier", "stocking", "co-admin", validate_strings=True), nullable=False
     )
     password = db.Column(db.String(255), nullable=False)
     status = db.Column(
-        db.Enum("activated", "not_activated", "suspended", "archived"), nullable=False
+        db.Enum("activated", "not_activated", "suspended", "archived", validate_strings=True), nullable=False
     )
 
     # relationships

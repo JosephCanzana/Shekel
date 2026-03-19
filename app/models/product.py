@@ -12,7 +12,7 @@ class Product(BaseModel):
     revenue_price         = db.Column(db.Numeric(10, 2), nullable=False)
     product_price         = db.Column(db.Numeric(10, 2), nullable=False)
     low_reorder_threshold = db.Column(db.Integer, nullable=False)
-    status                = db.Column(db.Enum("active", "archived"), nullable=False)
+    status                = db.Column(db.Enum("active", "archived", validate_strings=True), nullable=False)
     created_at            = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
 
     # relationships

@@ -8,10 +8,10 @@ class AuditLog(BaseModel):
     log_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey("Users.user_id"), nullable=False)
     action_type = db.Column(
-        db.Enum("INSERT", "UPDATE", "DELETE", "LOGIN", "LOGOUT"), nullable=False
+        db.Enum("INSERT", "UPDATE", "DELETE", "LOGIN", "LOGOUT", validate_strings=True), nullable=False
     )
     module = db.Column(
-        db.Enum("products", "inventory", "sales", "defects", "users", "stock_in"),
+        db.Enum("products", "inventory", "sales", "defects", "users", "stock_in", validate_strings=True),
         nullable=False,
     )
     reference_id = db.Column(db.Integer, nullable=True)
