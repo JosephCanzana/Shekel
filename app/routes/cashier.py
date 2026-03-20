@@ -24,7 +24,7 @@ def transaction():
 @login_required
 @role_required("admin", "co-admin", "cashier")
 def search():
-    query = (request.json or {}).get("query", "").strip()
+    query = str((request.json or {}).get("query", "")).strip()
     if not query or len(query) < 1:
         return jsonify([])
 
@@ -55,7 +55,7 @@ def search():
 @login_required
 @role_required("admin", "co-admin", "cashier")
 def lookup():
-    query = (request.json or {}).get("query", "").strip()
+    query = str((request.json or {}).get("query", "")).strip()
     if not query:
         return jsonify({"error": "No search term provided."}), 400
 
@@ -121,20 +121,32 @@ def charge():
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid payment amount."}), 400
 
+    # ── Step 1: validate everything BEFORE any DB writes ──────────────────
     warnings = []
     for item in items:
+        # validate qty type
+        try:
+            qty = int(item["qty"])
+        except (ValueError, TypeError):
+            return jsonify({"error": f"Invalid quantity for '{item.get('product_id', '?')}'."}), 400
+
+        # validate qty value
+        if qty <= 0:
+            return jsonify({"error": "Quantity must be greater than zero."}), 400
+
         product = Product.query.get(item["product_id"])
         if not product:
             return jsonify({"error": f'Product "{item["product_id"]}" not found.'}), 400
         if product.status == "archived":
             return jsonify({"error": f'"{product.product_name.capitalize()}" is archived.'}), 400
+
         stock = product.inventory.quantity_available if product.inventory else 0
-        qty   = int(item["qty"])
         if qty > stock:
             warnings.append(
                 f'"{product.product_name.capitalize()}": only {stock} in stock, selling {qty}.'
             )
 
+    # ── Step 2: compute totals ─────────────────────────────────────────────
     total_unit    = sum(float(i["unit_price"])    * int(i["qty"]) for i in items)
     total_revenue = sum(float(i["revenue_price"]) * int(i["qty"]) for i in items)
     total_amount  = sum(float(i["product_price"]) * int(i["qty"]) for i in items)
@@ -144,6 +156,7 @@ def charge():
 
     change = round(tendered - total_amount, 2)
 
+    # ── Step 3: write to DB only after all validation passes ───────────────
     sale = Sale(
         sale_datetime       = datetime.utcnow(),
         user_id             = current_user.user_id,
@@ -153,7 +166,7 @@ def charge():
         payment_method      = "cash",
     )
     db.session.add(sale)
-    db.session.flush()
+    db.session.flush()  # get sale.transaction_id before inserting details
 
     for item in items:
         qty           = int(item["qty"])
@@ -191,10 +204,10 @@ def charge():
         "warnings":       warnings,
         "items": [
             {
-                "product_name": i["product_name"],
-                "qty":          int(i["qty"]),
-                "product_price":float(i["product_price"]),
-                "subtotal":     round(float(i["product_price"]) * int(i["qty"]), 2),
+                "product_name":  i["product_name"],
+                "qty":           int(i["qty"]),
+                "product_price": float(i["product_price"]),
+                "subtotal":      round(float(i["product_price"]) * int(i["qty"]), 2),
             }
             for i in items
         ],

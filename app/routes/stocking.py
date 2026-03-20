@@ -126,7 +126,10 @@ def complete():
     received = []
     for item in items:
         product_id = item.get("product_id")
-        qty        = int(item.get("qty", 0))
+        try:
+            qty = int(item.get("qty", 0))
+        except (ValueError, TypeError):
+            return jsonify({"error": f"Invalid quantity for product '{product_id}'."}), 400
         item_notes = item.get("notes", "").strip() or notes
 
         if qty <= 0:

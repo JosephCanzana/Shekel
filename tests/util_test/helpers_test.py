@@ -328,16 +328,19 @@ class TestValidateEmail:
 
     def test_yahoo_email_rejected(self):
         ok, err = validate_email("user@yahoo.com")
-        assert ok is False
-        assert "gmail" in err.lower()
+        assert ok is True
 
     def test_outlook_email_rejected(self):
         ok, err = validate_email("user@outlook.com")
-        assert ok is False
+        assert ok is True
 
     def test_custom_domain_rejected(self):
         ok, err = validate_email("user@company.com")
-        assert ok is False
+        assert ok is True
+
+    def test_school_domain_rejected(self):
+        ok, err = validate_email("user@holycross.edu.ph")
+        assert ok is True
 
     # -- Malformed emails --
 

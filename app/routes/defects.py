@@ -231,7 +231,10 @@ def complete():
         if not product or product.status == "archived":
             return jsonify({"error": f'Product "{item.get("product_id")}" not found or archived.'}), 400
 
-        qty = int(item.get("qty", 0))
+        try:
+            qty = int(item.get("qty", 0))
+        except (ValueError, TypeError):
+            return jsonify({"error": f"Invalid quantity for product '{item.get('product_id', '?')}'."}), 400
         if qty <= 0:
             return jsonify({"error": f'Invalid quantity for "{product.product_name}".'}), 400
 

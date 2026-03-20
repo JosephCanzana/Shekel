@@ -70,25 +70,12 @@ def validate_password(password):
  
  
 def validate_email(email):
-    """
-    Validates a Gmail address.
-    Returns (True, None) if valid.
-    Returns (False, error_message) if invalid.
-    Enforces Gmail only since this is used as the admin recovery email.
-    """
     if not email:
         return False, "Email is required."
- 
-    # basic structure check
     pattern = r"^[\w\.\+\-]+@[\w\-]+\.[\w\.\-]+$"
     if not re.match(pattern, email):
         return False, "Please enter a valid email address."
- 
-    # enforce Gmail only for recovery
-    if not email.lower().endswith("@gmail.com"):
-        return False, "Recovery email must be a Gmail address (@gmail.com)."
- 
-    return True, None
+    return True, None  
  
  
 def validate_phone(phone):

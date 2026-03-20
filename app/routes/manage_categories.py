@@ -126,10 +126,9 @@ def delete(category_id):
         flash("Category not found.", "danger")
         return redirect(url_for("manage_categories.index"))
 
-    # TODO: uncomment once Product model is built
-    # if category.products:
-    #     flash("Cannot delete a category that has products.", "danger")
-    #     return redirect(url_for("manage_categories.index"))
+    if category.products:
+        flash("Cannot delete a category that has products.", "danger")
+        return redirect(url_for("manage_categories.index"))
 
     name = category.category_name
     category.delete()
