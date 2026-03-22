@@ -225,11 +225,6 @@ def edit(product_id):
             # ── check if product_id is being changed ──────────────────────────────
             id_changing = product_id_new != product_id
             if id_changing:
-                id_conflict = Product.query.filter_by(product_id=product_id_new).first()
-                if id_conflict:
-                    flash(f'Barcode "{product_id_new}" is already in use by another product.', "danger")
-                    return redirect(url_for("inventory.edit", product_id=product_id))
-
                 err = barcode_in_use(
                     product_id_new,
                     exclude_product_id=product_id,
@@ -239,9 +234,14 @@ def edit(product_id):
                     flash(err, "danger")
                     return redirect(url_for("inventory.edit", product_id=product_id))
 
+                product.product_id = product_id_new
+                db.session.flush()
+                db.session.expire(product)
+                product = db.session.get(Product, product_id_new)
+
             existing = Product.query.filter(
                 Product.product_name.ilike(product_name),
-                Product.product_id != product_id
+                Product.product_id != product_id_new
             ).first()
             if existing:
                 flash(f'A product named "{product_name}" already exists.', "danger")

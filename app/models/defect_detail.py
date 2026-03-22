@@ -7,8 +7,7 @@ class DefectDetail(BaseModel):
 
     defect_detail_id        = db.Column(db.Integer, primary_key=True, autoincrement=True)
     defect_id               = db.Column(db.Integer, db.ForeignKey("Defects.defect_id"),    nullable=False)
-    product_id              = db.Column(db.String(100), db.ForeignKey("Products.product_id",
-                                        ondelete="RESTRICT"),                               nullable=False)
+    product_id = db.Column(db.String(100), db.ForeignKey("Products.product_id", onupdate="CASCADE", ondelete="RESTRICT"), nullable=False)
     quantity                = db.Column(db.Integer,                                         nullable=False)
 
     # why the item is being reported
