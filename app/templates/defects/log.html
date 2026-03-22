@@ -263,20 +263,32 @@
 
     {# ═══════════ DESKTOP LAYOUT ═══════════ #}
     <div class="desktop-layout gap-4"
-         style="height: calc(95vh - var(--navbar-height, 64px) - 2.5rem); margin-top: -17px;">
+         style="height: calc(95vh - var(--navbar-height, 64px) - 2.5rem); margin-top: 0;">
 
         {# ── LEFT: list ── #}
         <div class="flex flex-col rounded-2xl overflow-hidden flex-[3]"
              style="background-color:var(--color-surface); border:1px solid var(--color-border);">
-
+            
             <div class="shrink-0 px-4 py-3 flex items-center justify-between"
                  style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
-                <h2 class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
-                    Product Return / Defect
-                    <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]"
-                          style="background:color-mix(in srgb,var(--color-error) 15%,transparent);color:var(--color-error);"
-                          x-text="items.length"></span>
-                </h2>
+                <div class="flex items-center gap-2">
+                    {% if current_user.role != "cashier" %}
+                    <button onclick="history.back()"
+                            class="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                            style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface)';this.style.color='var(--color-txt-primary)'"
+                            onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'"
+                            title="Go back">
+                        <span class="material-symbols-outlined text-[15px]">arrow_back</span>
+                    </button>
+                    {% endif %}
+                    <h2 class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
+                        Product Return / Defect
+                        <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]"
+                              style="background:color-mix(in srgb,var(--color-error) 15%,transparent);color:var(--color-error);"
+                              x-text="items.length"></span>
+                    </h2>
+                </div>
                 <button x-show="items.length > 0" @click="confirmCancel = true"
                         class="flex items-center gap-1 text-xs transition" style="color:var(--color-txt-muted);"
                         onmouseover="this.style.color='var(--color-error)'" onmouseout="this.style.color='var(--color-txt-muted)'">
@@ -623,32 +635,43 @@
 
     {# ═══════════ MOBILE LAYOUT ═══════════ #}
     <div class="mobile-layout flex-col w-full"
-         style="height: calc(100dvh - var(--navbar-height, 64px)); margin-top: -40px;">
+         style="height: calc(100vh - var(--navbar-height, 64px)); margin-top: -17px;">
 
-        <div class="shrink-0 flex items-center justify-center gap-3 py-3"
+        <div class="shrink-0 flex items-center gap-3 px-3 py-3"
              style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
-            <button @click="mobileTab='scan'"
-                    class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition"
-                    :style="mobileTab==='scan'
-                            ? 'background:var(--color-error);color:#fff'
-                            : 'background:var(--color-surface);border:1.5px solid var(--color-border);color:var(--color-txt-muted)'">
-                <span class="material-symbols-outlined text-[16px]">barcode_scanner</span>
-                Scan &amp; List
-                <template x-if="items.length > 0">
-                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
-                          :style="mobileTab==='scan' ? 'background:rgba(255,255,255,0.25);color:#fff' : 'background:var(--color-error);color:#fff'"
-                          x-text="items.length"></span>
-                </template>
+            {# back button #}
+            <button onclick="history.back()"
+                    class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition"
+                    style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
             </button>
-            <span class="w-1.5 h-1.5 rounded-full" style="background-color:var(--color-border);"></span>
-            <button @click="mobileTab='complete'"
-                    class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition"
-                    :style="mobileTab==='complete'
-                            ? 'background:var(--color-error);color:#fff'
-                            : 'background:var(--color-surface);border:1.5px solid var(--color-border);color:var(--color-txt-muted)'">
-                <span class="material-symbols-outlined text-[16px]">check_circle</span>
-                Complete
-            </button>
+            {# tabs centered #}
+            <div class="flex-1 flex items-center justify-center gap-3">
+                <button @click="mobileTab='scan'"
+                        class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition"
+                        :style="mobileTab==='scan'
+                                ? 'background:var(--color-error);color:#fff'
+                                : 'background:var(--color-surface);border:1.5px solid var(--color-border);color:var(--color-txt-muted)'">
+                    <span class="material-symbols-outlined text-[16px]">barcode_scanner</span>
+                    Scan &amp; List
+                    <template x-if="items.length > 0">
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                              :style="mobileTab==='scan' ? 'background:rgba(255,255,255,0.25);color:#fff' : 'background:var(--color-error);color:#fff'"
+                              x-text="items.length"></span>
+                    </template>
+                </button>
+                <span class="w-1.5 h-1.5 rounded-full" style="background-color:var(--color-border);"></span>
+                <button @click="mobileTab='complete'"
+                        class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition"
+                        :style="mobileTab==='complete'
+                                ? 'background:var(--color-error);color:#fff'
+                                : 'background:var(--color-surface);border:1.5px solid var(--color-border);color:var(--color-txt-muted)'">
+                    <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                    Complete
+                </button>
+            </div>
         </div>
 
         <div class="flex-1 overflow-hidden">
