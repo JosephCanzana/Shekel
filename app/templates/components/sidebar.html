@@ -1,272 +1,245 @@
 {# ══════════════════════════════════════════════════════════
    SIDEBAR COMPONENT
-   Usage: {% include "components/sidebar.html" %}
-
-   ── To add/edit nav links, update the sidebar_links dict below.
-   ── Bottom utilities (theme, info, logout) are always shown.
-   ── Sidebar starts collapsed (icon only), expands on toggle.
-   ── Toggle is fired via Alpine custom event 'toggle-sidebar'
-      dispatched by the hamburger in navbar.html
 ══════════════════════════════════════════════════════════ #}
 
-{# ── Define nav links per role ─────────────────────────────
-   Each item: { url, icon, label }
-   icon = Material Symbols name
-   Keep url as '#' until the route exists
-────────────────────────────────────────────────────────── #}
 {% set sidebar_links = {
 
     'admin': [
-        {'url': url_for('admin.dashboard'), 'icon': 'home', 'label': 'Dashboard'},
-        {'url': url_for('inventory.index'), 'icon': 'inventory', 'label': 'Inventory'},
-        {'url': url_for('defects.index'), 'icon': 'report_problem', 'label': 'Defects/Returns'},
-        {'url': url_for('manage_users.index'), 'icon': 'group',     'label': 'Users'},
-        {'url': url_for('manage_categories.index'), 'icon': 'category',  'label': 'Categories'},
-        {'url': '#', 'icon': 'monitoring','label': 'Reports'},
-        {'url': '#', 'icon': 'history','label': 'Audit log'},
+        {'url': url_for('admin.dashboard'),         'icon': 'home',          'label': 'Dashboard'},
+        {'url': url_for('inventory.index'),         'icon': 'inventory',     'label': 'Inventory'},
+        {'url': url_for('defects.index'),           'icon': 'report_problem','label': 'Defects/Returns'},
+        {'url': url_for('manage_users.index'),      'icon': 'group',         'label': 'Users'},
+        {'url': url_for('manage_categories.index'), 'icon': 'category',      'label': 'Categories'},
+        {'url': '#',                                'icon': 'monitoring',    'label': 'Reports'},
+        {'url': '#',                                'icon': 'history',       'label': 'Audit Log'},
     ],
 
     'co-admin': [
-        {'url': url_for('admin.dashboard'), 'icon': 'home', 'label': 'Dashboard'},
-        {'url': url_for('inventory.index'), 'icon': 'inventory', 'label': 'Inventory'},
-        {'url': url_for('defects.index'), 'icon': 'report_problem', 'label': 'Defects/Returns'},
-        {'url': url_for('manage_users.index'), 'icon': 'group',     'label': 'Users'},
-        {'url': url_for('manage_categories.index'), 'icon': 'category',  'label': 'Categories'},
-        {'url': '#', 'icon': 'monitoring','label': 'Reports'},
-        {'url': '#', 'icon': 'history','label': 'Audit log'},
+        {'url': url_for('admin.dashboard'),         'icon': 'home',          'label': 'Dashboard'},
+        {'url': url_for('inventory.index'),         'icon': 'inventory',     'label': 'Inventory'},
+        {'url': url_for('defects.index'),           'icon': 'report_problem','label': 'Defects/Returns'},
+        {'url': url_for('manage_users.index'),      'icon': 'group',         'label': 'Users'},
+        {'url': url_for('manage_categories.index'), 'icon': 'category',      'label': 'Categories'},
+        {'url': '#',                                'icon': 'monitoring',    'label': 'Reports'},
+        {'url': '#',                                'icon': 'history',       'label': 'Audit Log'},
     ],
 
     'cashier': [
-        {'url': url_for("cashier.transaction"), 'icon': 'point_of_sale', 'label': 'New Sale'},
-        {'url': url_for("defects.log"), 'icon': 'report_problem', 'label': 'Returns'},
-        {'url': '#', 'icon': 'receipt_long',  'label': 'Sales History'},
+        {'url': url_for('cashier.transaction'), 'icon': 'point_of_sale',  'label': 'New Sale'},
+        {'url': url_for('defects.log'),         'icon': 'report_problem', 'label': 'Returns'},
+        {'url': '#',                            'icon': 'receipt_long',   'label': 'Sales History'},
     ],
 
     'stocking': [
         {'url': url_for('stocking.dashboard'), 'icon': 'home',           'label': 'Dashboard'},
-        {'url': url_for('inventory.index'), 'icon': 'inventory',      'label': 'Inventory'},
-        {'url': url_for('defects.index'), 'icon': 'report_problem', 'label': 'Defects'},
+        {'url': url_for('inventory.index'),    'icon': 'inventory',      'label': 'Inventory'},
+        {'url': url_for('defects.index'),      'icon': 'report_problem', 'label': 'Defects'},
     ],
 
 } %}
 
-{# ── Bottom utility buttons (always visible for all roles) ── #}
-{% set utilities = [
-    {'type': 'button', 'action': 'theme-toggle',  'icon': 'light_mode',  'label': 'Theme'},
-    {'type': 'link',   'url': url_for('info.index'),                 'icon': 'info',        'label': 'Info'},
-    {'type': 'link',   'url': url_for('auth.logout'), 'icon': 'logout',   'label': 'Logout'},
-] %}
-
-{# Resolve links for the current user's role #}
 {% set links = sidebar_links.get(current_user.role, []) %}
 
+<div x-data>
 
-{# ══════════════════════════════════════════════════════════
-   SIDEBAR MARKUP
-   Uses Alpine x-data on wrapper to manage expanded state.
-   Listens for 'toggle-sidebar' event from navbar hamburger.
-══════════════════════════════════════════════════════════ #}
-<div x-data="{ expanded: false }"
-     @toggle-sidebar.window="expanded = !expanded"
-     class="relative">
+    {# ════════════════════════════════════════
+       DESKTOP: icon-only collapsed rail (sm+)
+       Hidden when expanded sidebar slides in
+    ════════════════════════════════════════ #}
+    <div class="hidden sm:flex fixed left-0 top-14 z-30
+                h-[calc(100vh-3.5rem)] w-16 flex-col justify-between
+                transition-all duration-300"
+         :class="$store.sidebar.expanded ? 'opacity-0 pointer-events-none' : 'opacity-100'"
+         style="background-color:var(--color-surface); border-right:1px solid var(--color-border);">
 
-    {# ── Collapsed sidebar (icon only, always visible) ── #}
-    <div id="sidebar-collapsed"
-     :class="expanded ? 'opacity-0 pointer-events-none' : 'opacity-100'"
-     class="hidden sm:flex fixed left-0 top-14 z-30
-            h-[calc(100vh-3.5rem)] w-16
-            flex-col justify-between
-            bg-surface border-r border-border
-            transition-all duration-300 ease-in-out">
-
-        {# Top nav icons #}
+        {# nav icons #}
         <div class="flex flex-col items-center pt-3 gap-1">
             {% for item in links %}
             <a href="{{ item.url }}"
                class="w-10 h-10 rounded-lg flex items-center justify-center
-                      text-txt-muted hover:text-txt-primary hover:bg-surface-alt
-                      {% if request.path == item.url %}
-                          bg-primary/10 text-primary
-                      {% endif %}
                       transition-colors duration-150 group relative"
+               style="color:{% if request.path == item.url %}var(--color-primary){% else %}var(--color-txt-muted){% endif %};
+                      {% if request.path == item.url %}background:color-mix(in srgb,var(--color-primary) 10%,transparent){% endif %}"
+               onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)'"
+               onmouseout="this.style.backgroundColor='{% if request.path == item.url %}color-mix(in srgb,var(--color-primary) 10%,transparent){% else %}transparent{% endif %}';this.style.color='{% if request.path == item.url %}var(--color-primary){% else %}var(--color-txt-muted){% endif %}'"
                title="{{ item.label }}">
                 <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
-
-                {# tooltip on hover #}
-                <span class="absolute left-14 px-2 py-1 rounded-md text-xs
-                             bg-surface border border-border text-txt-primary
-                             whitespace-nowrap shadow-md
-                             opacity-0 group-hover:opacity-100
-                             pointer-events-none transition-opacity duration-150 z-50">
+                <span class="absolute left-14 px-2 py-1 rounded-md text-xs whitespace-nowrap shadow-md z-50
+                             opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150"
+                      style="background-color:var(--color-surface); border:1px solid var(--color-border); color:var(--color-txt-primary);">
                     {{ item.label }}
                 </span>
             </a>
             {% endfor %}
         </div>
 
-        {# Bottom utility icons #}
+        {# bottom utilities — desktop rail #}
         <div class="flex flex-col items-center pb-3 gap-1">
-            {% for util in utilities %}
-            {% if util.type == 'link' %}
-
-                {% if util.icon == 'logout' %}
-                    {# ── Logout — confirm modal + POST ── #}
-                    <button x-data
-                            @click="$dispatch('confirm', {
-                                title:   'Sign Out',
-                                message: 'Are you sure you want to sign out?',
-                                action:  '{{ url_for("auth.logout") }}',
-                                fields:  []
-                            })"
-                            class="w-10 h-10 rounded-lg flex items-center justify-center
-                                text-error hover:bg-error/10
-                                transition-colors duration-150 group relative"
-                            title="{{ util.label }}">
-                        <span class="material-symbols-outlined text-[20px]">logout</span>
-                        <span class="absolute left-14 px-2 py-1 rounded-md text-xs
-                                    bg-surface border border-border text-txt-primary
-                                    whitespace-nowrap shadow-md
-                                    opacity-0 group-hover:opacity-100
-                                    pointer-events-none transition-opacity duration-150 z-50">
-                            {{ util.label }}
-                        </span>
-                    </button>
-
-                {% else %}
-                    {# ── Regular link ── #}
-                    <a href="{{ util.url }}"
-                    class="w-10 h-10 rounded-lg flex items-center justify-center
-                            text-txt-muted hover:text-txt-primary hover:bg-surface-alt
-                            transition-colors duration-150 group relative"
-                    title="{{ util.label }}">
-                        <span class="material-symbols-outlined text-[20px]">{{ util.icon }}</span>
-                        <span class="absolute left-14 px-2 py-1 rounded-md text-xs
-                                    bg-surface border border-border text-txt-primary
-                                    whitespace-nowrap shadow-md
-                                    opacity-0 group-hover:opacity-100
-                                    pointer-events-none transition-opacity duration-150 z-50">
-                            {{ util.label }}
-                        </span>
-                    </a>
-                {% endif %}
-
-            {% else %}
-                {# ── Button (theme toggle etc) ── #}
-                <button class="w-10 h-10 rounded-lg flex items-center justify-center
-                            text-txt-muted hover:text-txt-primary hover:bg-surface-alt
-                            transition-colors duration-150 group relative
-                            {% if util.action == 'theme-toggle' %}theme-toggle{% endif %}"
-                        title="{{ util.label }}">
-                    {% if util.action == 'theme-toggle' %}
-                        <span class="material-symbols-outlined text-[20px] theme-icon">dark_mode</span>
-                    {% else %}
-                        <span class="material-symbols-outlined text-[20px]">{{ util.icon }}</span>
-                    {% endif %}
-                    <span class="absolute left-14 px-2 py-1 rounded-md text-xs
-                                bg-surface border border-border text-txt-primary
-                                whitespace-nowrap shadow-md
-                                opacity-0 group-hover:opacity-100
-                                pointer-events-none transition-opacity duration-150 z-50">
-                        {{ util.label }}
-                    </span>
-                </button>
-            {% endif %}
-        {% endfor %}
+            <button class="theme-toggle w-10 h-10 rounded-lg flex items-center justify-center
+                           transition-colors duration-150 group relative"
+                    style="color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)'"
+                    onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'"
+                    title="Theme">
+                <span class="material-symbols-outlined text-[20px] theme-icon">dark_mode</span>
+                <span class="absolute left-14 px-2 py-1 rounded-md text-xs whitespace-nowrap shadow-md z-50
+                             opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150"
+                      style="background-color:var(--color-surface); border:1px solid var(--color-border); color:var(--color-txt-primary);">Theme</span>
+            </button>
+            <a href="{{ url_for('info.index') }}"
+               class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors duration-150 group relative"
+               style="color:var(--color-txt-muted);"
+               onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)'"
+               onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'"
+               title="Info">
+                <span class="material-symbols-outlined text-[20px]">info</span>
+                <span class="absolute left-14 px-2 py-1 rounded-md text-xs whitespace-nowrap shadow-md z-50
+                             opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150"
+                      style="background-color:var(--color-surface); border:1px solid var(--color-border); color:var(--color-txt-primary);">Info</span>
+            </a>
+            <button @click="$dispatch('confirm', {
+                        title:   'Sign Out',
+                        message: 'Are you sure you want to sign out?',
+                        action:  '{{ url_for("auth.logout") }}',
+                        fields:  []
+                    })"
+                    class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors duration-150 group relative"
+                    style="color:var(--color-error);"
+                    onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-error) 10%,transparent)'"
+                    onmouseout="this.style.backgroundColor='transparent'"
+                    title="Sign Out">
+                <span class="material-symbols-outlined text-[20px]">logout</span>
+                <span class="absolute left-14 px-2 py-1 rounded-md text-xs whitespace-nowrap shadow-md z-50
+                             opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150"
+                      style="background-color:var(--color-surface); border:1px solid var(--color-border); color:var(--color-txt-primary);">Sign Out</span>
+            </button>
         </div>
     </div>
 
 
-    {# ── Expanded sidebar (icon + label) ── #}
-    <div class="fixed left-0 top-14 z-40
-                h-[calc(100vh-3.5rem)] w-56
-                flex flex-col justify-between
-                bg-surface border-r border-border shadow-lg
-                transition-transform duration-300 ease-in-out"
-         :class="$store.sidebar.expanded
-                    ? 'translate-x-0'
-                    : '-translate-x-full'">
+    {# ════════════════════════════════════════
+       EXPANDED SIDEBAR — desktop + mobile
 
-        {# Top nav links #}
-        <div class="flex flex-col pt-3 gap-0.5 px-2">
+       KEY MOBILE FIX:
+       - Covers full screen (top:0, h-full) so browser chrome doesn't clip it
+       - Uses flex-col with nav links scrollable and utilities pinned at bottom
+       - Safe area padding handles notches / home indicator
+    ════════════════════════════════════════ #}
+    <div class="fixed left-0 top-0 z-50
+                h-full w-72 sm:w-56 sm:top-14 sm:h-[calc(100vh-3.5rem)]
+                flex flex-col shadow-2xl
+                transition-transform duration-300 ease-in-out"
+         :class="$store.sidebar.expanded ? 'translate-x-0' : '-translate-x-full'"
+         style="background-color:var(--color-surface); border-right:1px solid var(--color-border);">
+
+        {# ── Mobile-only top bar with user info + close ── #}
+        <div class="flex items-center justify-between px-4 py-3 shrink-0 sm:hidden"
+             style="border-bottom:1px solid var(--color-border);
+                    background:color-mix(in srgb,var(--color-primary) 5%,transparent);">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
+                     style="background-color:var(--color-secondary); color:var(--color-txt-primary);">
+                    {{ current_user.first_name[0]|upper }}{{ current_user.last_name[0]|upper }}
+                </div>
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);">
+                        {{ current_user.first_name | title }} {{ current_user.last_name | title }}
+                    </p>
+                    <p class="text-xs capitalize" style="color:var(--color-txt-muted);">{{ current_user.role }}</p>
+                </div>
+            </div>
+            <button @click="$store.sidebar.toggle()"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition"
+                    style="color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+
+        {# ── Desktop-only top spacer (no user strip needed, navbar shows it) ── #}
+        <div class="hidden sm:block shrink-0 pt-2"></div>
+
+        {# ── Nav links — scrollable area ── #}
+        <nav class="flex-1 overflow-y-auto px-2 py-1 min-h-0">
             {% for item in links %}
             <a href="{{ item.url }}"
-               class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-                      {% if request.path == item.url %}
-                          bg-primary/10 text-primary font-medium
+               @click="window.innerWidth < 640 ? $store.sidebar.toggle() : null"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-0.5 transition-colors duration-150"
+               style="{% if request.path == item.url %}
+                          background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+                          color:var(--color-primary); font-weight:600;
                       {% else %}
-                          text-txt-secondary hover:text-txt-primary hover:bg-surface-alt
-                      {% endif %}
-                      transition-colors duration-150">
+                          color:var(--color-txt-secondary);
+                      {% endif %}"
+               onmouseover="{% if request.path != item.url %}this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)'{% endif %}"
+               onmouseout="{% if request.path != item.url %}this.style.backgroundColor='transparent';this.style.color='var(--color-txt-secondary)'{% endif %}">
                 <span class="material-symbols-outlined text-[20px] shrink-0">{{ item.icon }}</span>
-                <span>{{ item.label }}</span>
+                <span class="truncate">{{ item.label }}</span>
             </a>
             {% endfor %}
+        </nav>
+
+        {# ── Bottom utilities — ALWAYS pinned, never scrolled away ──
+             On mobile: safe-area-inset-bottom ensures it clears the home indicator
+             The key fix: shrink-0 + border-top keeps this section always visible
+        ── #}
+        <div class="shrink-0 px-2 pt-2 pb-safe sm:pb-3"
+             style="border-top:1px solid var(--color-border);
+                    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));">
+
+            {# Theme toggle #}
+            <button class="theme-toggle flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
+                           w-full mb-0.5 transition-colors duration-150"
+                    style="color:var(--color-txt-secondary);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)'"
+                    onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-secondary)'">
+                <span class="material-symbols-outlined text-[20px] shrink-0 theme-icon">dark_mode</span>
+                <span>Theme</span>
+            </button>
+
+            {# Info #}
+            <a href="{{ url_for('info.index') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
+                      mb-0.5 transition-colors duration-150"
+               style="color:var(--color-txt-secondary);"
+               onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)'"
+               onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-secondary)'">
+                <span class="material-symbols-outlined text-[20px] shrink-0">info</span>
+                <span>Info</span>
+            </a>
+
+            {# Sign Out — always last, always visible, styled distinctly ── #}
+            <button @click="$dispatch('confirm', {
+                        title:   'Sign Out',
+                        message: 'Are you sure you want to sign out?',
+                        action:  '{{ url_for("auth.logout") }}',
+                        fields:  []
+                    })"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
+                           w-full transition-colors duration-150"
+                    style="color:var(--color-error);"
+                    onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-error) 10%,transparent)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[20px] shrink-0">logout</span>
+                <span>Sign Out</span>
+            </button>
         </div>
 
-        {# Bottom utilities #}
-        <div class="flex flex-col pb-3 gap-0.5 px-2">
-
-            {# Divider #}
-            <div class="border-t border-border mb-2 mx-1"></div>
-
-            {% for util in utilities %}
-                {% if util.type == 'link' %}
-
-                    {% if util.icon == 'logout' %}
-                        {# ── Logout — confirm modal + POST form ── #}
-                        <button x-data
-                                @click="$dispatch('confirm', {
-                                    title:   'Sign Out',
-                                    message: 'Are you sure you want to sign out?',
-                                    action:  '{{ url_for("auth.logout") }}',
-                                    fields:  []
-                                })"
-                                class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full
-                                    text-error hover:bg-error/10
-                                    transition-colors duration-150">
-                            <span class="material-symbols-outlined text-[20px] shrink-0">logout</span>
-                            <span>{{ util.label }}</span>
-                        </button>
-
-                    {% else %}
-                        {# ── Regular link ── #}
-                        <a href="{{ util.url }}"
-                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm
-                                text-txt-secondary hover:text-txt-primary hover:bg-surface-alt
-                                transition-colors duration-150">
-                            <span class="material-symbols-outlined text-[20px] shrink-0">{{ util.icon }}</span>
-                            <span>{{ util.label }}</span>
-                        </a>
-                    {% endif %}
-
-                {% else %}
-                    {# ── Button (theme toggle etc) ── #}
-                    <button class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm w-full
-                                text-txt-secondary hover:text-txt-primary hover:bg-surface-alt
-                                transition-colors duration-150
-                                {% if util.action == 'theme-toggle' %}theme-toggle{% endif %}">
-                        {% if util.action == 'theme-toggle' %}
-                            <span class="material-symbols-outlined text-[20px] shrink-0 theme-icon">dark_mode</span>
-                        {% else %}
-                            <span class="material-symbols-outlined text-[20px] shrink-0">{{ util.icon }}</span>
-                        {% endif %}
-                        <span>{{ util.label }}</span>
-                    </button>
-                {% endif %}
-            {% endfor %}
-        </div>
     </div>
 
-    {# Click outside overlay — closes expanded sidebar #}
-    <div x-show="expanded"
-         @click="expanded = false"
-         class="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px]
-                sm:hidden">
-    </div>
-        <div x-show="$store.sidebar.expanded"
+
+    {# ── Backdrop — closes sidebar on click outside ── #}
+    <div x-show="$store.sidebar.expanded"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
          @click="$store.sidebar.toggle()"
-         class="fixed inset-0 z-30 bg-black/20
-                backdrop-blur-[1px] sm:hidden">
+         class="fixed inset-0 z-40"
+         style="background:rgba(0,0,0,0.4); backdrop-filter:blur(2px);">
     </div>
 
 </div>

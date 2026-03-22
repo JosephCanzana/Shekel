@@ -14,7 +14,7 @@ def dashboard():
         "admin/dashboard.html",
         time_of_day         = get_time_of_day(),
         stats               = stats,
-        recent_transactions = stats["recent_transactions"],  # ← reuse stats
+        recent_transactions = stats["recent_transactions"],
         low_stock_items     = get_low_stock_items(),
         defects             = get_defects(),
     )
