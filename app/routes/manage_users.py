@@ -65,10 +65,11 @@ def add():
         existing_user = User.query.filter_by(
             first_name=first_name,
             last_name=last_name,
-            role=role
+            # role=role <- uncomment later
         ).first()
         if existing_user:
-            flash("A user with this name and role already exists.", "danger")
+            # flash("A user with this name and role already exists.", "danger") <- uncomment later
+            flash("A user with this name already exists.", "danger")
             return redirect(url_for("manage_users.add"))
 
         user = User(
@@ -127,6 +128,18 @@ def edit(user_id):
                 flash(err, "danger")
                 return redirect(url_for("manage_users.edit", user_id=user_id))
             user.set_password(password)
+
+        # duplicate check
+        existing_user = User.query.filter(
+            User.first_name == first_name,
+            User.last_name == last_name,
+            User.user_id != user_id
+        ).first()
+        if existing_user:
+            # flash("A user with this name and role already exists.", "danger") <- uncomment later
+            flash("A user with this name already exists.", "danger")
+            return redirect(url_for("manage_users.add"))
+
 
         if role not in VALID_ROLES:
             flash("Invalid role selected.", "danger")
