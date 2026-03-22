@@ -2,7 +2,7 @@
 <html lang="en" class="">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{% block title %}Shekel{% endblock %}</title>
 
     <link rel="icon" href="{{ url_for('static', filename='img/shekel_logo.ico') }}" type="image/png">
@@ -50,7 +50,8 @@
             transition-all duration-300"
      x-data
      :class="$store.sidebar.expanded ? 'sm:pl-56' : 'sm:pl-16'">
-        <main class="flex-1 px-3 sm:px-6 py-4 sm:py-5 pb-6 md:pb-14">
+        <main class="flex-1 px-3 sm:px-6 py-4 sm:py-5 md:pb-14"
+        style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom));">
             {% block body %}{% endblock %}
         </main>
         

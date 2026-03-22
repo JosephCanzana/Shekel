@@ -43,17 +43,17 @@
             </div>
         </div>
 
-        {# New Added Product #}
+        {# New Added Product This Month #}
         <div class="rounded-2xl p-5 space-y-3"
              style="background-color: var(--color-surface);
                     border: 1px solid var(--color-border);">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold uppercase tracking-wider"
-                      style="color: var(--color-txt-muted);">New Added Product</span>
+                      style="color: var(--color-txt-muted);">New Products</span>
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center"
                      style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
                     <span class="material-symbols-outlined text-[17px]"
-                          style="color: var(--color-accent);">inventory_2</span>
+                          style="color: var(--color-accent);">add_box</span>
                 </div>
             </div>
             <div>
@@ -62,7 +62,7 @@
                     {{ stats.new_added_product | default(0) }}
                 </p>
                 <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
-                    this month
+                    added this month
                 </p>
             </div>
         </div>
@@ -240,17 +240,23 @@
                         {% for defect in defects %}
                         <div class="px-5 py-3 flex items-center justify-between"
                              style="border-bottom: 1px solid var(--color-border);">
-                            <div>
-                                <p class="text-sm font-medium"
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium truncate"
                                    style="color: var(--color-txt-primary);">{{ defect.name }}</p>
-                                <p class="text-xs" style="color: var(--color-txt-muted);">
-                                    {{ defect.reported_by }} · {{ defect.date }}
-                                </p>
+                                <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                          style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);">
+                                        {{ defect.reason }}
+                                    </span>
+                                    <span class="text-xs" style="color:var(--color-txt-muted);">
+                                        {{ defect.reported_by }} · {{ defect.date }}
+                                    </span>
+                                </div>
                             </div>
-                            <span class="text-xs font-semibold px-2 py-1 rounded-lg"
+                            <span class="text-xs font-semibold px-2 py-1 rounded-lg ml-3 shrink-0"
                                   style="background: color-mix(in srgb, var(--color-error) 12%, transparent);
                                          color: var(--color-error);">
-                                x{{ defect.qty }}
+                                ×{{ defect.qty }}
                             </span>
                         </div>
                         {% endfor %}
