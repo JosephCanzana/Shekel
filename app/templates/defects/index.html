@@ -159,7 +159,7 @@
                 </div>
 
                 <div>
-                    <p class="text-sm" style="color:var(--color-txt-secondary);">{{ user.username }}</p>
+                    <p class="text-sm" style="color:var(--color-txt-secondary);">{{ user.first_name | title }} {{ user.last_name | title }}</p>
                     <p class="text-xs capitalize" style="color:var(--color-txt-muted);">{{ user.role }}</p>
                 </div>
 
@@ -229,7 +229,7 @@
                         reason_label: '{{ REASON_LABELS[detail.reason] }}',
                         date:         '{{ defect.defect_datetime.strftime("%b %d, %Y") }}',
                         time:         '{{ defect.defect_datetime.strftime("%I:%M %p") }}',
-                        logged_by:    '{{ user.username }}',
+                        logged_by:    '{{ user.first_name | title }} {{ user.last_name | title }}',
                         logged_role:  '{{ user.role }}',
                         detail_id:    {{ detail.defect_detail_id }},
                         history_url:  '{{ url_for("defects.product_history", product_id=product.product_id) }}',
@@ -269,7 +269,7 @@
                             {{ defect.defect_datetime.strftime('%b %d') }}
                         </p>
                         <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
-                            {{ user.username }}
+                            {{ user.first_name | title }} {{ user.last_name | title }}
                         </p>
                         <span class="material-symbols-outlined text-[18px] mt-1 block"
                               style="color:var(--color-txt-muted);">chevron_right</span>

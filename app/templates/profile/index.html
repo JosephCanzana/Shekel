@@ -88,22 +88,38 @@
         {# ── LEFT: Account details ── #}
         <div class="space-y-4">
 
-            {# Account details card #}
             <div class="rounded-2xl overflow-hidden"
-                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+                style="background-color: var(--color-surface); border: 1px solid var(--color-border);"
+                {% if is_admin %}x-data="{ editing: false, changed: false }"{% endif %}>
 
-                <div class="px-5 py-3.5 flex items-center gap-2"
-                     style="border-bottom: 1px solid var(--color-border);
+                <div class="px-5 py-3.5 flex items-center justify-between gap-2"
+                    style="border-bottom: 1px solid var(--color-border);
                             background-color: var(--color-surface-alt);">
-                    <span class="material-symbols-outlined text-[16px]"
-                          style="color: var(--color-txt-muted);">person</span>
-                    <h2 class="text-xs font-bold uppercase tracking-wider"
-                        style="color: var(--color-txt-muted);">Account Details</h2>
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]"
+                            style="color: var(--color-txt-muted);">person</span>
+                        <h2 class="text-xs font-bold uppercase tracking-wider"
+                            style="color: var(--color-txt-muted);">Account Details</h2>
+                    </div>
+
+                    {% if is_admin %}
+                    <button type="button"
+                            @click="editing = !editing; changed = false"
+                            class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold
+                                transition active:scale-[.97]"
+                            :style="editing
+                                ? 'background: color-mix(in srgb, var(--color-error) 12%, transparent); color: var(--color-error); border: 1px solid color-mix(in srgb, var(--color-error) 22%, transparent);'
+                                : 'background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary); border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);'">
+                        <span class="material-symbols-outlined text-[13px]"
+                            x-text="editing ? 'close' : 'edit'"></span>
+                        <span x-text="editing ? 'Cancel' : 'Edit'"></span>
+                    </button>
+                    {% endif %}
                 </div>
 
+                {# ── READ-ONLY VIEW ── #}
+                {% if is_admin %}<div x-show="!editing">{% endif %}
                 <div class="divide-y" style="--tw-divide-color: var(--color-border);">
-
-                    {# Each row: label left, value right #}
                     {% for label, value in [
                         ("First Name",  user.first_name | capitalize),
                         ("Last Name",   user.last_name  | capitalize),
@@ -112,15 +128,89 @@
                         ("User ID",     "#" ~ user.user_id)
                     ] %}
                     <div class="flex items-center justify-between px-5 py-3 gap-4"
-                         style="border-top: 1px solid var(--color-border);">
+                        style="border-top: 1px solid var(--color-border);">
                         <p class="text-xs font-semibold uppercase tracking-wide shrink-0"
-                           style="color: var(--color-txt-muted);">{{ label }}</p>
+                        style="color: var(--color-txt-muted);">{{ label }}</p>
                         <p class="text-sm text-right {% if label == 'User ID' %}font-mono{% else %}font-medium{% endif %} truncate"
-                           style="color: var(--color-txt-primary);">{{ value }}</p>
+                        style="color: var(--color-txt-primary);">{{ value }}</p>
                     </div>
                     {% endfor %}
-
                 </div>
+                {% if is_admin %}</div>{% endif %}
+
+                {# ── EDIT FORM (admin only) ── #}
+                {% if is_admin %}
+                <div x-show="editing"
+                    x-transition:enter="transition ease-out duration-150"
+                    x-transition:enter-start="opacity-0 -translate-y-1"
+                    x-transition:enter-end="opacity-100 translate-y-0">
+
+                    <form action="{{ url_for('profile.update_identity') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="px-5 py-4 space-y-3">
+
+                            {# First Name #}
+                            <div class="space-y-1">
+                                <label class="text-[11px] font-semibold uppercase tracking-wider"
+                                    style="color: var(--color-txt-muted);">
+                                    First Name <span style="color: var(--color-error);">*</span>
+                                </label>
+                                <input type="text" name="first_name"
+                                    value="{{ user.first_name }}"
+                                    placeholder="First name"
+                                    @input="changed = true"
+                                    class="w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                                    style="border: 1px solid var(--color-border);
+                                            background-color: var(--color-surface-alt);
+                                            color: var(--color-txt-primary);"
+                                    onfocus="this.style.borderColor='var(--color-accent)';
+                                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                                    onblur="this.style.borderColor='var(--color-border)';
+                                            this.style.boxShadow='none'">
+                            </div>
+
+                            {# Last Name #}
+                            <div class="space-y-1">
+                                <label class="text-[11px] font-semibold uppercase tracking-wider"
+                                    style="color: var(--color-txt-muted);">
+                                    Last Name <span style="color: var(--color-error);">*</span>
+                                </label>
+                                <input type="text" name="last_name"
+                                    value="{{ user.last_name }}"
+                                    placeholder="Last name"
+                                    @input="changed = true"
+                                    class="w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                                    style="border: 1px solid var(--color-border);
+                                            background-color: var(--color-surface-alt);
+                                            color: var(--color-txt-primary);"
+                                    onfocus="this.style.borderColor='var(--color-accent)';
+                                                this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                                    onblur="this.style.borderColor='var(--color-border)';
+                                            this.style.boxShadow='none'">
+                            </div>
+
+                        </div>
+
+                        <div class="px-5 pb-4 flex items-center justify-between gap-3">
+                            <p class="text-[11px]" style="color: var(--color-txt-muted);">
+                                Editable by admin only
+                            </p>
+                            <button type="submit"
+                                    :disabled="!changed"
+                                    class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold
+                                        transition active:scale-[.97]
+                                        disabled:opacity-40 disabled:cursor-not-allowed"
+                                    style="background-color: var(--color-primary); color: var(--color-bg);"
+                                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-primary-hover)'"
+                                    onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                                Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+
             </div>
 
         </div>{# /left #}

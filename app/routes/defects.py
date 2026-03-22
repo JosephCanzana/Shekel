@@ -9,8 +9,6 @@ from app.models.inventory import Inventory
 from app.models.defect import Defect
 from app.models.defect_detail import DefectDetail
 from app.extensions import db
-from app.models.user import User
-from app.utils.helpers import is_admin_or_coadmin
 
 defects_bp = Blueprint("defects", __name__, url_prefix="/defects")
 
@@ -27,6 +25,13 @@ COMPENSATION_LABELS = {
     "loss":     "Loss",
     "returned": "Returned",
 }
+
+def is_admin_or_coadmin():
+    return current_user.role in ("admin", "co-admin")
+
+def can_review():
+    """Admin, co-admin, and stocking can review pending items."""
+    return current_user.role in ("admin", "co-admin", "stocking")
 
 def can_set_compensation():
     """Stocking, admin, co-admin can set compensation. Cashier cannot."""
@@ -75,9 +80,9 @@ def _apply_inventory(product_id, qty, compensation, previous_compensation=None):
 # ── Index: pending items watch list ──────────────────────────────────────────
 @defects_bp.route("/")
 @login_required
-@role_required("admin", "co-admin", "stocking")
+@role_required("admin", "co-admin", "stocking", "cashier")
 def index():
-
+    from app.models.user import User
     page          = request.args.get("page", 1, type=int)
     search        = request.args.get("search", "").strip()
     filter_reason = request.args.get("reason", "")
@@ -107,7 +112,7 @@ def index():
                            pending=pending,
                            page=page, pages=pages, total=total,
                            search=search, filter_reason=filter_reason,
-                           can_review=is_admin_or_coadmin(),
+                           can_review=can_review(),
                            REASONS=REASONS,
                            REASON_LABELS=REASON_LABELS,
                            COMPENSATION_LABELS=COMPENSATION_LABELS)
@@ -125,7 +130,7 @@ def log():
 # ── History: all records for one product ─────────────────────────────────────
 @defects_bp.route("/product/<string:product_id>")
 @login_required
-@role_required("admin", "co-admin", "stocking")
+@role_required("admin", "co-admin", "stocking", "cashier")
 def product_history(product_id):
     from app.models.user import User
     product       = Product.query.get_or_404(product_id)
@@ -156,7 +161,7 @@ def product_history(product_id):
                            page=page, pages=pages, total=total,
                            filter_reason=filter_reason,
                            filter_comp=filter_comp,
-                           can_review=is_admin_or_coadmin(),
+                           can_review=can_review(),
                            REASONS=REASONS,
                            REASON_LABELS=REASON_LABELS,
                            COMPENSATION_LABELS=COMPENSATION_LABELS)
@@ -165,7 +170,7 @@ def product_history(product_id):
 # ── Review: change pending → loss / returned ──────────────────────────────────
 @defects_bp.route("/detail/<int:detail_id>/review", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("admin", "co-admin", "stocking")
 def review(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 
@@ -189,7 +194,64 @@ def review(detail_id):
     db.session.commit()
 
     product_name = detail.product.product_name.capitalize()
-    flash(f'"{product_name}" marked as {COMPENSATION_LABELS[new_compensation]}.', "success")
+    reviewer_name = f"{current_user.first_name} {current_user.last_name}".strip().title()
+    flash(f'"{product_name}" marked as {COMPENSATION_LABELS[new_compensation]} by {reviewer_name}.', "success")
+    return redirect(request.referrer or url_for("defects.index"))
+
+
+# ── Update review: admin can change compensation on already-resolved items ────
+@defects_bp.route("/detail/<int:detail_id>/update", methods=["POST"])
+@login_required
+@role_required("admin")
+def update_review(detail_id):
+    detail = DefectDetail.query.get_or_404(detail_id)
+
+    new_compensation = request.form.get("compensation", "").strip()
+    if new_compensation not in ("pending", "loss", "returned"):
+        flash("Invalid compensation.", "danger")
+        return redirect(request.referrer or url_for("defects.index"))
+
+    old_compensation = detail.compensation
+
+    if old_compensation == new_compensation:
+        flash("No change made — compensation is already set to that value.", "info")
+        return redirect(request.referrer or url_for("defects.index"))
+
+    # reverse the old inventory movement, then apply the new one
+    inv = Inventory.query.filter_by(product_id=detail.product_id).first()
+    if inv:
+        # undo old state
+        if old_compensation == "pending":
+            inv.quantity_available += detail.quantity
+            inv.quantity_defective = max(0, (inv.quantity_defective or 0) - detail.quantity)
+        elif old_compensation == "loss":
+            inv.quantity_available += detail.quantity
+        elif old_compensation == "returned":
+            inv.quantity_available = max(0, inv.quantity_available - detail.quantity)
+
+        # apply new state
+        if new_compensation == "pending":
+            inv.quantity_available = max(0, inv.quantity_available - detail.quantity)
+            inv.quantity_defective = (inv.quantity_defective or 0) + detail.quantity
+        elif new_compensation == "loss":
+            inv.quantity_available = max(0, inv.quantity_available - detail.quantity)
+        elif new_compensation == "returned":
+            inv.quantity_available += detail.quantity
+
+        inv.last_updated = datetime.utcnow()
+
+    detail.compensation = new_compensation
+    detail.reviewed_by  = current_user.user_id
+    detail.reviewed_at  = datetime.utcnow()
+    db.session.commit()
+
+    product_name  = detail.product.product_name.capitalize()
+    reviewer_name = f"{current_user.first_name} {current_user.last_name}".strip().title()
+    flash(
+        f'"{product_name}" compensation updated from {COMPENSATION_LABELS[old_compensation]} '
+        f'to {COMPENSATION_LABELS[new_compensation]} by {reviewer_name}.',
+        "success"
+    )
     return redirect(request.referrer or url_for("defects.index"))
 
 
@@ -382,7 +444,7 @@ def complete():
         "logged":      logged,
         "total_items": len(logged),
         "total_units": sum(i["qty"] for i in logged),
-        "recorded_by": current_user.full_name if hasattr(current_user, "full_name") else current_user.username,
+        "recorded_by": f"{current_user.first_name} {current_user.last_name}".strip().title() or current_user.username,
         "datetime":    defect.defect_datetime.strftime("%b %d, %Y %I:%M %p"),
     })
 
@@ -390,7 +452,7 @@ def complete():
 # ── Full history (all records, all statuses) ──────────────────────────────────
 @defects_bp.route("/history")
 @login_required
-@role_required("admin", "co-admin", "stocking")
+@role_required("admin", "co-admin", "stocking", "cashier")
 def history():
     from app.models.user import User
     page          = request.args.get("page", 1, type=int)

@@ -4,6 +4,7 @@
 
 {% block body %}
 <div x-data="{
+    isAdmin: {{ 'true' if current_user.role == 'admin' else 'false' }},
     mobileDetailOpen: false,
     selectedRow:      null,
     openDetail(row) { this.selectedRow = row; this.mobileDetailOpen = true },
@@ -135,7 +136,7 @@
 
                     <div>
                         {% if detail.reviewed_by and detail.reviewer %}
-                        <p class="text-sm" style="color:var(--color-txt-secondary);">{{ detail.reviewer.username }}</p>
+                        <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title }}</p>
                         <p class="text-xs" style="color:var(--color-txt-muted);">{{ detail.reviewed_at.strftime('%b %d, %Y') if detail.reviewed_at else '' }}</p>
                         {% else %}
                         <p class="text-xs" style="color:var(--color-txt-muted);">—</p>
@@ -170,7 +171,18 @@
                             <span class="material-symbols-outlined text-[13px]">delete_forever</span> Loss
                         </button>
                         {% else %}
+                        {# admin only — can update already-resolved items #}
+                        {% if current_user.role == 'admin' %}
+                        <button @click="openEditModal('{{ url_for('defects.update_review', detail_id=detail.defect_detail_id) }}', '{{ detail.compensation }}')"
+                                class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
+                                style="background:color-mix(in srgb,var(--color-accent) 12%,transparent); color:var(--color-accent);"
+                                onmouseover="this.style.background='color-mix(in srgb,var(--color-accent) 22%,transparent)'"
+                                onmouseout="this.style.background='color-mix(in srgb,var(--color-accent) 12%,transparent)'">
+                            <span class="material-symbols-outlined text-[13px]">edit</span> Edit
+                        </button>
+                        {% else %}
                         <span class="text-xs" style="color:var(--color-txt-muted);">—</span>
+                        {% endif %}
                         {% endif %}
                     </div>
                     {% endif %}
@@ -200,12 +212,14 @@
                         compensation_label:'{{ COMPENSATION_LABELS[detail.compensation] }}',
                         date:             '{{ defect.defect_datetime.strftime("%b %d, %Y") }}',
                         time:             '{{ defect.defect_datetime.strftime("%I:%M %p") }}',
-                        logged_by:        '{{ user.username }}',
+                        logged_by:        '{{ (user.first_name ~ " " ~ user.last_name) | title }}',
                         logged_role:      '{{ user.role }}',
-                        reviewed_by:      '{{ detail.reviewer.username if detail.reviewed_by and detail.reviewer else "" }}',
+                        reviewed_by:      '{{ ((detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title) if detail.reviewed_by and detail.reviewer else "" }}',
                         reviewed_at:      '{{ detail.reviewed_at.strftime("%b %d, %Y") if detail.reviewed_at else "" }}',
                         is_pending:       {{ 'true' if detail.compensation == 'pending' else 'false' }},
-                        review_url:       '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}'
+                        review_url:       '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
+                        update_url:       '{{ url_for("defects.update_review", detail_id=detail.defect_detail_id) }}',
+                        current_comp:     '{{ detail.compensation }}'
                     })"
                     class="w-full text-left rounded-xl px-4 py-3 transition"
                     style="border:1px solid var(--color-border); background-color:var(--color-surface);"
@@ -239,7 +253,7 @@
                         </div>
                     </div>
                     <div class="shrink-0 text-right">
-                        <p class="text-xs" style="color:var(--color-txt-muted);">{{ user.username }}</p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);">{{ (user.first_name ~ ' ' ~ user.last_name) | title }}</p>
                         <span class="material-symbols-outlined text-[18px] mt-1 block" style="color:var(--color-txt-muted);">chevron_right</span>
                     </div>
                 </div>
@@ -407,14 +421,79 @@
                     </template>
                     {% endif %}
                     <template x-if="!selectedRow.is_pending">
-                        <p class="text-xs text-center py-2" style="color:var(--color-txt-muted);">
-                            This record has already been resolved.
-                        </p>
+                        <div>
+                            <template x-if="isAdmin">
+                                <button @click="closeDetail(); openEditModal(selectedRow.update_url, selectedRow.current_comp)"
+                                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition mb-2"
+                                        style="border:1px solid var(--color-border); color:var(--color-accent);
+                                               background:color-mix(in srgb,var(--color-accent) 8%,transparent);">
+                                    <span class="material-symbols-outlined text-[20px]">edit</span>
+                                    Edit Compensation
+                                </button>
+                            </template>
+                            <p class="text-xs text-center py-2" style="color:var(--color-txt-muted);">
+                                <template x-if="!isAdmin">
+                                    <span>This record has already been resolved.</span>
+                                </template>
+                            </p>
+                        </div>
                     </template>
                 </div>
             </div>
         </template>
     </div>
+
+
+    {# ── Admin Edit Compensation Modal ── #}
+    <div id="editCompModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+         style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);">
+        <div class="w-full max-w-sm rounded-2xl p-7"
+             style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+            <h2 class="text-base font-bold mb-1" style="color:var(--color-txt-primary);">Update Compensation</h2>
+            <p class="text-xs mb-5" style="color:var(--color-txt-muted);">Admin override — changes inventory immediately.</p>
+            <form id="editCompForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label class="text-xs font-semibold uppercase tracking-wide block mb-1.5"
+                       style="color:var(--color-txt-muted);">Compensation</label>
+                <select name="compensation" id="editCompSelect"
+                        class="w-full px-3 py-2.5 rounded-xl text-sm font-semibold focus:outline-none transition mb-6"
+                        style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
+                        onfocus="this.style.borderColor='var(--color-accent)'"
+                        onblur="this.style.borderColor='var(--color-border)'">
+                    <option value="pending">Pending</option>
+                    <option value="loss">Loss</option>
+                    <option value="returned">Returned</option>
+                </select>
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeEditModal()"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                            style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
+                    <button type="submit"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                            style="background-color:var(--color-accent); color:#fff;"
+                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    function openEditModal(url, currentComp) {
+        document.getElementById('editCompForm').action = url
+        document.getElementById('editCompSelect').value = currentComp
+        document.getElementById('editCompModal').style.display = 'flex'
+    }
+    function closeEditModal() {
+        document.getElementById('editCompModal').style.display = 'none'
+    }
+    document.getElementById('editCompModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal()
+    })
+    </script>
 
 </div>
 {% endblock %}

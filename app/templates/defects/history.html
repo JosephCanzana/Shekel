@@ -99,7 +99,7 @@
         </div>
 
         <div class="grid px-5 py-2.5 text-xs font-semibold uppercase tracking-wider"
-             style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 1fr;
+             style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 1fr 1.5fr 50px;
                     color:var(--color-txt-muted);
                     border-bottom:1px solid var(--color-border);
                     background-color:var(--color-surface-alt);">
@@ -109,12 +109,14 @@
             <span>Reason</span>
             <span>Status</span>
             <span>Logged By</span>
+            <span>Reviewed By</span>
+            <span></span>
         </div>
 
         {% if all_details %}
             {% for detail, defect, product, user in all_details %}
             <div class="grid px-5 py-3.5 items-center transition"
-                 style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 1fr;
+                 style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 1fr 1.5fr 50px;
                         border-top:1px solid var(--color-border);"
                  onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                  onmouseout="this.style.backgroundColor='transparent'">
@@ -153,8 +155,32 @@
                 </div>
 
                 <div>
-                    <p class="text-sm" style="color:var(--color-txt-secondary);">{{ user.username }}</p>
+                    <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (user.first_name ~ ' ' ~ user.last_name) | title }}</p>
                     <p class="text-xs capitalize" style="color:var(--color-txt-muted);">{{ user.role }}</p>
+                </div>
+
+                <div>
+                    {% if detail.reviewed_by and detail.reviewer %}
+                    <p class="text-sm" style="color:var(--color-txt-secondary);">
+                        {{ (detail.reviewer.first_name ~ ' ' ~ detail.reviewer.last_name) | title }}
+                    </p>
+                    <p class="text-xs" style="color:var(--color-txt-muted);">
+                        {{ detail.reviewed_at.strftime('%b %d, %Y') if detail.reviewed_at else '' }}
+                    </p>
+                    {% else %}
+                    <p class="text-xs" style="color:var(--color-txt-muted);">—</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex justify-center">
+                    <a href="{{ url_for('defects.product_history', product_id=product.product_id) }}"
+                       class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                       style="background:color-mix(in srgb,var(--color-primary) 12%,transparent); color:var(--color-primary);"
+                       onmouseover="this.style.background='color-mix(in srgb,var(--color-primary) 22%,transparent)'"
+                       onmouseout="this.style.background='color-mix(in srgb,var(--color-primary) 12%,transparent)'"
+                       title="View product history">
+                        <span class="material-symbols-outlined text-[16px]">history</span>
+                    </a>
                 </div>
 
             </div>
@@ -183,8 +209,10 @@
                         compensation_label:'{{ COMPENSATION_LABELS[detail.compensation] }}',
                         date:             '{{ defect.defect_datetime.strftime("%b %d, %Y") }}',
                         time:             '{{ defect.defect_datetime.strftime("%I:%M %p") }}',
-                        logged_by:        '{{ user.username }}',
+                        logged_by:        '{{ (user.first_name ~ " " ~ user.last_name) | title }}',
                         logged_role:      '{{ user.role }}',
+                        reviewed_by:      '{{ ((detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title) if detail.reviewed_by and detail.reviewer else "" }}',
+                        reviewed_at:      '{{ detail.reviewed_at.strftime("%b %d, %Y") if detail.reviewed_at else "" }}',
                         history_url:      '{{ url_for("defects.product_history", product_id=product.product_id) }}'
                     })"
                     class="w-full text-left rounded-xl px-4 py-3 transition"
@@ -218,7 +246,7 @@
                     </div>
                     <div class="shrink-0 text-right">
                         <p class="text-xs" style="color:var(--color-txt-muted);">{{ defect.defect_datetime.strftime('%b %d') }}</p>
-                        <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">{{ user.username }}</p>
+                        <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">{{ (user.first_name ~ ' ' ~ user.last_name) | title }}</p>
                         <span class="material-symbols-outlined text-[18px] mt-1 block" style="color:var(--color-txt-muted);">chevron_right</span>
                     </div>
                 </div>
@@ -339,16 +367,28 @@
                 </div>
 
                 {# meta #}
-                <div class="px-5 py-3 flex items-center gap-4 text-xs flex-wrap"
+                <div class="px-5 py-3 flex flex-col gap-1.5 text-xs"
                      style="color:var(--color-txt-muted); border-bottom:1px solid var(--color-border);">
-                    <span class="flex items-center gap-1">
+                    <span class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-[13px]">calendar_today</span>
-                        <span x-text="selectedRow.date + ' ' + selectedRow.time"></span>
+                        <span x-text="selectedRow.date + ' at ' + selectedRow.time"></span>
                     </span>
-                    <span class="flex items-center gap-1">
+                    <span class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-[13px]">person</span>
-                        <span x-text="selectedRow.logged_by + ' (' + selectedRow.logged_role + ')'"></span>
+                        Logged by:
+                        <span x-text="selectedRow.logged_by" style="color:var(--color-txt-secondary);"></span>
+                        <span class="capitalize px-1.5 py-0.5 rounded-full text-[10px]"
+                              style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);"
+                              x-text="selectedRow.logged_role"></span>
                     </span>
+                    <template x-if="selectedRow.reviewed_by">
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[13px]">fact_check</span>
+                            Reviewed by:
+                            <span x-text="selectedRow.reviewed_by" style="color:var(--color-txt-secondary);"></span>
+                            <span x-text="'· ' + selectedRow.reviewed_at" style="color:var(--color-txt-muted);"></span>
+                        </span>
+                    </template>
                 </div>
 
                 {# actions #}

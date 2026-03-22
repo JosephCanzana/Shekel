@@ -152,8 +152,20 @@
                 this.panelError = 'Cannot log — this product has 0 stock available.'
                 return
             }
-            if (this.totalUnits > this.product.stock) {
-                this.panelError = `Only ${this.product.stock} unit(s) in stock. Cannot log ${this.totalUnits}.`
+            // sum up qty already queued for this product (pending/loss only, not returned)
+            const alreadyQueued = this.items
+                .filter(i => i.product_id === this.product.product_id && i.compensation !== 'returned')
+                .reduce((s, i) => s + i.qty, 0)
+            // if editing, exclude the row being edited from the queued total
+            const editingQty = this.editingId
+                ? (this.items.find(i => i._key === this.editingId)?.qty || 0)
+                : 0
+            const effectiveQueued = alreadyQueued - editingQty
+            const remaining = this.product.stock - effectiveQueued
+            if (this.totalUnits > remaining) {
+                this.panelError = remaining <= 0
+                    ? `No stock left — ${this.product.stock} already queued for this product.`
+                    : `Only ${remaining} unit(s) remaining after existing entries. Cannot log ${this.totalUnits}.`
                 return
             }
         }

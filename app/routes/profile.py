@@ -102,3 +102,29 @@ def update_recovery():
         flash("Something went wrong. Please try again.", "danger")
 
     return redirect(url_for("profile.index"))
+
+
+@profile_bp.route("/update-identity", methods=["POST"])
+@login_required
+@role_required("admin")
+def update_identity():
+    first_name = request.form.get("first_name", "").strip().lower()
+    last_name  = request.form.get("last_name",  "").strip().lower()
+
+    if not all([first_name, last_name]):
+        flash("All fields are required.", "danger")
+        return redirect(url_for("profile.index"))
+
+    try:
+        current_user.first_name = first_name
+        current_user.last_name  = last_name
+        db.session.commit()
+        flash("Profile updated successfully.", "success")
+    except DataError:
+        db.session.rollback()
+        flash("One or more values are out of range.", "danger")
+    except Exception:
+        db.session.rollback()
+        flash("Something went wrong. Please try again.", "danger")
+
+    return redirect(url_for("profile.index"))
