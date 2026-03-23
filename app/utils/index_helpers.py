@@ -132,16 +132,17 @@ def get_admin_stats():
 
     # ── Customer returns logged today that were actually refunded ──
     returns_today = (
-        db.session.query(DefectDetail)
-        .join(Defect, Defect.defect_id == DefectDetail.defect_id)
-        .filter(
-            Defect.defect_datetime >= start_utc,
-            Defect.defect_datetime <  end_utc,
-            DefectDetail.transaction_id.isnot(None),   # customer return only
-            DefectDetail.compensation == "returned",
-        )
-        .all()
+    db.session.query(DefectDetail)
+    .join(Defect, Defect.defect_id == DefectDetail.defect_id)
+    .join(Sale, Sale.transaction_id == DefectDetail.transaction_id)  # explicit join to Sale header
+    .filter(
+        Sale.sale_datetime >= start_utc,   # original sale was today
+        Sale.sale_datetime <  end_utc,
+        DefectDetail.transaction_id.isnot(None),
+        DefectDetail.compensation == "returned",
     )
+    .all()
+)
 
     returns_amount  = sum(float(r.subtotal_amount) for r in returns_today)
     net_amount      = gross_amount - returns_amount
