@@ -51,7 +51,7 @@
      x-data
      :class="$store.sidebar.expanded ? 'sm:pl-56' : 'sm:pl-16'">
         <main class="flex-1 px-3 sm:px-6 py-4 sm:py-5 md:pb-14"
-        style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom));">
+        style="padding-bottom: calc(5rem + env(safe-area-inset-bottom));">
             {% block body %}{% endblock %}
         </main>
         

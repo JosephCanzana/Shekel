@@ -8,6 +8,8 @@ from app.models.stock_in import StockIn
 from app.models.defect import Defect
 from app.models.defect_detail import DefectDetail
 from app.utils.helpers import get_time_of_day, pht_now, pht_today, to_pht
+from app.extensions import db
+from app.models.user import User
 
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
@@ -53,8 +55,6 @@ def get_low_stock_items(limit=5):
 
 def get_defects(limit=5):
     """Recent defect detail records this month with product + logged-by info."""
-    from app.extensions import db
-    from app.models.user import User
     now_pht       = pht_now()
     month, year   = _month_filters(now_pht)
 
@@ -84,17 +84,11 @@ def get_defects(limit=5):
         for detail, defect, product, user in rows
     ]
 
-def _defects_count_this_month():
-    from app.extensions import db
-    now_pht     = pht_now()
-    month, year = _month_filters(now_pht)
+def _defects_on_watch():
+    
     return (
         db.session.query(DefectDetail)
-        .join(Defect, Defect.defect_id == DefectDetail.defect_id)
-        .filter(
-            extract("month", Defect.defect_datetime) == month,
-            extract("year",  Defect.defect_datetime) == year,
-        )
+        .filter(DefectDetail.compensation == "pending")
         .count()
     )
 
@@ -133,9 +127,24 @@ def get_admin_stats():
         Sale.sale_datetime <  end_utc
     ).all()
 
-    total_amount    = sum(float(s.total_amount) for s in sales_today)
+    gross_amount    = sum(float(s.total_amount) for s in sales_today)
     transactions    = len(sales_today)
 
+    # ── Customer returns logged today that were actually refunded ──
+    returns_today = (
+        db.session.query(DefectDetail)
+        .join(Defect, Defect.defect_id == DefectDetail.defect_id)
+        .filter(
+            Defect.defect_datetime >= start_utc,
+            Defect.defect_datetime <  end_utc,
+            DefectDetail.transaction_id.isnot(None),   # customer return only
+            DefectDetail.compensation == "returned",
+        )
+        .all()
+    )
+
+    returns_amount  = sum(float(r.subtotal_amount) for r in returns_today)
+    net_amount      = gross_amount - returns_amount
     recent = sorted(sales_today, key=lambda s: s.sale_datetime, reverse=True)[:7]
     recent_list = [
         {
@@ -158,15 +167,13 @@ def get_admin_stats():
         Inventory.quantity_available <= Product.low_reorder_threshold
     ).count()
 
-    defects_count = _defects_count_this_month()
-
     return {
-        "sales_today":        f"{total_amount:,.2f}",
+        "sales_today":        f"{net_amount:,.2f}",
         "transactions_today": transactions,
         "new_added_product":  new_products,
         "total_products":     Product.query.count(),
         "low_stock_count":    low_stock_count,
-        "defects_count":      defects_count,
+        "defects_count":      _defects_on_watch(),
         "recent_transactions": recent_list,
     }
 
@@ -182,8 +189,6 @@ def get_stocking_stats():
         Inventory.quantity_available <= Product.low_reorder_threshold
     ).count()
 
-    defects_count = _defects_count_this_month()
-
     new_products = Product.query.filter(
         extract("month", Product.created_at) == month,
         extract("year",  Product.created_at) == year,
@@ -193,5 +198,5 @@ def get_stocking_stats():
         "total_products":    Product.query.filter(Product.status == "active").count(),
         "new_added_product": new_products,
         "low_stock_count":   low_stock_count,
-        "defects_count":     defects_count,
+        "defects_count":     _defects_on_watch(),
     }

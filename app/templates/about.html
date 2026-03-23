@@ -89,6 +89,7 @@
                         "Full user management",
                         "Full inventory access",
                         "Defects & returns",
+                        "Create Transactions",
                         "Manage categories",
                         "Reports",
                         "Audit log"
@@ -115,9 +116,7 @@
                 </div>
                 <ul class="space-y-1.5">
                     {% for item in [
-                        "Same access as Admin",
-                        "Can archive users & products",
-                        "Cannot force-delete users or products"
+                        "Full access except permanently deleting",
                     ] %}
                     <li class="flex items-start gap-2 text-xs"
                         style="color: var(--color-txt-secondary);">
@@ -167,7 +166,7 @@
                 <ul class="space-y-1.5">
                     {% for item in [
                         "Dashboard",
-                        "Limited inventory editing",
+                        "Inventory Management",
                         "Manage defects"
                     ] %}
                     <li class="flex items-start gap-2 text-xs"
@@ -305,6 +304,27 @@
             </div>
         </div>
 
+    </div>
+    <div class="rounded-2xl px-5 py-5 text-center relative overflow-hidden"
+        style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+        {# Subtle gradient backdrop #}
+        <div class="absolute inset-0 pointer-events-none"
+            style="background: radial-gradient(ellipse at center,
+                        color-mix(in srgb, var(--color-primary) 6%, transparent),
+                        transparent 70%);"></div>
+
+        <div class="relative">
+            <span class="material-symbols-outlined text-[22px] mb-2 block"
+                style="color: var(--color-primary); opacity: 0.6;">menu_book</span>
+            <p class="text-sm font-medium leading-relaxed max-w-md mx-auto"
+            style="color: var(--color-txt-secondary);">
+                "Be sure you know the condition of your flocks,
+                give careful attention to your herds."
+            </p>
+            <p class="text-xs mt-2 font-semibold"
+            style="color: var(--color-txt-muted);">— Proverbs 27:23</p>
+        </div>
     </div>
 
     {# ══════════════════════════════════════════════
