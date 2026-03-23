@@ -6,6 +6,9 @@ def role_required(*roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            if current_user.status in ["suspended", "archived"]:
+                flash(f"You are currently {current_user.status}")
+                return redirect(url_for("auth.login"))
             if not current_user.is_authenticated:
                 return redirect(url_for("auth.login"))
             if current_user.role not in roles:

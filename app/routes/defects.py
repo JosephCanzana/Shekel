@@ -15,11 +15,16 @@ defects_bp = Blueprint("defects", __name__, url_prefix="/defects")
 REASONS = ["defect", "damage", "expired", "change_of_mind"]
 
 REASON_LABELS = {
-    "defect":        "Defect",
-    "damage":        "Damage",
-    "expired":       "Expired",
-    "change_of_mind":"Change of Mind",
+    "defect":           "Defect",
+    "damage":           "Damage",
+    "expired":          "Expired",
+    "change_of_mind":   "Change of Mind",
 }
+
+# Customer-facing reasons (item already sold)
+CUSTOMER_REASONS  = {"change_of_mind", "defect", "damage"}
+# In-store reasons (item still in available stock)
+INSTORE_REASONS   = {"defect", "damage", "expired"}
 COMPENSATION_LABELS = {
     "pending":  "Pending",
     "loss":     "Loss",
@@ -38,36 +43,58 @@ def can_set_compensation():
     return current_user.role in ("admin", "co-admin", "stocking")
 
 
-def _apply_inventory(product_id, qty, compensation, previous_compensation=None):
+def _apply_inventory(product_id, qty, compensation, reason=None, previous_compensation=None):
     """
-    Apply the correct inventory movement based on compensation and previous state.
+    Apply the correct inventory movement based on compensation, reason, and previous state.
 
-    Fresh log (previous_compensation is None):
-        pending  → available -qty, defective +qty
-        loss     → available -qty
-        returned → available +qty  (change_of_mind auto, or stocking/admin supplier return)
+    KEY DISTINCTION — where the item came from:
+      change_of_mind: item was already SOLD (deducted from available by the sale).
+        - returned  → available +qty  (item comes back to shelf — net zero vs sale)
+        - pending   → defective +qty only (item is held for review, no available deduction — already sold)
+        - loss      → no movement needed (item was already gone from available via the sale)
 
-    Status change (previous_compensation = 'pending'):
-        → loss     → defective -qty
-        → returned → defective -qty, available +qty
+      defect/damage/expired: item is STILL IN STORE (in available stock).
+        - pending   → available -qty, defective +qty
+        - loss      → available -qty
+        - returned  → available +qty  (supplier return / restock)
+
+    Status change from pending (review):
+        → loss      → defective -qty
+        → returned  → defective -qty, available +qty
     """
     inv = Inventory.query.filter_by(product_id=product_id).first()
     if not inv:
         return
 
+    is_sold_item = (reason in CUSTOMER_REASONS)
+
     if previous_compensation is None:
         # fresh log
-        if compensation == "pending":
-            inv.quantity_available = max(0, inv.quantity_available - qty)
-            inv.quantity_defective = (inv.quantity_defective or 0) + qty
-        elif compensation == "loss":
-            inv.quantity_available = max(0, inv.quantity_available - qty)
-        elif compensation == "returned":
-            # also triggered by change_of_mind reason — straight back to available
-            inv.quantity_available = inv.quantity_available + qty
+        if is_sold_item:
+            # item already removed from available by the sale
+            if compensation == "returned":
+                # customer returns it — put back on shelf
+                inv.quantity_available = inv.quantity_available + qty
+            elif compensation == "pending":
+                # held for review — goes to defective watch, no available change
+                inv.quantity_defective = (inv.quantity_defective or 0) + qty
+            elif compensation == "loss":
+                # already gone from available (via sale) — nothing to move
+                pass
+        else:
+            # item is still in store inventory
+            if compensation == "pending":
+                inv.quantity_available = max(0, inv.quantity_available - qty)
+                inv.quantity_defective = (inv.quantity_defective or 0) + qty
+            elif compensation == "loss":
+                inv.quantity_available = max(0, inv.quantity_available - qty)
+            elif compensation == "returned":
+                # supplier return / restock
+                inv.quantity_available = inv.quantity_available + qty
 
     elif previous_compensation == "pending":
-        # changing from pending to something else
+        # changing from pending to something else (review action)
+        # same logic regardless of reason — item is in defective stock
         if compensation == "loss":
             inv.quantity_defective = max(0, (inv.quantity_defective or 0) - qty)
         elif compensation == "returned":
@@ -330,6 +357,67 @@ def lookup():
     })
 
 
+# ── API: TXN lookup — validate transaction + return remaining returnable qty ──
+@defects_bp.route("/api/txn_lookup", methods=["POST"])
+@login_required
+@role_required("admin", "co-admin", "stocking", "cashier")
+def txn_lookup():
+    from app.models.sale import Sale
+    from app.models.sale_detail import SaleDetail
+
+    raw = (request.json or {}).get("txn_ref", "").strip()
+    if not raw:
+        return jsonify({"error": "No transaction reference provided."}), 400
+
+    # accept both "TXN-00042" and "42"
+    txn_id = raw.upper().replace("TXN-", "")
+    try:
+        txn_id = int(txn_id)
+    except ValueError:
+        return jsonify({"error": f'"{raw}" is not a valid transaction reference.'}), 400
+
+    sale = Sale.query.get(txn_id)
+    if not sale:
+        return jsonify({"error": f'Transaction TXN-{txn_id:05d} not found.'}), 404
+
+    # build list of items sold in this transaction with remaining returnable qty
+    items = []
+    for sd in sale.sale_details:
+        if not sd.product:
+            continue
+
+        qty_sold = sd.quantity
+
+        # how many have already been returned/logged against this TXN
+        already_returned = (
+            db.session.query(db.func.sum(DefectDetail.quantity))
+            .filter(
+                DefectDetail.transaction_id == txn_id,
+                DefectDetail.product_id     == sd.product_id,
+            )
+            .scalar() or 0
+        )
+
+        remaining = max(0, qty_sold - already_returned)
+
+        items.append({
+            "product_id":    sd.product_id,
+            "product_name":  sd.product.product_name.capitalize(),
+            "product_price": float(sd.product.product_price),
+            "qty_sold":      qty_sold,
+            "already_returned": already_returned,
+            "remaining":     remaining,
+        })
+
+    return jsonify({
+        "txn_id":    txn_id,
+        "txn_ref":   f"TXN-{txn_id:05d}",
+        "cashier":   f"{sale.user.first_name} {sale.user.last_name}".strip().title() if sale.user else "Unknown",
+        "datetime":  sale.sale_datetime.strftime("%b %d, %Y %I:%M %p"),
+        "items":     items,
+    })
+
+
 # ── API: complete log ─────────────────────────────────────────────────────────
 @defects_bp.route("/api/complete", methods=["POST"])
 @login_required
@@ -340,6 +428,59 @@ def complete():
 
     if not items:
         return jsonify({"error": "No items to log."}), 400
+
+    # ── Cashier: require and validate TXN reference for customer returns ──────
+    if current_user.role == "cashier":
+        from app.models.sale import Sale
+        from app.models.sale_detail import SaleDetail
+
+        customer_items = [i for i in items if i.get("log_type") == "customer"]
+        if customer_items:
+            txn_ref_raw = (customer_items[0].get("txn_ref") or "").strip()
+            if not txn_ref_raw:
+                return jsonify({"error": "Transaction reference is required for customer returns."}), 400
+
+            txn_id_str = txn_ref_raw.upper().replace("TXN-", "")
+            try:
+                txn_id = int(txn_id_str)
+            except ValueError:
+                return jsonify({"error": f'"{txn_ref_raw}" is not a valid transaction reference.'}), 400
+
+            sale = Sale.query.get(txn_id)
+            if not sale:
+                return jsonify({"error": f'Transaction TXN-{txn_id:05d} not found.'}), 404
+
+            # build a map of product_id → remaining returnable qty
+            sold_map = {}
+            for sd in sale.sale_details:
+                already = (
+                    db.session.query(db.func.sum(DefectDetail.quantity))
+                    .filter(
+                        DefectDetail.transaction_id == txn_id,
+                        DefectDetail.product_id     == sd.product_id,
+                    )
+                    .scalar() or 0
+                )
+                sold_map[sd.product_id] = max(0, sd.quantity - already)
+
+            # validate each customer return item against the TXN
+            for item in customer_items:
+                pid = item.get("product_id")
+                qty = int(item.get("qty", 0))
+                if pid not in sold_map:
+                    product = Product.query.get(pid)
+                    name = product.product_name.capitalize() if product else pid
+                    return jsonify({"error": f'"{name}" was not part of transaction TXN-{txn_id:05d}.'}), 400
+                if qty > sold_map[pid]:
+                    product = Product.query.get(pid)
+                    name = product.product_name.capitalize() if product else pid
+                    remaining = sold_map[pid]
+                    return jsonify({"error": f'"{name}": only {remaining} unit(s) eligible for return from TXN-{txn_id:05d}.'}), 400
+
+            # stamp all customer items with the normalised txn_ref
+            normalised = f"TXN-{txn_id:05d}"
+            for item in customer_items:
+                item["txn_ref"] = normalised
 
     # validate all first
     for item in items:
@@ -355,6 +496,15 @@ def complete():
         if reason not in REASONS:
             return jsonify({"error": f'Invalid reason "{reason}".'}), 400
 
+        # log_type from frontend — 'instore' or 'customer'
+        log_type = item.get("log_type", "instore")
+
+        # validate reason is appropriate for log type
+        if log_type == "customer" and reason not in CUSTOMER_REASONS:
+            return jsonify({"error": f'Reason "{reason}" is not valid for a customer return.'}), 400
+        if log_type == "instore" and reason not in INSTORE_REASONS:
+            return jsonify({"error": f'Reason "{reason}" is not valid for an in-store log.'}), 400
+
         # determine compensation
         compensation = item.get("compensation", "pending")
 
@@ -362,9 +512,13 @@ def complete():
         if current_user.role == "cashier":
             compensation = "returned" if reason == "change_of_mind" else "pending"
 
-        # change_of_mind reason always forces returned compensation
+        # change_of_mind always forces returned (straight back to shelf)
         if reason == "change_of_mind":
             compensation = "returned"
+
+        # defect/damage from customer — always pending for cashier (needs admin review)
+        if reason in ("defect", "damage") and current_user.role == "cashier":
+            compensation = "pending"
 
         # validate compensation value
         if compensation not in ("pending", "loss", "returned"):
@@ -403,8 +557,16 @@ def complete():
         reason       = item["reason"]
         compensation = item["_compensation"]
 
-        # transaction_id only for change_of_mind — cashier can pass it optionally
-        transaction_id = item.get("transaction_id") if reason == "change_of_mind" else None
+        # txn_ref — store as integer (the raw transaction_id), not the formatted string
+        txn_ref_raw = item.get("txn_ref") if reason in CUSTOMER_REASONS else None
+        if txn_ref_raw:
+            try:
+                txn_ref = int(str(txn_ref_raw).upper().replace("TXN-", ""))
+            except (ValueError, TypeError):
+                txn_ref = None
+        else:
+            txn_ref = None
+        log_type = item.get("log_type", "instore")
 
         detail = DefectDetail(
             defect_id               = defect.defect_id,
@@ -418,17 +580,19 @@ def complete():
             subtotal_unit           = round(float(product.unit_price)    * qty, 2),
             subtotal_revenue        = round(float(product.revenue_price) * qty, 2),
             subtotal_amount         = round(float(product.product_price) * qty, 2),
-            transaction_id          = transaction_id,
+            transaction_id          = txn_ref,
         )
         db.session.add(detail)
 
-        _apply_inventory(product.product_id, qty, compensation)
+        _apply_inventory(product.product_id, qty, compensation, reason=reason)
 
         logged.append({
             "product_name": product.product_name.capitalize(),
             "qty":          qty,
+            "log_type":     "Customer Return" if log_type == "customer" else "In-Store",
             "reason":       REASON_LABELS[reason],
             "compensation": COMPENSATION_LABELS[compensation],
+            "txn_ref":      f"TXN-{txn_ref:05d}" if txn_ref else None,
             "new_stock":    max(0, (product.inventory.quantity_available if product.inventory else 0)),
         })
 

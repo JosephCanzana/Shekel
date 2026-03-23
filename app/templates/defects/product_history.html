@@ -130,7 +130,7 @@
                     </div>
 
                     <div>
-                        <p class="text-sm" style="color:var(--color-txt-secondary);">{{ user.username }}</p>
+                        <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title }}</p>
                         <p class="text-xs capitalize" style="color:var(--color-txt-muted);">{{ user.role }}</p>
                     </div>
 

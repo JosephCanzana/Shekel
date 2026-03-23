@@ -1716,11 +1716,6 @@
       opacity: 40%;
     }
   }
-  .disabled\:opacity-50 {
-    &:disabled {
-      opacity: 50%;
-    }
-  }
   .sm\:top-14 {
     @media (width >= 40rem) {
       top: calc(var(--spacing) * 14);
