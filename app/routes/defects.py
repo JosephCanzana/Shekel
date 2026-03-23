@@ -8,6 +8,7 @@ from app.models.product_bundle import ProductBundle
 from app.models.inventory import Inventory
 from app.models.defect import Defect
 from app.models.defect_detail import DefectDetail
+from app.models.sale import Sale
 from app.extensions import db
 
 defects_bp = Blueprint("defects", __name__, url_prefix="/defects")
@@ -429,58 +430,53 @@ def complete():
     if not items:
         return jsonify({"error": "No items to log."}), 400
 
-    # ── Cashier: require and validate TXN reference for customer returns ──────
-    if current_user.role == "cashier":
-        from app.models.sale import Sale
-        from app.models.sale_detail import SaleDetail
+    customer_items = [i for i in items if i.get("log_type") == "customer"]
+    if customer_items:
+        txn_ref_raw = (customer_items[0].get("txn_ref") or "").strip()
+        if not txn_ref_raw:
+            return jsonify({"error": "Transaction reference is required for customer returns."}), 400
 
-        customer_items = [i for i in items if i.get("log_type") == "customer"]
-        if customer_items:
-            txn_ref_raw = (customer_items[0].get("txn_ref") or "").strip()
-            if not txn_ref_raw:
-                return jsonify({"error": "Transaction reference is required for customer returns."}), 400
+        txn_id_str = txn_ref_raw.upper().replace("TXN-", "")
+        try:
+            txn_id = int(txn_id_str)
+        except ValueError:
+            return jsonify({"error": f'"{txn_ref_raw}" is not a valid transaction reference.'}), 400
 
-            txn_id_str = txn_ref_raw.upper().replace("TXN-", "")
-            try:
-                txn_id = int(txn_id_str)
-            except ValueError:
-                return jsonify({"error": f'"{txn_ref_raw}" is not a valid transaction reference.'}), 400
+        sale = Sale.query.get(txn_id)
+        if not sale:
+            return jsonify({"error": f'Transaction TXN-{txn_id:05d} not found.'}), 404
 
-            sale = Sale.query.get(txn_id)
-            if not sale:
-                return jsonify({"error": f'Transaction TXN-{txn_id:05d} not found.'}), 404
-
-            # build a map of product_id → remaining returnable qty
-            sold_map = {}
-            for sd in sale.sale_details:
-                already = (
-                    db.session.query(db.func.sum(DefectDetail.quantity))
-                    .filter(
-                        DefectDetail.transaction_id == txn_id,
-                        DefectDetail.product_id     == sd.product_id,
-                    )
-                    .scalar() or 0
+        # build a map of product_id → remaining returnable qty
+        sold_map = {}
+        for sd in sale.sale_details:
+            already = (
+                db.session.query(db.func.sum(DefectDetail.quantity))
+                .filter(
+                    DefectDetail.transaction_id == txn_id,
+                    DefectDetail.product_id     == sd.product_id,
                 )
-                sold_map[sd.product_id] = max(0, sd.quantity - already)
+                .scalar() or 0
+            )
+            sold_map[sd.product_id] = max(0, sd.quantity - already)
 
-            # validate each customer return item against the TXN
-            for item in customer_items:
-                pid = item.get("product_id")
-                qty = int(item.get("qty", 0))
-                if pid not in sold_map:
-                    product = Product.query.get(pid)
-                    name = product.product_name.capitalize() if product else pid
-                    return jsonify({"error": f'"{name}" was not part of transaction TXN-{txn_id:05d}.'}), 400
-                if qty > sold_map[pid]:
-                    product = Product.query.get(pid)
-                    name = product.product_name.capitalize() if product else pid
-                    remaining = sold_map[pid]
-                    return jsonify({"error": f'"{name}": only {remaining} unit(s) eligible for return from TXN-{txn_id:05d}.'}), 400
+        # validate each customer return item against the TXN
+        for item in customer_items:
+            pid = item.get("product_id")
+            qty = int(item.get("qty", 0))
+            if pid not in sold_map:
+                product = Product.query.get(pid)
+                name = product.product_name.capitalize() if product else pid
+                return jsonify({"error": f'"{name}" was not part of transaction TXN-{txn_id:05d}.'}), 400
+            if qty > sold_map[pid]:
+                product = Product.query.get(pid)
+                name = product.product_name.capitalize() if product else pid
+                remaining = sold_map[pid]
+                return jsonify({"error": f'"{name}": only {remaining} unit(s) eligible for return from TXN-{txn_id:05d}.'}), 400
 
-            # stamp all customer items with the normalised txn_ref
-            normalised = f"TXN-{txn_id:05d}"
-            for item in customer_items:
-                item["txn_ref"] = normalised
+        # stamp all customer items with the normalised txn_ref
+        normalised = f"TXN-{txn_id:05d}"
+        for item in customer_items:
+            item["txn_ref"] = normalised
 
     # validate all first
     for item in items:

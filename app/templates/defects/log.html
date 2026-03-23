@@ -225,7 +225,7 @@
 
         {# stock validation — only for in-store items that deduct from available #}
         // cashier customer return: validate against session TXN
-        if (this.isCashier && this.logType === 'customer') {
+        if (this.logType === 'customer') {
             if (!this.sessionTxn) {
                 this.panelError = 'Please look up a transaction reference first.'
                 return
@@ -352,9 +352,7 @@
         this.globalError = ''; this.panelError = ''; this.confirmCancel = false
         this.itemReason = this.logType === 'instore' ? 'defect' : 'change_of_mind'
         this.itemCompensation = 'pending'
-        if (this.isCashier) {
-            this.sessionTxn = null; this.sessionTxnInput = ''; this.sessionTxnError = ''
-        }
+        this.sessionTxn = null; this.sessionTxnInput = ''; this.sessionTxnError = ''
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
 
@@ -603,50 +601,80 @@
                                             <span x-text="sessionTxnError"></span>
                                         </p>
                                     </template>
-                                    <p class="text-[10px] mt-1" style="color:var(--color-txt-muted);"
+                                    <div class="flex items-center justify-between mt-1">
+                                        <p class="text-[10px]" style="color:var(--color-txt-muted);"
                                         x-show="isCashier">
                                             Search is unlocked after confirming the transaction.
                                         </p>
+                                        <button x-show="!isCashier"
+                                                @click="sessionTxn = { skipped: true, txn_ref: null, items: [] }"
+                                                class="text-[10px] transition"
+                                                style="color:var(--color-txt-muted);"
+                                                onmouseover="this.style.color='var(--color-accent)'"
+                                                onmouseout="this.style.color='var(--color-txt-muted)'">
+                                            Skip — log without TXN reference
+                                        </button>
+                                    </div>
                                 </div>
                             </template>
 
                             {# TXN confirmed — show summary + items #}
                             <template x-if="sessionTxn">
                                 <div>
-                                    <div class="flex items-start justify-between gap-2 mb-2">
-                                        <div>
-                                            <p class="text-xs font-bold" style="color:var(--color-txt-primary);"
-                                               x-text="sessionTxn.txn_ref"></p>
-                                            <p class="text-xs" style="color:var(--color-txt-muted);"
-                                               x-text="sessionTxn.cashier + ' · ' + sessionTxn.datetime"></p>
+                                    {# Skipped state — non-cashier chose to log without TXN #}
+                                    <template x-if="sessionTxn.skipped">
+                                        <div class="flex items-center justify-between">
+                                            <p class="text-xs" style="color:var(--color-txt-muted);">
+                                                Logging without transaction reference.
+                                            </p>
+                                            <button @click="clearSessionTxn()"
+                                                    class="flex items-center gap-1 text-xs transition shrink-0"
+                                                    style="color:var(--color-txt-muted);"
+                                                    onmouseover="this.style.color='var(--color-error)'"
+                                                    onmouseout="this.style.color='var(--color-txt-muted)'">
+                                                <span class="material-symbols-outlined text-[13px]">close</span> Clear
+                                            </button>
                                         </div>
-                                        <button @click="clearSessionTxn()"
-                                                class="flex items-center gap-1 text-xs transition shrink-0"
-                                                style="color:var(--color-txt-muted);"
-                                                onmouseover="this.style.color='var(--color-error)'"
-                                                onmouseout="this.style.color='var(--color-txt-muted)'">
-                                            <span class="material-symbols-outlined text-[13px]">close</span> Clear
-                                        </button>
-                                    </div>
-                                    {# items from TXN with remaining qty #}
-                                    <div class="rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
-                                        <template x-for="ti in sessionTxn.items" :key="ti.product_id">
-                                            <div class="flex items-center justify-between px-3 py-2"
-                                                 style="border-bottom:1px solid var(--color-border);">
-                                                <div class="flex-1 min-w-0">
-                                                    <p class="text-xs font-medium truncate" style="color:var(--color-txt-primary);"
-                                                       x-text="ti.product_name"></p>
-                                                    <p class="text-[10px]" style="color:var(--color-txt-muted);"
-                                                       x-text="'Sold: ' + ti.qty_sold + (ti.already_returned > 0 ? ' · Returned: ' + ti.already_returned : '')"></p>
+                                    </template>
+
+                                    {# Normal confirmed TXN summary #}
+                                    <template x-if="!sessionTxn.skipped">
+                                        <div>
+                                            <div class="flex items-start justify-between gap-2 mb-2">
+                                                <div>
+                                                    <p class="text-xs font-bold" style="color:var(--color-txt-primary);"
+                                                    x-text="sessionTxn.txn_ref"></p>
+                                                    <p class="text-xs" style="color:var(--color-txt-muted);"
+                                                    x-text="sessionTxn.cashier + ' · ' + sessionTxn.datetime"></p>
                                                 </div>
-                                                <span class="text-xs font-bold tabular-nums ml-2 shrink-0 px-2 py-0.5 rounded-full"
-                                                      :style="txnRemaining(ti.product_id) <= 0
-                                                              ? 'background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)'
-                                                              : 'background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)'"
-                                                      x-text="txnRemaining(ti.product_id) + ' left'"></span>
+                                                <button @click="clearSessionTxn()"
+                                                        class="flex items-center gap-1 text-xs transition shrink-0"
+                                                        style="color:var(--color-txt-muted);"
+                                                        onmouseover="this.style.color='var(--color-error)'"
+                                                        onmouseout="this.style.color='var(--color-txt-muted)'">
+                                                    <span class="material-symbols-outlined text-[13px]">close</span> Clear
+                                                </button>
                                             </div>
-                                        </template>
-                                    </div>
+                                            <div class="rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
+                                                <template x-for="ti in sessionTxn.items" :key="ti.product_id">
+                                                    <div class="flex items-center justify-between px-3 py-2"
+                                                        style="border-bottom:1px solid var(--color-border);">
+                                                        <div class="flex-1 min-w-0">
+                                                            <p class="text-xs font-medium truncate" style="color:var(--color-txt-primary);"
+                                                            x-text="ti.product_name"></p>
+                                                            <p class="text-[10px]" style="color:var(--color-txt-muted);"
+                                                            x-text="'Sold: ' + ti.qty_sold + (ti.already_returned > 0 ? ' · Returned: ' + ti.already_returned : '')"></p>
+                                                        </div>
+                                                        <span class="text-xs font-bold tabular-nums ml-2 shrink-0 px-2 py-0.5 rounded-full"
+                                                            :style="txnRemaining(ti.product_id) <= 0
+                                                                    ? 'background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)'
+                                                                    : 'background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)'"
+                                                            x-text="txnRemaining(ti.product_id) + ' left'"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
                                 </div>
                             </template>
 
@@ -971,12 +999,12 @@
 
                 {# ── Session TXN panel — cashier customer return, mobile ── #}
                 
-                <template x-if="logType === 'customer' && !sessionTxn">
+                <template x-if="logType === 'customer'">
                     <div class="shrink-0 px-4 py-3" style="border-bottom:1px solid var(--color-border);">
                         <template x-if="!sessionTxn">
                             <div>
                                 <label class="text-xs font-bold uppercase tracking-wide mb-1.5 block"
-                                       style="color:var(--color-txt-primary);">
+                                    style="color:var(--color-txt-primary);">
                                     Transaction Reference <span style="color:var(--color-error);">*</span>
                                 </label>
                                 <div class="flex gap-2">
@@ -1001,6 +1029,9 @@
                                         <span x-text="sessionTxnError"></span>
                                     </p>
                                 </template>
+                                <p class="text-[10px] mt-1" style="color:var(--color-txt-muted);">
+                                    Search is unlocked after confirming the transaction.
+                                </p>
                             </div>
                         </template>
                         <template x-if="sessionTxn">
@@ -1160,16 +1191,6 @@
                                 </div>
                             </template>
                         </div>
-
-                        {# txn ref — required for cashier, optional for others #}
-                        <template x-if="logType === 'customer' && isCashier">
-                            <div class="px-3 pb-2">
-                                <p class="text-[10px] uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);" x-text="isCashier ? 'TXN Reference *' : 'TXN Reference (optional)'"></p>
-                                <input type="text" x-model="txnRef" placeholder="TXN-00042"
-                                       class="w-full px-3 py-1.5 rounded-xl text-xs font-mono focus:outline-none"
-                                       style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
-                            </div>
-                        </template>
 
                         {# add / update buttons #}
                         <div class="flex gap-2 px-3 pb-3">
