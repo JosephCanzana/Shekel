@@ -640,6 +640,7 @@
         <div class="shrink-0 flex items-center gap-3 px-3 py-3"
              style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
             {# back button #}
+            {% if current_user.role != "cashier" %}
             <button onclick="history.back()"
                     class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition"
                     style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
@@ -647,6 +648,7 @@
                     onmouseout="this.style.backgroundColor='transparent'">
                 <span class="material-symbols-outlined text-[18px]">arrow_back</span>
             </button>
+            {% endif %}
             {# tabs centered #}
             <div class="flex-1 flex items-center justify-center gap-3">
                 <button @click="mobileTab='scan'"

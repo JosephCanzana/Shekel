@@ -584,6 +584,13 @@
         {# ── Tab switcher ── #}
         <div class="shrink-0 flex items-center justify-center gap-3 py-3"
              style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                <button onclick="history.back()"
+                    class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition"
+                    style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+            </button>
             <button @click="mobileTab='scan'"
                     class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition"
                     :style="mobileTab==='scan'
