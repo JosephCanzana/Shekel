@@ -17,6 +17,7 @@
     perPage: 10,
     selectedUser: null,
     mobileDetailOpen: false,
+    hideArchived: true,
 
     titleCase(str) {
         return str ? str.charAt(0).toUpperCase() + str.slice(1) : ""
@@ -39,7 +40,9 @@
                 r.first_name.toLowerCase().includes(q) ||
                 r.last_name.toLowerCase().includes(q)
             const matchRole   = this.filterRole   === "all" || r.role   === this.filterRole
-            const matchStatus = this.filterStatus === "all" || r.status === this.filterStatus
+            const matchStatus = this.filterStatus === "all"
+                ? (this.hideArchived ? r.status !== "archived" : true)
+                : r.status === this.filterStatus
             return matchSearch && matchRole && matchStatus
         })
     },
@@ -62,7 +65,13 @@ class="space-y-5">
                 Users
             </h1>
             <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
-                <span x-text="filtered.length"></span> of {{ (users | length) - 1 }} users
+                <span x-text="filtered.length"></span>
+                of
+                <span x-text="hideArchived ? rows.filter(r => r.status !== 'archived').length : rows.length"></span>
+                users
+                <span x-show="hideArchived" class="text-xs" style="color: var(--color-txt-muted);">
+                    (archived hidden)
+                </span>
             </p>
         </div>
         <a href="{{ url_for('manage_users.add') }}"
@@ -123,6 +132,17 @@ class="space-y-5">
                 <option value="suspended">Suspended</option>
                 <option value="archived">Archived</option>
             </select>
+            <button @click="hideArchived = !hideArchived; resetPage()"
+                    :title='hideArchived ? "Show archived users" : "Hide archived users"'
+                    class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
+                    :style='hideArchived
+                        ? "border: 1px solid var(--color-border); background-color: var(--color-surface); color: var(--color-txt-muted);"
+                        : "border: 1px solid var(--color-border); background-color: color-mix(in srgb,var(--color-warning) 12%,transparent); color: var(--color-warning);"'>
+                <span class="material-symbols-outlined text-[16px]"
+                    x-text='hideArchived ? "visibility_off" : "visibility"'></span>
+                <span class="hidden sm:inline"
+                    x-text='hideArchived ? "Archived" : "Archived"'></span>
+            </button>
         </div>
     </div>
 
