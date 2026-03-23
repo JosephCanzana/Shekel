@@ -80,6 +80,14 @@
         const el = this.$refs['suggestion_' + i]
         if (el) el.focus()
     },
+    handleBlur() {
+        setTimeout(() => {
+            if (!this.isClickingSuggestion) {
+                this.suggestions = []
+            }
+            this.isClickingSuggestion = false
+        }, 150)
+    },
 
     async lookupProduct() {
         const q = this.searchQuery.trim()
@@ -345,7 +353,7 @@
                                        @keydown.enter.prevent="lookupProduct()"
                                        @keydown.escape="suggestions=[]"
                                        @keydown.arrow-down.prevent="focusSuggestion(0)"
-                                       @blur="setTimeout(()=>suggestions=[], 150)"
+                                       @blur="handleBlur()"
                                        placeholder="Search by name or barcode..."
                                        autocomplete="off"
                                        class="w-full pl-8 pr-3 py-2 rounded-xl text-sm focus:outline-none transition"
@@ -394,7 +402,7 @@
                 </div>
 
                 {# Product Details #}
-                <div class="shrink-0 px-4 pt-2 pb-3" style="border-top:1px solid var(--color-border);">
+                <div class="px-4 pt-2 pb-3" style="border-top:1px solid var(--color-border);">
                     <p class="text-[11px] font-bold uppercase tracking-wider mb-2" style="color:var(--color-txt-muted);">Product Details</p>
                     <template x-if="!product">
                         <div class="flex items-center justify-center rounded-xl py-5" style="border:1px dashed var(--color-border);">
@@ -637,7 +645,7 @@
                                            @input.debounce.250ms="fetchSuggestions()"
                                            @keydown.enter.prevent="lookupProduct()"
                                            @keydown.escape="suggestions=[]"
-                                           @blur="setTimeout(()=>suggestions=[], 150)"
+                                           @blur="handleBlur()"
                                            placeholder="Barcode or product name..."
                                            autocomplete="off"
                                            class="w-full pl-9 pr-3 py-2.5 rounded-2xl text-sm focus:outline-none transition"
@@ -686,7 +694,7 @@
 
                     {# ── Product preview + qty controls (shown when product is loaded) ── #}
                     <template x-if="product">
-                        <div class="mx-4 mb-3 rounded-2xl overflow-hidden" style="border:1px solid var(--color-border);">
+                        <div class="shrink-0 mb-3 rounded-2xl overflow-hidden" style="border:1px solid var(--color-border);">
 
                             {# Product name / price header #}
                             <div class="flex items-start justify-between gap-3 px-4 py-3"
