@@ -27,7 +27,7 @@ def dashboard():
 
 @stocking_bp.route("/stock-in")
 @login_required
-@role_required("admin", "co-admin", "stocking")
+@role_required("superadmin", "admin", "stocking")
 def stock_in():
     return render_template("stocking/stock_in.html")
 
@@ -35,7 +35,7 @@ def stock_in():
 # ── API: search suggestions ───────────────────────────────────────────────────
 @stocking_bp.route("/api/search", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking")
+@role_required("superadmin", "admin", "stocking")
 def search():
     query = (request.json or {}).get("query", "").strip()
     if not query:
@@ -65,7 +65,7 @@ def search():
 # ── API: lookup by barcode or name ────────────────────────────────────────────
 @stocking_bp.route("/api/lookup", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking")
+@role_required("superadmin", "admin", "stocking")
 def lookup():
     query = (request.json or {}).get("query", "").strip()
     if not query:
@@ -114,7 +114,7 @@ def lookup():
 # ── API: complete stock-in ────────────────────────────────────────────────────
 @stocking_bp.route("/api/complete", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking")
+@role_required("superadmin", "admin", "stocking")
 def complete():
     data  = request.json or {}
     items = data.get("items", [])

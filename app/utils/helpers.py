@@ -138,7 +138,7 @@ def get_product(product_id):
     return Product.query.get(product_id)
 
 def is_admin_or_coadmin():
-    return current_user.role in ("admin", "co-admin")
+    return current_user.role in ("superadmin", "admin")
 
 
 def barcode_in_use(barcode, exclude_product_id=None, exclude_bundle_id=None):

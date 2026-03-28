@@ -66,9 +66,9 @@ def login():
 
         login_user(user)
         try:
-            if user.role == "admin":
+            if user.role == "superadmin":
                 return redirect(url_for("admin.dashboard"))
-            elif user.role == "co-admin":
+            elif user.role == "admin":
                 return redirect(url_for("admin.dashboard"))
             elif user.role == "cashier":
                 return redirect(url_for("cashier.transaction"))
@@ -134,9 +134,9 @@ def account_activation(user_id):
         login_user(user)
         flash("Welcome! Your account has been activated.", "success")
 
-        if user.role == "admin":
+        if user.role == "superadmin":
             return redirect(url_for("admin.dashboard"))
-        elif user.role == "co-admin":
+        elif user.role == "admin":
             return redirect(url_for("admin.dashboard"))
         elif user.role == "cashier":
             return redirect(url_for("cashier.transaction"))

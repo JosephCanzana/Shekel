@@ -74,7 +74,7 @@ from app.models.user import User
 
 @pytest.fixture
 def admin_client(client, user):
-    """Authenticated client as admin (user fixture has role='admin')."""
+    """Authenticated client as admin (user fixture has role='superadmin')."""
     client.post("/", data={
         "full_name": f"{user.first_name} {user.last_name}",
         "password": "shekel123",
@@ -182,7 +182,7 @@ class TestAuthAndAuthorization:
     def test_cashier_cannot_add_user(self, cashier_client):
         response = cashier_client.post(
             "/admin/users/add",
-            data={"first_name": "hacker", "last_name": "user", "role": "admin"},
+            data={"first_name": "hacker", "last_name": "user", "role": "superadmin"},
             follow_redirects=False,
         )
         assert response.status_code == 302

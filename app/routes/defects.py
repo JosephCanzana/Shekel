@@ -33,15 +33,15 @@ COMPENSATION_LABELS = {
 }
 
 def is_admin_or_coadmin():
-    return current_user.role in ("admin", "co-admin")
+    return current_user.role in ("superadmin", "admin")
 
 def can_review():
     """Admin, co-admin, and stocking can review pending items."""
-    return current_user.role in ("admin", "co-admin", "stocking")
+    return current_user.role in ("superadmin", "admin", "stocking")
 
 def can_set_compensation():
     """Stocking, admin, co-admin can set compensation. Cashier cannot."""
-    return current_user.role in ("admin", "co-admin", "stocking")
+    return current_user.role in ("superadmin", "admin", "stocking")
 
 
 def _apply_inventory(product_id, qty, compensation, reason=None, previous_compensation=None):
@@ -108,7 +108,7 @@ def _apply_inventory(product_id, qty, compensation, reason=None, previous_compen
 # ── Index: pending items watch list ──────────────────────────────────────────
 @defects_bp.route("/")
 @login_required
-@role_required("admin", "co-admin", "stocking", "cashier")
+@role_required("superadmin", "admin", "stocking", "cashier")
 def index():
     from app.models.user import User
     page          = request.args.get("page", 1, type=int)
@@ -149,7 +149,7 @@ def index():
 # ── Log page ──────────────────────────────────────────────────────────────────
 @defects_bp.route("/log")
 @login_required
-@role_required("admin", "co-admin", "stocking", "cashier")
+@role_required("superadmin", "admin", "stocking", "cashier")
 def log():
     return render_template("defects/log.html",
                            can_set_compensation=can_set_compensation())
@@ -158,7 +158,7 @@ def log():
 # ── History: all records for one product ─────────────────────────────────────
 @defects_bp.route("/product/<string:product_id>")
 @login_required
-@role_required("admin", "co-admin", "stocking", "cashier")
+@role_required("superadmin", "admin", "stocking", "cashier")
 def product_history(product_id):
     from app.models.user import User
     product       = Product.query.get_or_404(product_id)
@@ -198,7 +198,7 @@ def product_history(product_id):
 # ── Review: change pending → loss / returned ──────────────────────────────────
 @defects_bp.route("/detail/<int:detail_id>/review", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking")
+@role_required("superadmin", "admin", "stocking")
 def review(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 
@@ -230,7 +230,7 @@ def review(detail_id):
 # ── Update review: admin can change compensation on already-resolved items ────
 @defects_bp.route("/detail/<int:detail_id>/update", methods=["POST"])
 @login_required
-@role_required("admin")
+@role_required("superadmin")
 def update_review(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 
@@ -286,7 +286,7 @@ def update_review(detail_id):
 # ── API: search ───────────────────────────────────────────────────────────────
 @defects_bp.route("/api/search", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking", "cashier")
+@role_required("superadmin", "admin", "stocking", "cashier")
 def search():
     query = (request.json or {}).get("query", "").strip()
     if not query:
@@ -311,7 +311,7 @@ def search():
 # ── API: lookup ───────────────────────────────────────────────────────────────
 @defects_bp.route("/api/lookup", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking", "cashier")
+@role_required("superadmin", "admin", "stocking", "cashier")
 def lookup():
     query = (request.json or {}).get("query", "").strip()
     if not query:
@@ -361,7 +361,7 @@ def lookup():
 # ── API: TXN lookup — validate transaction + return remaining returnable qty ──
 @defects_bp.route("/api/txn_lookup", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking", "cashier")
+@role_required("superadmin", "admin", "stocking", "cashier")
 def txn_lookup():
     from app.models.sale import Sale
     from app.models.sale_detail import SaleDetail
@@ -422,7 +422,7 @@ def txn_lookup():
 # ── API: complete log ─────────────────────────────────────────────────────────
 @defects_bp.route("/api/complete", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking", "cashier")
+@role_required("superadmin", "admin", "stocking", "cashier")
 def complete():
     data  = request.json or {}
     items = data.get("items", [])
@@ -612,7 +612,7 @@ def complete():
 # ── Full history (all records, all statuses) ──────────────────────────────────
 @defects_bp.route("/history")
 @login_required
-@role_required("admin", "co-admin", "stocking", "cashier")
+@role_required("superadmin", "admin", "stocking", "cashier")
 def history():
     from app.models.user import User
     page          = request.args.get("page", 1, type=int)

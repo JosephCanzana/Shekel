@@ -116,7 +116,7 @@ class TestColumnConstraints:
             user_id=10992026,
             first_name="Manual",
             last_name="ID",
-            role="admin",
+            role="superadmin",
             status="activated",
         )
         u.set_password("pass")
@@ -145,7 +145,7 @@ class TestColumnConstraints:
 
 class TestRoleEnum:
     @pytest.mark.parametrize("valid_role", [
-        "admin", "cashier", "stocking", "co-admin"
+        "superadmin", "cashier", "stocking", "admin"
     ])
     def test_valid_role_values_accepted(self, app, valid_role):
         """Each valid role enum value saves without error."""
@@ -161,7 +161,7 @@ class TestRoleEnum:
         assert User.query.filter_by(role=valid_role).count() == 1
 
     @pytest.mark.parametrize("invalid_role", [
-        "manager", "superadmin", "guest", "", "Admin", "CASHIER"
+        "manager", "superadmin", "guest", "", "superadmin", "CASHIER"
     ])
     def test_invalid_role_values_rejected(self, app, invalid_role):
         """Invalid role values outside the enum should raise an error."""

@@ -121,8 +121,8 @@ def co_admin_user(app):
     u = User(
         user_id=10032026,
         first_name="Co",
-        last_name="Admin",
-        role="co-admin",
+        last_name="superadmin",
+        role="admin",
         status="activated",
     )
     u.set_password("shekel123")

@@ -70,8 +70,8 @@ def co_admin_user(app):
     u = User(
         user_id=10032026,
         first_name="Co",
-        last_name="Admin",
-        role="co-admin",
+        last_name="superadmin",
+        role="admin",
         status="activated",
     )
     u.set_password("shekel123")
@@ -222,7 +222,7 @@ class TestAuthAndAuthorization:
         assert response.status_code == 200
 
     def test_co_admin_can_change_password(self, co_admin_client):
-        # role_required("admin", "co-admin") — co-admin is permitted
+        # role_required("superadmin", "admin") — co-admin is permitted
         response = co_admin_client.post(
             "/profile/change-password",
             data={

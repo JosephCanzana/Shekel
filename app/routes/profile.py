@@ -15,14 +15,14 @@ def index():
     return render_template(
         "profile/index.html",
         user            = current_user,
-        can_change_pw   = current_user.role in ("admin", "co-admin"),
-        is_admin        = current_user.role == "admin",
+        can_change_pw   = current_user.role in ("superadmin", "admin"),
+        is_admin        = current_user.role == "superadmin",
     )
 
 
 @profile_bp.route("/change-password", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def change_password():
 
     current_pw  = request.form.get("current_password",  "").strip()
@@ -67,7 +67,7 @@ def change_password():
 
 @profile_bp.route("/recovery", methods=["POST"])
 @login_required
-@role_required("admin")
+@role_required("superadmin")
 def update_recovery():
     email  = request.form.get("email",        "").strip()
     phone  = request.form.get("phone_number", "").strip()
@@ -106,7 +106,7 @@ def update_recovery():
 
 @profile_bp.route("/update-identity", methods=["POST"])
 @login_required
-@role_required("admin")
+@role_required("superadmin")
 def update_identity():
     first_name = request.form.get("first_name", "").strip().lower()
     last_name  = request.form.get("last_name",  "").strip().lower()

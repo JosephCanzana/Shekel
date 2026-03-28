@@ -4,7 +4,7 @@
 
 {% block body %}
 <div x-data="{
-    isAdmin: {{ 'true' if current_user.role == 'admin' else 'false' }},
+    isAdmin: {{ 'true' if current_user.role == 'superadmin' else 'false' }},
     mobileDetailOpen: false,
     selectedRow:      null,
     openDetail(row) { this.selectedRow = row; this.mobileDetailOpen = true },
@@ -172,7 +172,7 @@
                         </button>
                         {% else %}
                         {# admin only — can update already-resolved items #}
-                        {% if current_user.role == 'admin' %}
+                        {% if current_user.role == 'superadmin' %}
                         <button @click="openEditModal('{{ url_for('defects.update_review', detail_id=detail.defect_detail_id) }}', '{{ detail.compensation }}')"
                                 class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
                                 style="background:color-mix(in srgb,var(--color-accent) 12%,transparent); color:var(--color-accent);"

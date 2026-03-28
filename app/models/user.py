@@ -11,7 +11,7 @@ class User(BaseModel, UserMixin):
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     role = db.Column(
-        db.Enum("admin", "cashier", "stocking", "co-admin", validate_strings=True), nullable=False
+        db.Enum("superadmin", "admin", "cashier", "stocking", validate_strings=True), nullable=False
     )
     password = db.Column(db.String(255), nullable=False)
     status = db.Column(

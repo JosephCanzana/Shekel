@@ -154,8 +154,8 @@ def co_admin_user(app):
     u = User(
         user_id=10082026,
         first_name="Co",
-        last_name="Admin",
-        role="co-admin",
+        last_name="superadmin",
+        role="admin",
         status="activated",
     )
     u.set_password("shekel123")
@@ -225,16 +225,16 @@ class TestLoginGet:
 
 class TestLoginPostHappyPath:
     def test_admin_login_redirects_to_dashboard(self, client, user):
-        # user fixture has role="admin" — must redirect to admin dashboard
+        # user fixture has role="superadmin" — must redirect to admin dashboard
         response = login(client, user)
         assert response.status_code == 302
-        assert "admin" in response.location or "dashboard" in response.location
+        assert "superadmin" in response.location or "dashboard" in response.location
 
     def test_co_admin_login_redirects_to_dashboard(self, client, co_admin_user):
         # co-admin shares the same dashboard as admin
         response = login(client, co_admin_user)
         assert response.status_code == 302
-        assert "admin" in response.location or "dashboard" in response.location
+        assert "superadmin" in response.location or "dashboard" in response.location
 
     def test_cashier_login_redirects_to_transaction(self, client, cashier_user):
         # cashier role must redirect to cashier.transaction

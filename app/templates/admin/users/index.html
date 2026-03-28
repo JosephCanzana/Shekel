@@ -114,8 +114,8 @@ class="space-y-5">
                            background-color: var(--color-surface);
                            color: var(--color-txt-primary);">
                 <option value="all">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="co-admin">Co-Admin</option>
+                <option value="superadmin">Admin</option>
+                <option value="admin">Co-Admin</option>
                 <option value="cashier">Cashier</option>
                 <option value="stocking">Stocking</option>
             </select>
@@ -201,8 +201,8 @@ class="space-y-5">
 
                         <td class="px-4 py-3">
                             <span class="px-2.5 py-1 rounded-full text-xs font-medium capitalize"
-                                  :style='user.role === "admin"    ? "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)"   :
-                                          user.role === "co-admin" ? "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)"        :
+                                  :style='user.role === "superadmin"    ? "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)"   :
+                                          user.role === "admin" ? "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)"        :
                                           user.role === "cashier"  ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"  :
                                                                      "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"'
                                   x-text="user.role"></span>
@@ -220,7 +220,7 @@ class="space-y-5">
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
 
-                                <template x-if="user.role === 'admin'">
+                                <template x-if="user.role === 'superadmin'">
                                     <div class="flex items-center gap-1">
                                         <button @click='$dispatch("confirm", {
                                                     title:   "Reset Password",
@@ -238,7 +238,7 @@ class="space-y-5">
                                     </div>
                                 </template>
 
-                                <template x-if="user.status !== 'archived' && user.role !== 'admin'">
+                                <template x-if="user.status !== 'archived' && user.role !== 'superadmin'">
                                     <div class="flex items-center gap-1">
                                         <a :href="`/admin/users/${user.user_id}/edit`" title="Edit"
                                            class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
@@ -489,8 +489,8 @@ class="space-y-5">
                         <div class="flex items-center gap-2 mt-1 flex-wrap">
                             {# Role badge #}
                             <span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize"
-                                  :style='selectedUser.role === "admin"    ? "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)"   :
-                                          selectedUser.role === "co-admin" ? "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)"        :
+                                  :style='selectedUser.role === "superadmin"    ? "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)"   :
+                                          selectedUser.role === "admin" ? "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)"        :
                                           selectedUser.role === "cashier"  ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"  :
                                                                              "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"'
                                   x-text="selectedUser.role">
@@ -527,7 +527,7 @@ class="space-y-5">
                 <div class="px-4 py-4 space-y-2 pb-8">
 
                     {# Admin — reset password only #}
-                    <template x-if="selectedUser.role === 'admin'">
+                    <template x-if="selectedUser.role === 'superadmin'">
                         <button @click='closeDetail(); $dispatch("confirm", {
                                     title:   "Reset Password",
                                     message: `Reset password for ${selectedUser.first_name} ${selectedUser.last_name}?`,
@@ -542,7 +542,7 @@ class="space-y-5">
                     </template>
 
                     {# Normal (non-admin, non-archived) actions #}
-                    <template x-if="selectedUser.status !== 'archived' && selectedUser.role !== 'admin'">
+                    <template x-if="selectedUser.status !== 'archived' && selectedUser.role !== 'superadmin'">
                         <div class="space-y-2">
                             <a :href="`/admin/users/${selectedUser.user_id}/edit`"
                                class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"

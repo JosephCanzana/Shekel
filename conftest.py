@@ -140,7 +140,7 @@ def user(app):
         user_id=10002026,
         first_name="Test",
         last_name="User",
-        role="admin",
+        role="superadmin",
         status="activated",
     )
     u.set_password("shekel123")

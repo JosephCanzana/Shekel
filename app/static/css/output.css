@@ -95,7 +95,6 @@
     --color-warning: #D97706;
     --color-info: #2563EB;
     --color-accent: #3B82F6;
-    --color-accent-hover: #2563EB;
     --color-accent-soft: #EFF6FF;
     --font-main: 'Main', sans-serif;
   }
@@ -418,9 +417,6 @@
   }
   .mt-6 {
     margin-top: calc(var(--spacing) * 6);
-  }
-  .mt-7 {
-    margin-top: calc(var(--spacing) * 7);
   }
   .mt-8 {
     margin-top: calc(var(--spacing) * 8);
@@ -1304,10 +1300,6 @@
   .text-5xl {
     font-size: var(--text-5xl);
     line-height: var(--tw-leading, var(--text-5xl--line-height));
-  }
-  .text-6xl {
-    font-size: var(--text-6xl);
-    line-height: var(--tw-leading, var(--text-6xl--line-height));
   }
   .text-base {
     font-size: var(--text-base);

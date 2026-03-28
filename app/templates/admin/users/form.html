@@ -106,8 +106,8 @@
                     <option value="" disabled {{ '' if user is defined else 'selected' }}>
                         Select a role
                     </option>
-                    <!-- <option value="admin"    {{ 'selected' if user is defined and user.role == 'admin' }}>Admin</option> -->
-                    <option value="co-admin" {{ 'selected' if user is defined and user.role == 'co-admin' }}>Co-Admin</option>
+                    <!-- <option value="superadmin"    {{ 'selected' if user is defined and user.role == 'superadmin' }}>Admin</option> -->
+                    <option value="admin" {{ 'selected' if user is defined and user.role == 'admin' }}>Co-Admin</option>
                     <option value="cashier"  {{ 'selected' if user is defined and user.role == 'cashier' }}>Cashier</option>
                     <option value="stocking" {{ 'selected' if user is defined and user.role == 'stocking' }}>Stocking</option>
                 </select>

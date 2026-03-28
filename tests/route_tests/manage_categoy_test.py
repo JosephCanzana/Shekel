@@ -13,7 +13,7 @@ WHAT THIS FILE COVERS:
      → stocking blocked
      → cashier blocked
    - delete
-     → admin only (role_required("admin") — co-admin blocked at decorator)
+     → admin only (role_required("superadmin") — co-admin blocked at decorator)
      → stocking blocked
      → cashier blocked
 
@@ -72,7 +72,7 @@ WHAT THIS FILE COVERS:
    - Admin can delete a category
    - Category row removed from DB after delete
    - Nonexistent category_id redirects to index
-   - co-admin blocked (role_required("admin") at decorator level)
+   - co-admin blocked (role_required("superadmin") at decorator level)
    - stocking blocked
    - cashier blocked
    - DB unchanged when deletion is blocked
@@ -97,8 +97,8 @@ def co_admin_user(app):
     u = User(
         user_id=10032026,
         first_name="Co",
-        last_name="Admin",
-        role="co-admin",
+        last_name="superadmin",
+        role="admin",
         status="activated",
     )
     u.set_password("shekel123")
@@ -328,7 +328,7 @@ class TestAuthAndAuthorization:
         assert response.status_code == 200
 
     def test_co_admin_blocked_from_delete(self, co_admin_client, category):
-        # role_required("admin") at the decorator level — co-admin never enters the route
+        # role_required("superadmin") at the decorator level — co-admin never enters the route
         response = co_admin_client.post(
             f"/admin/categories/{category.category_id}/delete",
             follow_redirects=False,
@@ -954,7 +954,7 @@ class TestStatusUpdate:
 #    WHAT: Verifies permanent category deletion and all blocks that
 #          prevent it (role, nonexistent ID).
 #    WHY:  Deletion is irreversible. co-admin must be blocked at the
-#          decorator level (role_required("admin") only). A nonexistent
+#          decorator level (role_required("superadmin") only). A nonexistent
 #          ID must redirect cleanly. The product-guard TODO is noted
 #          but not tested because the code path is commented out.
 # ---------------------------------------------------------------------------
@@ -995,7 +995,7 @@ class TestDelete:
         assert response.status_code == 302
 
     def test_co_admin_cannot_delete(self, co_admin_client, category):
-        # role_required("admin") blocks co-admin at the decorator —
+        # role_required("superadmin") blocks co-admin at the decorator —
         # the category must still exist after the request.
         category_id = category.category_id
         co_admin_client.post(

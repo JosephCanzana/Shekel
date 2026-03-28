@@ -7,11 +7,11 @@ from app.utils.helpers import validate_name, validate_password
 from sqlalchemy.exc import IntegrityError
 
 manage_users_bp = Blueprint("manage_users", __name__, url_prefix="/admin/users")
-VALID_ROLES = {"admin", "co-admin", "cashier", "stocking"}
+VALID_ROLES = {"superadmin", "admin", "cashier", "stocking"}
 
 @manage_users_bp.route("/")
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def index():
     users = User.get_all()
     users_data = [u.to_dict() for u in users if u.user_id != current_user.user_id]
@@ -22,7 +22,7 @@ def index():
 
 @manage_users_bp.route("/add", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def add():
     global VALID_ROLES
     if request.method == "POST":
@@ -91,7 +91,7 @@ def add():
 
 @manage_users_bp.route("/<int:user_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def edit(user_id):
     global VALID_ROLES
 
@@ -99,7 +99,7 @@ def edit(user_id):
     if not user:
         flash("User not found.", "danger")
         return redirect(url_for("manage_users.index"))
-    if user.role == 'admin':
+    if user.role == 'superadmin':
         flash("Can't edit admin!", "danger")
         return redirect(url_for("manage_users.index"))
 
@@ -161,7 +161,7 @@ def edit(user_id):
 
 @manage_users_bp.route("/<int:user_id>/status_update", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def status(user_id):
     if current_user.user_id == user_id:
         flash("You cannot change your own account status.", "danger")
@@ -185,7 +185,7 @@ def status(user_id):
 
 @manage_users_bp.route("/<int:user_id>/reset_password", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def reset_password(user_id):
     user = User.get_by_id(user_id)
     if not user:
@@ -202,7 +202,7 @@ def reset_password(user_id):
 
 @manage_users_bp.route("/<int:user_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def delete(user_id):
     user = User.get_by_id(user_id)
     if not user:

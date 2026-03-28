@@ -14,7 +14,7 @@ inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
 @inventory_bp.route("/")
 @login_required
-@role_required("admin", "co-admin", "stocking")
+@role_required("superadmin", "admin", "stocking")
 def index():
     products      = Product.query.order_by(Product.created_at.desc()).all()
     products_data = [p.to_dict() for p in products]
@@ -26,7 +26,7 @@ def index():
 
 @inventory_bp.route("/add", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def add():
     categories = get_active_categories()
 
@@ -145,7 +145,7 @@ def add():
 
 @inventory_bp.route("/<string:product_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "co-admin", "stocking")  
+@role_required("superadmin", "admin", "stocking")  
 def edit(product_id):
     product    = get_product(product_id)
     categories = get_active_categories()
@@ -353,7 +353,7 @@ def edit(product_id):
 
 @inventory_bp.route("/<string:product_id>/status_update", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def status_update(product_id):
     product = get_product(product_id)
     if not product:
@@ -373,9 +373,9 @@ def status_update(product_id):
 
 @inventory_bp.route("/<string:product_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def delete(product_id):
-    if current_user.role == "co-admin":
+    if current_user.role == "admin":
         flash("Co-admin can't delete a product", "info")
         return redirect(url_for("inventory.index"))
     product = get_product(product_id)

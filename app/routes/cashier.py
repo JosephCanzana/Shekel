@@ -14,7 +14,7 @@ cashier_bp = Blueprint("cashier", __name__, url_prefix="/cashier")
 
 @cashier_bp.route("/transaction")
 @login_required
-@role_required("admin", "co-admin", "cashier")
+@role_required("superadmin", "admin", "cashier")
 def transaction():
     return render_template("cashier/transaction.html")
 
@@ -22,7 +22,7 @@ def transaction():
 # ── API: search suggestions (dropdown) ───────────────────────────────────────
 @cashier_bp.route("/api/search", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "cashier")
+@role_required("superadmin", "admin", "cashier")
 def search():
     query = str((request.json or {}).get("query", "")).strip()
     if not query or len(query) < 1:
@@ -53,7 +53,7 @@ def search():
 # ── API: look up a product by barcode or name ─────────────────────────────────
 @cashier_bp.route("/api/lookup", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "cashier")
+@role_required("superadmin", "admin", "cashier")
 def lookup():
     query = str((request.json or {}).get("query", "")).strip()
     if not query:
@@ -107,7 +107,7 @@ def lookup():
 # ── API: complete sale ────────────────────────────────────────────────────────
 @cashier_bp.route("/api/charge", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin", "cashier")
+@role_required("superadmin", "admin", "cashier")
 def charge():
     data     = request.json or {}
     items    = data.get("items", [])

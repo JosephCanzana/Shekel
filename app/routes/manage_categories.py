@@ -9,7 +9,7 @@ manage_categories_bp = Blueprint("manage_categories", __name__, url_prefix="/adm
 
 @manage_categories_bp.route("/")
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def index():
     categories      = Category.get_all()
     categories_data = [c.to_dict() for c in categories]
@@ -20,7 +20,7 @@ def index():
 
 @manage_categories_bp.route("/add", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def add():
     if request.method == "POST":
         category_name = request.form.get("category_name", "").strip()
@@ -57,7 +57,7 @@ def add():
 
 @manage_categories_bp.route("/<int:category_id>/edit", methods=["GET", "POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def edit(category_id):
     category = Category.get_by_id(category_id)
     if not category:
@@ -99,7 +99,7 @@ def edit(category_id):
 
 @manage_categories_bp.route("/<int:category_id>/status_update", methods=["POST"])
 @login_required
-@role_required("admin", "co-admin")
+@role_required("superadmin", "admin")
 def status_update(category_id):
     category = Category.get_by_id(category_id)
     if not category:
@@ -119,7 +119,7 @@ def status_update(category_id):
 
 @manage_categories_bp.route("/<int:category_id>/delete", methods=["POST"])
 @login_required
-@role_required("admin")
+@role_required("superadmin")
 def delete(category_id):
     category = Category.get_by_id(category_id)
     if not category:

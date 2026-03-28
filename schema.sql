@@ -23,20 +23,20 @@ CREATE TABLE IF NOT EXISTS Users (
     user_id     INT          NOT NULL,
     first_name  VARCHAR(50)  NOT NULL,
     last_name   VARCHAR(50)  NOT NULL,
-    role        ENUM('admin', 'cashier', 'stocking', 'co-admin') NOT NULL,
+    role        ENUM('superadmin', 'cashier', 'stocking', 'admin') NOT NULL,
     password    VARCHAR(255) NOT NULL,
     status      ENUM('activated', 'not_activated', 'suspended', 'archived') NOT NULL,
     PRIMARY KEY (user_id)
 );
 
 INSERT IGNORE INTO Users (user_id, first_name, last_name, role, password, status)
-VALUES (10002026, 'admin', 'account', 'admin',
+VALUES (10002026, 'superadmin', 'account', 'superadmin',
         'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf',
         'activated');
 
 INSERT IGNORE INTO Users (user_id, first_name, last_name, role, password, status)
 VALUES
-    (10012026, 'coadmin',  'test', 'co-admin',
+    (10012026, 'coadmin',  'test', 'admin',
      'pbkdf2:sha256:1000000$LBLb2g8SjudjJfx5$ec9566c749e82ab5b9c5d9eef49948ff1727bb0f3ff823dc9eeda986b8f445cf',
      'activated'),
     (10022026, 'cashier',  'test', 'cashier',
