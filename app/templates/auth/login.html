@@ -34,46 +34,45 @@
     <div class="relative z-10 flex flex-col items-center justify-center
                 h-full px-14 text-center gap-8">
 
-      {# logo placeholder box #}
-      <div class="w-80 h-80 rounded-2xl flex items-center justify-center">
-
-        <img src="/static/img/shekel_logo.png"
-            alt="Shekel logo"
-            class="w-90 h-90 object-contain"
-            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-
-      </div>
-
-
-      {# app name + divider + tagline #}
-      <div class="flex flex-col items-center gap-4">
-        <h1 class="text-6xl font-bold"
-            style="color: var(--color-txt-primary);
-                   letter-spacing: -0.03em;">
-          Shekel
-        </h1>
-
-        <div class="w-8 h-0.5 rounded-full"
-             style="background-color: var(--color-accent);">
+        {# logo #}
+        <div class="w-80 h-80 rounded-2xl flex items-center justify-center">
+            <img src="/static/img/shekel_logo.png"
+                alt="Shekel logo"
+                class="w-90 h-90 object-contain"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
         </div>
 
-        {# tagline — "pulse" vibe #}
-        <p class="text-m leading-relaxed max-w-[210px]"
-           style="color: var(--color-txt-muted);">
-          From Ancient Trade to<br>
-          <span style="color: var(--color-accent); font-weight: 600;">
-            Modern Business.
-          </span>
-        </p>
-      </div>
+        {# store name + system label + subtle shekel #}
+        <div class="flex flex-col items-center gap-4">
 
+            <h1 class="text-5xl font-bold leading-tight"
+                style="color: var(--color-txt-primary);
+                      letter-spacing: -0.03em;">
+                Duday's Store
+            </h1>
+
+            <p class="text-sm font-medium tracking-wide"
+              style="color: var(--color-txt-secondary);">
+                Sales &amp; Inventory System
+            </p>
+
+            <div class="w-8 h-0.5 rounded-full"
+                style="background-color: var(--color-accent);"></div>
+            <p class="text-sm leading-relaxed max-w-[210px]"
+              style="color: var(--color-txt-muted);">
+                Business management made<br>
+                <span style="color: var(--color-accent); font-weight: 600;">
+                    Browser-simple.
+                </span>
+            </p>
+        </div>
     </div>
 
-    {# version — bottom center #}
+    {# Shekel branding — bottom center, subtle #}
     <p class="absolute bottom-8 left-0 right-0 text-center
               text-xs tracking-widest uppercase"
-       style="color: var(--color-txt-muted); opacity: 0.5;">
-      v1.0 &nbsp;·&nbsp; 2026
+      style="color: var(--color-txt-muted); opacity: 0.5;">
+        Shekel &nbsp;·&nbsp; v1.0 &nbsp;·&nbsp; 2026
     </p>
 
   </div>
@@ -112,7 +111,7 @@
           </div>
           <span class="text-base font-semibold tracking-widest uppercase"
                 style="color: var(--color-txt-muted);">
-              Shekel
+              Duday's Store
           </span>
       </div>
 
@@ -178,13 +177,7 @@
                      style="color: var(--color-txt-muted);">
                 Password
               </label>
-              <a href="#"
-                 class="text-sm transition"
-                 style="color: var(--color-accent);"
-                 onmouseover="this.style.color='var(--color-accent-hover)'"
-                 onmouseout="this.style.color='var(--color-accent)'">
-                Forgot password?
-              </a>
+
             </div>
 
             <div x-data="{ show: false }">
@@ -227,32 +220,31 @@
 
           {# submit #}
           <button
-            type="submit"
-            class="w-full py-2.5 sm:py-3.5 mt-1 rounded-xl text-sm sm:text-base font-semibold
-                   tracking-wide transition duration-150
-                   flex items-center justify-center gap-2
-                   active:scale-[.99]"
-            style="background-color: var(--color-primary);
-                   color: var(--color-bg);"
-            onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
-            onmouseout="this.style.backgroundColor='var(--color-primary)'">
-            Sign in
-            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+              type="submit"
+              class="w-full py-2.5 sm:py-3.5 mt-1 rounded-xl text-sm sm:text-base font-semibold
+                    tracking-wide transition duration-150
+                    flex items-center justify-center gap-2 active:scale-[.99]"
+              style="background-color: var(--color-primary); color: var(--color-bg);"
+              onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+              onmouseout="this.style.backgroundColor='var(--color-primary)'">
+              Sign in
+              <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
           </button>
 
-        </form>
+          {# forgot password — separated, centered, with divider #}
+          <div class="flex items-center gap-3 mt-1">
+              <div class="flex-1 h-px" style="background-color: var(--color-border);"></div>
+              <a href="#"
+                class="text-xs font-medium transition shrink-0"
+                style="color: var(--color-txt-muted);"
+                onmouseover="this.style.color='var(--color-accent)'"
+                onmouseout="this.style.color='var(--color-txt-muted)'">
+                  Forgot password?
+              </a>
+              <div class="flex-1 h-px" style="background-color: var(--color-border);"></div>
+          </div>
 
-        {# bottom divider #}
-        <div class="flex items-center gap-3 mt-8">
-          <div class="flex-1 h-px"
-               style="background-color: var(--color-border);"></div>
-          <span class="text-xs tracking-widest uppercase"
-                style="color: var(--color-txt-muted);">
-            Shekel v1.0
-          </span>
-          <div class="flex-1 h-px"
-               style="background-color: var(--color-border);"></div>
-        </div>
+        </form>
 
       </div>{# /card #}
     </div>
