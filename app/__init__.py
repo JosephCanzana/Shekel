@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, session
 from dotenv import load_dotenv
 from config import DevelopmentConfig
 from app.extensions import db, login_manager, migrate, csrf
@@ -12,17 +12,28 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
+    # TODO: be removed later
+    # Production error handler
+    # if not app.debug and not app.testing:
+    #     from app.errors.handlers import register_error_handlers
+    #     register_error_handlers(app)
+
+
     # # ─── Bind Extensions to App ───────────────────────────────
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
     csrf.init_app(app)
 
-    # # ─── Login Manager Config ─────────────────────────────────
-    # # Where to redirect if a user tries to access a protected route
+    @app.before_request
+    def make_session_permanent():
+        session.permanent = True
+
+    # ─── Login Manager Config ─────────────────────────────────
+    # Where to redirect if a user tries to access a protected route
     login_manager.login_view = "auth.login"
     
-    # # # Flash message shown when redirected
+    # Flash message shown when redirected
     login_manager.login_message = "Please log in to access this page."
     login_manager.login_message_category = "warning"
 
