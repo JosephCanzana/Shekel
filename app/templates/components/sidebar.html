@@ -5,7 +5,7 @@
 {% set sidebar_links = {
 
     'superadmin': [
-        {'url': url_for('superadmin.dashboard'),         'icon': 'home',          'label': 'Dashboard'},
+        {'url': url_for('admin.dashboard'),         'icon': 'home',          'label': 'Dashboard'},
         {'url': url_for('manage_users.index'),      'icon': 'group',         'label': 'Users'},
         {'url': url_for('inventory.index'),         'icon': 'inventory',     'label': 'Inventory'},
         {'url': url_for('defects.index'),           'icon': 'report_problem','label': 'Defects/Returns'},
@@ -16,7 +16,7 @@
         ],
         
         'admin': [
-        {'url': url_for('superadmin.dashboard'),         'icon': 'home',          'label': 'Dashboard'},
+        {'url': url_for('admin.dashboard'),         'icon': 'home',          'label': 'Dashboard'},
         {'url': url_for('manage_users.index'),      'icon': 'group',         'label': 'Users'},
         {'url': url_for('inventory.index'),         'icon': 'inventory',     'label': 'Inventory'},
         {'url': url_for('defects.index'),           'icon': 'report_problem','label': 'Defects/Returns'},

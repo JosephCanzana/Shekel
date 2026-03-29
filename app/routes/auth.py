@@ -75,7 +75,7 @@ def login():
             elif user.role == "stocking":
                 return redirect(url_for("stocking.dashboard"))
         except Exception as e:
-            return message(404, "An error occur while validating your role")
+            return message(404, f"An error occur while validating your role{e}")
 
     return render_template("auth/login.html")
 
