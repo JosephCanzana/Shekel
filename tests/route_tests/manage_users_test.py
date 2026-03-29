@@ -863,7 +863,7 @@ class TestAdversarial:
         response = admin_client.post("/admin/users/add", data={
             "first_name": "john",
             "last_name": "doe",
-            "role": "superadmin",
+            "role": "coadmin",
         }, follow_redirects=True)
 
         assert response.status_code == 200

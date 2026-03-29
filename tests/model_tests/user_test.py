@@ -161,7 +161,7 @@ class TestRoleEnum:
         assert User.query.filter_by(role=valid_role).count() == 1
 
     @pytest.mark.parametrize("invalid_role", [
-        "manager", "superadmin", "guest", "", "superadmin", "CASHIER"
+        "manager", "guest", "", "CASHIER"
     ])
     def test_invalid_role_values_rejected(self, app, invalid_role):
         """Invalid role values outside the enum should raise an error."""

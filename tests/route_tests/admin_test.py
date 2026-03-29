@@ -74,7 +74,7 @@ def co_admin_user(app):
     u = User(
         user_id=10092026,
         first_name="Co",
-        last_name="superadmin",
+        last_name="Admin",
         role="admin",
         status="activated",
     )
