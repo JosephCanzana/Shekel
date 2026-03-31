@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from app.utils.decorator import role_required
@@ -10,6 +10,7 @@ from app.models.defect import Defect
 from app.models.defect_detail import DefectDetail
 from app.models.sale import Sale
 from app.extensions import db
+from app.utils.helpers import is_admin_or_coadmin, generate_charge_token
 
 defects_bp = Blueprint("defects", __name__, url_prefix="/defects")
 
@@ -31,9 +32,6 @@ COMPENSATION_LABELS = {
     "loss":     "Loss",
     "returned": "Returned",
 }
-
-def is_admin_or_coadmin():
-    return current_user.role in ("superadmin", "admin")
 
 def can_review():
     """Admin, co-admin, and stocking can review pending items."""
@@ -151,8 +149,9 @@ def index():
 @login_required
 @role_required("superadmin", "admin", "stocking", "cashier")
 def log():
+    session["defect_token"] = generate_charge_token()
     return render_template("defects/log.html",
-                           can_set_compensation=can_set_compensation())
+                           can_set_compensation=can_set_compensation(), defect_token=session["defect_token"])
 
 
 # ── History: all records for one product ─────────────────────────────────────
@@ -427,6 +426,11 @@ def complete():
     data  = request.json or {}
     items = data.get("items", [])
 
+    token = data.get("defect_token")
+    if not token or token != session.get('defect_token'):
+        return jsonify({"error": "Duplicate or invalid submission."}), 409
+    session.pop('defect_token', None)
+
     if not items:
         return jsonify({"error": "No items to log."}), 400
 
@@ -651,3 +655,11 @@ def history():
                            REASONS=REASONS,
                            REASON_LABELS=REASON_LABELS,
                            COMPENSATION_LABELS=COMPENSATION_LABELS)
+
+
+@defects_bp.route("/api/refresh-token", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def refresh_token():
+    session["defect_token"] = generate_charge_token()
+    return jsonify({"defect_token": session["defect_token"]})

@@ -355,35 +355,61 @@
         this.sessionTxn = null; this.sessionTxnInput = ''; this.sessionTxnError = ''
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
-
     async completeLog() {
-        if (!this.canComplete) return
+        if (!this.canComplete || this.submitting) return
+        this.submitting = true
         this.globalError = ''
         try {
             const res = await fetch('/defects/api/complete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json',
-                           'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
-                body: JSON.stringify({ items: this.items.map(i => ({
-                    product_id:   i.product_id,
-                    qty:          i.qty,
-                    reason:       i.reason,
-                    compensation: i.compensation,
-                    log_type:     i.log_type,
-                    txn_ref:      i.txn_ref || null,
-                }))})
+                        'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                body: JSON.stringify({
+                    items: this.items.map(i => ({
+                        product_id:   i.product_id,
+                        qty:          i.qty,
+                        reason:       i.reason,
+                        compensation: i.compensation,
+                        log_type:     i.log_type,
+                        txn_ref:      i.txn_ref || null,
+                    })),
+                    defect_token: document.getElementById('defect_token').value
+                })
             })
             const data = await res.json()
-            if (!res.ok) { this.globalError = data.error || 'Failed.' }
-            else { this.receipt = data; this.showReceipt = true; this.confirmComplete = false }
-        } catch(e) { this.globalError = 'Network error. Please try again.' }
+            if (!res.ok) {
+                this.globalError = data.error || 'Failed.'
+                this.submitting = false
+            } else {
+                this.confirmComplete = false
+                this.receipt = data
+                this.showReceipt = true
+            }
+        } catch(e) {
+            this.globalError = 'Network error. Please try again.'
+            this.submitting = false
+        }
     },
 
-    closeReceipt() { this.showReceipt = false; this.receipt = null; this.cancelAll() }
+    async closeReceipt() {
+        this.showReceipt = false
+        this.receipt = null
+        this.submitting = false
+        this.cancelAll()
+        try {
+            const res = await fetch('/defects/api/refresh-token', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': document.querySelector('[name=csrf_token]').value }
+            })
+            const data = await res.json()
+            document.getElementById('defect_token').value = data.defect_token
+        } catch(e) { console.error('Token refresh failed') }
+    },
 
 }" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" id="defect_token" value="{{ defect_token }}">
 
     {# ═══════════════════════════════════
        SHARED SCAN PANEL MACRO
