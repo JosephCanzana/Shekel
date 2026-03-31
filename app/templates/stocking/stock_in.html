@@ -222,7 +222,8 @@
                         product_id: i.product_id, qty: i.qty,
                         notes: i.notes || this.globalNotes || ''
                     })),
-                    notes: this.globalNotes
+                    notes: this.globalNotes,
+                    stockin_token: document.getElementById('stockin_token').value  
                 })
             })
             const data = await res.json()
@@ -243,7 +244,7 @@
 }" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" id="charge_token" value="{{ charge_token }}">
+    <input type="hidden" id="stockin_token" value="{{ stockin_token }}">
 
     {# ═══════════ DESKTOP LAYOUT ═══════════ #}
     <div class="desktop-layout gap-4"

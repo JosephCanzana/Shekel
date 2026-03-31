@@ -30,8 +30,8 @@ def dashboard():
 @login_required
 @role_required("superadmin", "admin", "stocking")
 def stock_in():
-    session["charge_token"] = generate_charge_token()
-    return render_template("stocking/stock_in.html", charge_token=session["charge_token"])
+    session["stockin_token"] = generate_charge_token()
+    return render_template("stocking/stock_in.html", stockin_token=session["stockin_token"])
 
 
 # ── API: search suggestions ───────────────────────────────────────────────────
@@ -119,15 +119,13 @@ def lookup():
 @role_required("superadmin", "admin", "stocking")
 def complete():
     data  = request.json or {}
-    token = data.get("charge_token")
     items = data.get("items", [])
     notes = data.get("notes", "").strip()
 
-    if not token or token != session.get('charge_token'):
+    token = data.get("stockin_token")
+    if not token or token != session.get('stockin_token'):
         return jsonify({"error": "Duplicate or invalid submission."}), 409
-
-    # consume token immediately — any retry will fail
-    session.pop('charge_token', None)
+    session.pop('stockin_token', None)
 
     if not items:
         return jsonify({"error": "No items to receive."}), 400
