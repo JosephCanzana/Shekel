@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, session
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
 from app.models.product import Product
@@ -8,6 +8,7 @@ from app.models.inventory import Inventory
 from app.models.stock_in import StockIn
 from app.extensions import db
 from app.utils.index_helpers import *
+from app.utils.helpers import generate_charge_token
 
 stocking_bp = Blueprint("stocking", __name__, url_prefix="/stocking")
 
@@ -29,7 +30,8 @@ def dashboard():
 @login_required
 @role_required("superadmin", "admin", "stocking")
 def stock_in():
-    return render_template("stocking/stock_in.html")
+    session["charge_token"] = generate_charge_token()
+    return render_template("stocking/stock_in.html", charge_token=session["charge_token"])
 
 
 # ── API: search suggestions ───────────────────────────────────────────────────
@@ -117,8 +119,15 @@ def lookup():
 @role_required("superadmin", "admin", "stocking")
 def complete():
     data  = request.json or {}
+    token = data.get("charge_token")
     items = data.get("items", [])
     notes = data.get("notes", "").strip()
+
+    if not token or token != session.get('charge_token'):
+        return jsonify({"error": "Duplicate or invalid submission."}), 409
+
+    # consume token immediately — any retry will fail
+    session.pop('charge_token', None)
 
     if not items:
         return jsonify({"error": "No items to receive."}), 400

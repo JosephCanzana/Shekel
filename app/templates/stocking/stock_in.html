@@ -38,6 +38,7 @@
     mobileTab:       'scan',
     confirmComplete: false,
     confirmCancel:   false,
+    submitting: false,
 
     get totalUnits() {
         if (!this.product) return 0
@@ -208,13 +209,14 @@
     },
 
     async completeStockIn() {
-        if (!this.canComplete) return
+        if (!this.canComplete || this.submitting) return
+        this.submitting = true
         this.globalError = ''
         try {
             const res = await fetch('/stocking/api/complete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json',
-                           'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                        'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
                 body: JSON.stringify({
                     items: this.items.map(i => ({
                         product_id: i.product_id, qty: i.qty,
@@ -225,8 +227,13 @@
             })
             const data = await res.json()
             if (!res.ok) { this.globalError = data.error || 'Failed to complete.' }
-            else { this.receipt = data; this.showReceipt = true }
+            else {
+                this.confirmComplete = false  
+                this.receipt = data
+                this.showReceipt = true
+            }
         } catch(e) { this.globalError = 'Network error. Please try again.' }
+        finally { this.submitting = false }
     },
 
     closeReceipt() {
@@ -236,6 +243,7 @@
 }" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" id="charge_token" value="{{ charge_token }}">
 
     {# ═══════════ DESKTOP LAYOUT ═══════════ #}
     <div class="desktop-layout gap-4"
@@ -1028,11 +1036,15 @@
                             style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
                             onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                             onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
-                    <button @click="confirmComplete = false; completeStockIn()"
-                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                    <button @click="completeStockIn()"
+                            :disabled="submitting"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                             style="background-color:var(--color-primary); color:var(--color-bg);"
-                            onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
-                            onmouseout="this.style.backgroundColor='var(--color-primary)'">Confirm</button>
+                            onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-primary-hover)'"
+                            onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                        <span x-show="!submitting">Confirm</span>
+                        <span x-show="submitting">Submitting...</span>
+                    </button>
                 </div>
             </div>
         </div>
