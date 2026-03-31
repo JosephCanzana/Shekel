@@ -6,8 +6,13 @@ from flask_login import current_user
 from app.models.category import Category
 from app.models.product import Product
 from app.models.product_bundle import ProductBundle
+import uuid
 
 PHT = pytz.timezone("Asia/Manila")
+
+
+def generate_charge_token():
+    return str(uuid.uuid4())
 
 def message(num=400, message="Error occur"):
     return render_template("message.html", message=message, error_code=num)

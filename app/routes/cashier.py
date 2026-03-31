@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, session
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
 from app.models.product import Product
@@ -8,6 +8,7 @@ from app.models.inventory import Inventory
 from app.models.sale import Sale
 from app.models.sale_detail import SaleDetail
 from app.extensions import db
+from app.utils.helpers import generate_charge_token
 
 cashier_bp = Blueprint("cashier", __name__, url_prefix="/cashier")
 
@@ -16,7 +17,9 @@ cashier_bp = Blueprint("cashier", __name__, url_prefix="/cashier")
 @login_required
 @role_required("superadmin", "admin", "cashier")
 def transaction():
-    return render_template("cashier/transaction.html")
+    session["charge_token"] = generate_charge_token()
+    return render_template("cashier/transaction.html",
+                           charge_token=session["charge_token"])
 
 
 # ── API: search suggestions (dropdown) ───────────────────────────────────────
@@ -110,8 +113,14 @@ def lookup():
 @role_required("superadmin", "admin", "cashier")
 def charge():
     data     = request.json or {}
+    token = data.get("charge_token")
     items    = data.get("items", [])
     tendered = data.get("tendered")
+
+    if not token or token != session.get("charge_token"):
+        return jsonify({"error": "Duplicate or invalid submission"}), 409
+    
+    session.pop("charge_token", None)
 
     if not items:
         return jsonify({"error": "Cart is empty."}), 400
