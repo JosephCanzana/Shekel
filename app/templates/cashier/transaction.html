@@ -200,8 +200,8 @@
     },
 
     async completeSale() {
-        if (!this.canComplete || this.submitting) return  // ← block duplicate calls
-        this.submitting = true                             // ← lock immediately
+        if (!this.canComplete || this.submitting) return
+        this.submitting = true
         this.globalError = ''
         try {
             const res = await fetch('/cashier/api/charge', {
@@ -213,8 +213,8 @@
                         product_id: i.product_id, product_name: i.product_name, qty: i.qty,
                         cost_price: i.cost_price, revenue_price: i.revenue_price, total_price: i.total_price
                     })),
-                    tendered: this.cashNum
-                    charge_token: document.getElementById('charge_token').value
+                    tendered: this.cashNum,
+                    charge_token: document.getElementById('charge_token').value  // ← inside method only
                 })
             })
             const data = await res.json()
@@ -230,7 +230,7 @@
 }" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="charge_token" value="{{ charge_token() }}">
+    <input type="hidden" id="charge_token" name="charge_token" value="{{ charge_token }}">
 
 
     {# ═══════════════════════ DESKTOP LAYOUT ═══════════════════════ #}
