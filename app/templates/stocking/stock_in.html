@@ -223,22 +223,46 @@
                         notes: i.notes || this.globalNotes || ''
                     })),
                     notes: this.globalNotes,
-                    stockin_token: document.getElementById('stockin_token').value  
+                    stockin_token: document.getElementById('stockin_token').value
                 })
             })
             const data = await res.json()
-            if (!res.ok) { this.globalError = data.error || 'Failed to complete.' }
-            else {
-                this.confirmComplete = false  
+            if (!res.ok) {
+                this.globalError = data.error || 'Failed to complete.'
+                this.submitting = false  // ← unlock only on failure so they can retry
+            } else {
+                // submitting stays true — button stays locked until receipt is closed
+                this.confirmComplete = false
                 this.receipt = data
                 this.showReceipt = true
             }
-        } catch(e) { this.globalError = 'Network error. Please try again.' }
-        finally { this.submitting = false }
+        } catch(e) {
+            this.globalError = 'Network error. Please try again.'
+            this.submitting = false  // ← unlock on network error so they can retry
+            
+        }
     },
+    async closeReceipt() {
+        this.showReceipt = false
+        this.receipt = null
+        this.submitting = false
 
-    closeReceipt() {
-        this.showReceipt = false; this.receipt = null; this.cancelAll()
+        // replace resetForm() with your actual state reset
+        this.items = []
+        this.globalNotes = ''
+        this.globalError = ''
+        this.confirmComplete = false
+        // add any other state variables that need resetting
+
+        try {
+            const res = await fetch('/stocking/api/refresh-token', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': document.querySelector('[name=csrf_token]').value }
+            })
+            const data = await res.json()
+            document.getElementById('stockin_token').value = data.stockin_token
+            console.log('Token refreshed:', data.stockin_token)
+        } catch(e) { console.error('Token refresh failed') }
     }
 
 }" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">

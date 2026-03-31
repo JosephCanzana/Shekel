@@ -113,14 +113,14 @@ def lookup():
 @role_required("superadmin", "admin", "cashier")
 def charge():
     data     = request.json or {}
-    token = data.get("charge_token")
     items    = data.get("items", [])
     tendered = data.get("tendered")
 
+    token = data.get("charge_token")
     if not token or token != session.get("charge_token"):
         return jsonify({"error": "Duplicate or invalid submission"}), 409
-    
     session.pop("charge_token", None)
+    
 
     if not items:
         return jsonify({"error": "Cart is empty."}), 400
@@ -223,3 +223,10 @@ def charge():
         "cashier":  current_user.full_name if hasattr(current_user, "full_name") else current_user.username,
         "datetime": sale.sale_datetime.strftime("%b %d, %Y %I:%M %p"),
     })
+
+@cashier_bp.route("/api/refresh-token", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin", "cashier")
+def refresh_token():
+    session["charge_token"] = generate_charge_token()
+    return jsonify({"charge_token": session["charge_token"]})

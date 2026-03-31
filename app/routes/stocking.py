@@ -187,3 +187,11 @@ def complete():
         "recorded_by": current_user.full_name if hasattr(current_user, "full_name") else current_user.username,
         "datetime": datetime.utcnow().strftime("%b %d, %Y %I:%M %p"),
     })
+
+
+@stocking_bp.route("/api/refresh-token", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin", "stocking")
+def refresh_token():
+    session["stockin_token"] = generate_charge_token()
+    return jsonify({"stockin_token": session["stockin_token"]})

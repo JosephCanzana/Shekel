@@ -214,17 +214,38 @@
                         cost_price: i.cost_price, revenue_price: i.revenue_price, total_price: i.total_price
                     })),
                     tendered: this.cashNum,
-                    charge_token: document.getElementById('charge_token').value  // ← inside method only
+                    charge_token: document.getElementById('charge_token').value
                 })
             })
             const data = await res.json()
-            if (!res.ok) { this.globalError = data.error || 'Sale failed.' }
-            else { this.receipt = data; this.showReceipt = true; this.confirmComplete = false }
-        } catch(e) { this.globalError = 'Network error. Please try again.' }
-        finally { this.submitting = false }  // ← always unlock
+            if (!res.ok) {
+                this.globalError = data.error || 'Sale failed.'
+                this.submitting = false
+            } else {
+                this.confirmComplete = false
+                this.receipt = data
+                this.showReceipt = true
+            }
+        } catch(e) {
+            this.globalError = 'Network error. Please try again.'
+            this.submitting = false
+        }
     },
 
-    closeReceipt() { this.showReceipt = false; this.receipt = null; this.cancelTransaction() },
+    async closeReceipt() {
+        this.showReceipt = false
+        this.receipt = null
+        this.submitting = false
+        this.cancelTransaction()
+        try {
+            const res = await fetch('/cashier/api/refresh-token', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': document.querySelector('[name=csrf_token]').value }
+            })
+            const data = await res.json()
+            document.getElementById('charge_token').value = data.charge_token
+        } catch(e) { console.error('Token refresh failed') }
+    },
     printReceipt()  { window.print(); this.closeReceipt() }
 
 }" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">
