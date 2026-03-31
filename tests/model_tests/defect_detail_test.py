@@ -28,7 +28,7 @@ def valid_data(defect, product):
         quantity=2,
         reason="defect",
         compensation="pending",
-        unit_price_at_defect=Decimal("10.00"),
+        cost_price_at_defect=Decimal("10.00"),
         revenue_price_at_defect=Decimal("12.00"),
         price_at_defect=Decimal("15.00"),
         subtotal_unit=Decimal("20.00"),
@@ -72,8 +72,8 @@ class TestNullConstraints:
         with pytest.raises(Exception):
             DefectDetail(**valid_data).save()
 
-    def test_missing_unit_price_at_defect_raises(self, app, valid_data):
-        valid_data.pop("unit_price_at_defect")
+    def test_missing_cost_price_at_defect_raises(self, app, valid_data):
+        valid_data.pop("cost_price_at_defect")
         with pytest.raises(Exception):
             DefectDetail(**valid_data).save()
 
@@ -220,7 +220,7 @@ class TestNumericPrecision:
     def test_prices_stored_with_two_decimal_places(self, app, defect_detail):
         result = DefectDetail.get_by_id(defect_detail.defect_detail_id)
 
-        assert result.unit_price_at_defect == Decimal("10.00")
+        assert result.cost_price_at_defect == Decimal("10.00")
         assert result.revenue_price_at_defect == Decimal("12.00")
         assert result.price_at_defect == Decimal("15.00")
         assert result.subtotal_unit == Decimal("20.00")
@@ -230,13 +230,13 @@ class TestNumericPrecision:
     def test_prices_are_decimal_type(self, app, defect_detail):
         result = DefectDetail.get_by_id(defect_detail.defect_detail_id)
 
-        assert isinstance(result.unit_price_at_defect, Decimal)
+        assert isinstance(result.cost_price_at_defect, Decimal)
         assert isinstance(result.subtotal_amount, Decimal)
 
     def test_large_price_within_bounds(self, app, valid_data):
         """Numeric(10, 2) allows values up to 99999999.99."""
         for field in [
-            "unit_price_at_defect", "revenue_price_at_defect", "price_at_defect",
+            "cost_price_at_defect", "revenue_price_at_defect", "price_at_defect",
             "subtotal_unit", "subtotal_revenue", "subtotal_amount"
         ]:
             valid_data[field] = Decimal("99999999.99")

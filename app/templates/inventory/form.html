@@ -20,7 +20,7 @@
 <form action="{{ url_for('inventory.edit', product_id=product.product_id) if product is defined else url_for('inventory.add') }}"
       method="post"
       x-data="{
-          unitPrice:    {{ product.unit_price | float if product is defined else 0 }},
+          unitPrice:    {{ product.cost_price | float if product is defined else 0 }},
           revenuePrice: {{ product.revenue_price | float if product is defined else 0 }},
           hasBundle:    {{ 'true' if product is defined and product.bundle else 'false' }},
           editingStock: {{ 'true' if not can_manage else 'false' }},
@@ -364,7 +364,7 @@
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
                                   style="color: var(--color-txt-muted);">₱</span>
-                            <input type="number" name="unit_price"
+                            <input type="number" name="cost_price"
                                    x-model="unitPrice"
                                    @focus="if (unitPrice == 0) unitPrice = ''"
                                    @blur="if (unitPrice === '') unitPrice = 0"

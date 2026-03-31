@@ -9,7 +9,7 @@ class SaleDetail(BaseModel):
     transaction_id       = db.Column(db.Integer, db.ForeignKey("Sales.transaction_id"), nullable=False)
     product_id = db.Column(db.String(100), db.ForeignKey("Products.product_id", onupdate="CASCADE", ondelete="RESTRICT"), nullable=False)
     quantity             = db.Column(db.Integer, nullable=False)
-    unit_price_at_sale   = db.Column(db.Numeric(10, 2), nullable=False)
+    cost_price_at_sale   = db.Column(db.Numeric(10, 2), nullable=False)
     revenue_price_at_sale= db.Column(db.Numeric(10, 2), nullable=False)
     price_at_sale        = db.Column(db.Numeric(10, 2), nullable=False)
     subtotal_unit        = db.Column(db.Numeric(10, 2), nullable=False)

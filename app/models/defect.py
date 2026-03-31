@@ -14,7 +14,7 @@ class Defect(BaseModel):
     user_id             = db.Column(db.Integer, db.ForeignKey("Users.user_id"), nullable=False)
 
     # snapshotted totals across all details in this log
-    total_unit_price    = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    total_cost_price    = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     total_revenue_price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     total_amount        = db.Column(db.Numeric(10, 2), nullable=False, default=0)
 

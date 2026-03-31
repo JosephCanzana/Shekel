@@ -8,9 +8,9 @@ class Product(BaseModel):
     product_id            = db.Column(db.String(100), primary_key=True)  # barcode / SKU
     product_name          = db.Column(db.String(150), nullable=False)
     category_id           = db.Column(db.Integer, db.ForeignKey("Categories.category_id"), nullable=True)
-    unit_price            = db.Column(db.Numeric(10, 2), nullable=False)
+    cost_price            = db.Column(db.Numeric(10, 2), nullable=False)
     revenue_price         = db.Column(db.Numeric(10, 2), nullable=False)
-    product_price         = db.Column(db.Numeric(10, 2), nullable=False)
+    total_price         = db.Column(db.Numeric(10, 2), nullable=False)
     low_reorder_threshold = db.Column(db.Integer, nullable=False)
     status                = db.Column(db.Enum("active", "archived", validate_strings=True), nullable=False)
     created_at            = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
@@ -32,9 +32,9 @@ class Product(BaseModel):
             "bundle_id":             self.bundle.bundle_id    if self.bundle else None,
             "bundle_name":           self.bundle.bundle_name  if self.bundle else "—",
             "bundle_count":          self.bundle.bundle_count if self.bundle else None,
-            "unit_price":            float(self.unit_price),
+            "cost_price":            float(self.cost_price),
             "revenue_price":         float(self.revenue_price),
-            "product_price":         float(self.product_price),
+            "total_price":         float(self.total_price),
             "low_reorder_threshold": self.low_reorder_threshold,
             "status":                self.status,
             "stock":                 self.inventory.quantity_available if self.inventory else 0,

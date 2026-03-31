@@ -461,7 +461,7 @@ class TestSearchAPI:
         data = get_json(response)
         if data:
             assert set(data[0].keys()) == {
-                "product_id", "product_name", "product_price", "stock"
+                "product_id", "product_name", "total_price", "stock"
             }
 
     def test_sql_injection_does_not_crash(self, stocking_client):
@@ -516,8 +516,8 @@ class TestLookupAPI:
                               {"query": product.product_id})
         data = get_json(response)
         expected = {
-            "product_id", "product_name", "unit_price",
-            "revenue_price", "product_price", "stock",
+            "product_id", "product_name", "cost_price",
+            "revenue_price", "total_price", "stock",
             "bundle", "scanned_as_bundle"
         }
         assert expected.issubset(set(data.keys()))

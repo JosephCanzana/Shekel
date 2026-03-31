@@ -67,7 +67,7 @@ WHAT THIS FILE COVERS:
    - Invalid revenue price rejected
    - Out-of-range low_reorder_threshold rejected
    - Nonexistent product_id redirects to index
-   - product_price auto-calculated as unit_price + revenue_price
+   - total_price auto-calculated as cost_price + revenue_price
    - Bundle added when product had none
    - Bundle updated when product already has one
    - Bundle removed when all bundle fields cleared
@@ -191,9 +191,9 @@ def archived_product_clean(app, category):
         product_id="PROD-DEL",
         product_name="Deletable Product",
         category_id=category.category_id,
-        unit_price=Decimal("5.00"),
+        cost_price=Decimal("5.00"),
         revenue_price=Decimal("3.00"),
-        product_price=Decimal("8.00"),
+        total_price=Decimal("8.00"),
         low_reorder_threshold=1,
         status="archived",
     )
@@ -215,7 +215,7 @@ def valid_add_form(category):
         "product_id":            "NEW-001",
         "product_name":          "New Product",
         "category_id":           str(category.category_id),
-        "unit_price":            "10.00",
+        "cost_price":            "10.00",
         "revenue_price":         "5.00",
         "low_reorder_threshold": "10",
         "bundle_id":             "",
@@ -231,7 +231,7 @@ def valid_edit_form(category):
         "product_id":            "PROD-001",   # same as product fixture's ID
         "product_name":          "Updated Product",
         "category_id":           str(category.category_id),
-        "unit_price":            "12.00",
+        "cost_price":            "12.00",
         "revenue_price":         "6.00",
         "low_reorder_threshold": "8",
         "status":                "active",
@@ -495,14 +495,14 @@ class TestAddPost:
         assert product.inventory.quantity_available == 0
         assert product.inventory.quantity_defective == 0
 
-    def test_product_price_calculated_correctly(self, admin_client,
+    def test_total_price_calculated_correctly(self, admin_client,
                                                  valid_add_form):
-        # product_price = unit_price + revenue_price = 10.00 + 5.00 = 15.00
+        # total_price = cost_price + revenue_price = 10.00 + 5.00 = 15.00
         admin_client.post("/inventory/add", data=valid_add_form,
                            follow_redirects=True)
         product = Product.query.filter_by(
             product_id=valid_add_form["product_id"]).first()
-        assert float(product.product_price) == 15.00
+        assert float(product.total_price) == 15.00
 
     def test_valid_submission_redirects_to_index(self, admin_client,
                                                    valid_add_form):
@@ -549,8 +549,8 @@ class TestAddPost:
                            follow_redirects=True)
         assert Product.query.count() == initial
 
-    def test_missing_unit_price_rejected(self, admin_client, valid_add_form):
-        form = {**valid_add_form, "unit_price": ""}
+    def test_missing_cost_price_rejected(self, admin_client, valid_add_form):
+        form = {**valid_add_form, "cost_price": ""}
         initial = Product.query.count()
         admin_client.post("/inventory/add", data=form,
                            follow_redirects=True)
@@ -572,15 +572,15 @@ class TestAddPost:
 
     # -- Price validation --
 
-    def test_non_numeric_unit_price_rejected(self, admin_client, valid_add_form):
-        form = {**valid_add_form, "unit_price": "abc"}
+    def test_non_numeric_cost_price_rejected(self, admin_client, valid_add_form):
+        form = {**valid_add_form, "cost_price": "abc"}
         initial = Product.query.count()
         admin_client.post("/inventory/add", data=form,
                            follow_redirects=True)
         assert Product.query.count() == initial
 
-    def test_negative_unit_price_rejected(self, admin_client, valid_add_form):
-        form = {**valid_add_form, "unit_price": "-1.00"}
+    def test_negative_cost_price_rejected(self, admin_client, valid_add_form):
+        form = {**valid_add_form, "cost_price": "-1.00"}
         initial = Product.query.count()
         admin_client.post("/inventory/add", data=form,
                            follow_redirects=True)
@@ -860,17 +860,17 @@ class TestEditPostAdmin:
                            data=valid_edit_form,
                            follow_redirects=True)
         db.session.refresh(product)
-        assert float(product.unit_price) == 12.00
+        assert float(product.cost_price) == 12.00
         assert float(product.revenue_price) == 6.00
 
-    def test_product_price_recalculated_on_edit(self, admin_client, product,
+    def test_total_price_recalculated_on_edit(self, admin_client, product,
                                                   valid_edit_form, inventory):
-        # product_price = unit_price + revenue_price = 12.00 + 6.00 = 18.00
+        # total_price = cost_price + revenue_price = 12.00 + 6.00 = 18.00
         admin_client.post(f"/inventory/{product.product_id}/edit",
                            data=valid_edit_form,
                            follow_redirects=True)
         db.session.refresh(product)
-        assert float(product.product_price) == 18.00
+        assert float(product.total_price) == 18.00
 
     def test_valid_full_edit_updates_status(self, admin_client, product,
                                              valid_edit_form, inventory):
@@ -927,23 +927,23 @@ class TestEditPostAdmin:
         db.session.refresh(product)
         assert product.product_name == original_name
 
-    def test_invalid_unit_price_rejected(self, admin_client, product,
+    def test_invalid_cost_price_rejected(self, admin_client, product,
                                           valid_edit_form, inventory):
-        form = {**valid_edit_form, "unit_price": "abc"}
-        original_price = product.unit_price
+        form = {**valid_edit_form, "cost_price": "abc"}
+        original_price = product.cost_price
         admin_client.post(f"/inventory/{product.product_id}/edit",
                            data=form, follow_redirects=True)
         db.session.refresh(product)
-        assert product.unit_price == original_price
+        assert product.cost_price == original_price
 
-    def test_negative_unit_price_rejected(self, admin_client, product,
+    def test_negative_cost_price_rejected(self, admin_client, product,
                                            valid_edit_form, inventory):
-        form = {**valid_edit_form, "unit_price": "-5.00"}
-        original_price = product.unit_price
+        form = {**valid_edit_form, "cost_price": "-5.00"}
+        original_price = product.cost_price
         admin_client.post(f"/inventory/{product.product_id}/edit",
                            data=form, follow_redirects=True)
         db.session.refresh(product)
-        assert product.unit_price == original_price
+        assert product.cost_price == original_price
 
     def test_invalid_revenue_price_rejected(self, admin_client, product,
                                              valid_edit_form, inventory):
@@ -1269,9 +1269,9 @@ class TestDelete:
             product_id="PROD-HIST-SALE",
             product_name="History Sale Product",
             category_id=category.category_id,
-            unit_price=Decimal("5.00"),
+            cost_price=Decimal("5.00"),
             revenue_price=Decimal("3.00"),
-            product_price=Decimal("8.00"),
+            total_price=Decimal("8.00"),
             low_reorder_threshold=1,
             status="archived",
         )
@@ -1280,7 +1280,7 @@ class TestDelete:
         from app.models.sale import Sale
         s = Sale(
             user_id=user.user_id,
-            total_unit_price=Decimal("5.00"),
+            total_cost_price=Decimal("5.00"),
             total_revenue_price=Decimal("3.00"),
             total_amount=Decimal("8.00"),
             payment_method="cash",
@@ -1291,7 +1291,7 @@ class TestDelete:
             transaction_id=s.transaction_id,
             product_id=prod.product_id,
             quantity=1,
-            unit_price_at_sale=Decimal("5.00"),
+            cost_price_at_sale=Decimal("5.00"),
             revenue_price_at_sale=Decimal("3.00"),
             price_at_sale=Decimal("8.00"),
             subtotal_unit=Decimal("5.00"),
@@ -1314,9 +1314,9 @@ class TestDelete:
             product_id="PROD-HIST-DEFECT",
             product_name="History Defect Product",
             category_id=category.category_id,
-            unit_price=Decimal("5.00"),
+            cost_price=Decimal("5.00"),
             revenue_price=Decimal("3.00"),
-            product_price=Decimal("8.00"),
+            total_price=Decimal("8.00"),
             low_reorder_threshold=1,
             status="archived",
         )
@@ -1325,7 +1325,7 @@ class TestDelete:
         from app.models.defect import Defect
         d = Defect(
             user_id=user.user_id,
-            total_unit_price=Decimal("5.00"),
+            total_cost_price=Decimal("5.00"),
             total_revenue_price=Decimal("3.00"),
             total_amount=Decimal("8.00"),
         )
@@ -1337,7 +1337,7 @@ class TestDelete:
             quantity=1,
             reason="defect",
             compensation="pending",
-            unit_price_at_defect=Decimal("5.00"),
+            cost_price_at_defect=Decimal("5.00"),
             revenue_price_at_defect=Decimal("3.00"),
             price_at_defect=Decimal("8.00"),
             subtotal_unit=Decimal("5.00"),

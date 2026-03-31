@@ -62,7 +62,7 @@ def make_sale_today(user_id):
     """Creates a Sale with sale_datetime set to now (UTC)."""
     return Sale(
         user_id=user_id,
-        total_unit_price=Decimal("10.00"),
+        total_cost_price=Decimal("10.00"),
         total_revenue_price=Decimal("12.00"),
         total_amount=Decimal("15.00"),
         payment_method="cash",
@@ -302,9 +302,9 @@ class TestGetLowStockItems:
                 product_id=f"LOW-{i:03d}",
                 product_name=f"Low Stock {i}",
                 category_id=category.category_id,
-                unit_price=Decimal("1.00"),
+                cost_price=Decimal("1.00"),
                 revenue_price=Decimal("1.00"),
-                product_price=Decimal("1.00"),
+                total_price=Decimal("1.00"),
                 low_reorder_threshold=10,
                 status="active",
             ).save()

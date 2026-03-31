@@ -303,7 +303,7 @@ def search():
     return jsonify([{
         "product_id":    p.product_id,
         "product_name":  p.product_name.capitalize(),
-        "product_price": float(p.product_price),
+        "total_price": float(p.total_price),
         "stock":         p.inventory.quantity_available if p.inventory else 0,
     } for p in products])
 
@@ -349,9 +349,9 @@ def lookup():
     return jsonify({
         "product_id":        product.product_id,
         "product_name":      product.product_name.capitalize(),
-        "unit_price":        float(product.unit_price),
+        "cost_price":        float(product.cost_price),
         "revenue_price":     float(product.revenue_price),
-        "product_price":     float(product.product_price),
+        "total_price":     float(product.total_price),
         "stock":             stock,
         "bundle":            bundle_info,
         "scanned_as_bundle": scanned_as_bundle,
@@ -404,7 +404,7 @@ def txn_lookup():
         items.append({
             "product_id":    sd.product_id,
             "product_name":  sd.product.product_name.capitalize(),
-            "product_price": float(sd.product.product_price),
+            "total_price": float(sd.product.total_price),
             "qty_sold":      qty_sold,
             "already_returned": already_returned,
             "remaining":     remaining,
@@ -531,15 +531,15 @@ def complete():
         item["_compensation"] = compensation  # store resolved compensation
 
     # pre-calculate header totals
-    total_unit    = sum(float(Product.query.get(i["product_id"]).unit_price)    * int(i["qty"]) for i in items)
+    total_unit    = sum(float(Product.query.get(i["product_id"]).cost_price)    * int(i["qty"]) for i in items)
     total_revenue = sum(float(Product.query.get(i["product_id"]).revenue_price) * int(i["qty"]) for i in items)
-    total_amount  = sum(float(Product.query.get(i["product_id"]).product_price) * int(i["qty"]) for i in items)
+    total_amount  = sum(float(Product.query.get(i["product_id"]).total_price) * int(i["qty"]) for i in items)
 
     # save header
     defect = Defect(
         defect_datetime     = datetime.utcnow(),
         user_id             = current_user.user_id,
-        total_unit_price    = round(total_unit,    2),
+        total_cost_price    = round(total_unit,    2),
         total_revenue_price = round(total_revenue, 2),
         total_amount        = round(total_amount,  2),
     )
@@ -570,12 +570,12 @@ def complete():
             quantity                = qty,
             reason                  = reason,
             compensation            = compensation,
-            unit_price_at_defect    = float(product.unit_price),
+            cost_price_at_defect    = float(product.cost_price),
             revenue_price_at_defect = float(product.revenue_price),
-            price_at_defect         = float(product.product_price),
-            subtotal_unit           = round(float(product.unit_price)    * qty, 2),
+            price_at_defect         = float(product.total_price),
+            subtotal_unit           = round(float(product.cost_price)    * qty, 2),
             subtotal_revenue        = round(float(product.revenue_price) * qty, 2),
-            subtotal_amount         = round(float(product.product_price) * qty, 2),
+            subtotal_amount         = round(float(product.total_price) * qty, 2),
             transaction_id          = txn_ref,
         )
         db.session.add(detail)

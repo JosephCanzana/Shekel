@@ -17,7 +17,7 @@ WHAT THIS FILE COVERS:
    - Inserting after user deletion is blocked
 
 3. Numeric Precision — financial totals
-   - total_unit_price, total_revenue_price, total_amount stored as Decimal
+   - total_cost_price, total_revenue_price, total_amount stored as Decimal
    - Correct 2dp precision confirmed
    - Zero and large values accepted
 
@@ -61,7 +61,7 @@ def valid_data(user):
     """
     return dict(
         user_id=user.user_id,
-        total_unit_price=Decimal("20.00"),
+        total_cost_price=Decimal("20.00"),
         total_revenue_price=Decimal("24.00"),
         total_amount=Decimal("30.00"),
     )
@@ -88,9 +88,9 @@ class TestColumnConstraints:
         with pytest.raises(Exception):
             Defect(**valid_data).save()
 
-    def test_total_unit_price_is_required(self, app, valid_data):
-        # total_unit_price is NOT NULL — omitting raises
-        valid_data.pop("total_unit_price")
+    def test_total_cost_price_is_required(self, app, valid_data):
+        # total_cost_price is NOT NULL — omitting raises
+        valid_data.pop("total_cost_price")
         with pytest.raises(Exception):
             Defect(**valid_data).save()
 
@@ -172,7 +172,7 @@ class TestNumericPrecision:
         # All three total fields must be Decimal, not float
         result = Defect.get_by_id(defect.defect_id)
 
-        assert isinstance(result.total_unit_price, Decimal)
+        assert isinstance(result.total_cost_price, Decimal)
         assert isinstance(result.total_revenue_price, Decimal)
         assert isinstance(result.total_amount, Decimal)
 
@@ -180,13 +180,13 @@ class TestNumericPrecision:
         # Values should round-trip correctly at 2dp precision
         result = Defect.get_by_id(defect.defect_id)
 
-        assert result.total_unit_price == Decimal("20.00")
+        assert result.total_cost_price == Decimal("20.00")
         assert result.total_revenue_price == Decimal("24.00")
         assert result.total_amount == Decimal("30.00")
 
     def test_zero_totals_accepted(self, app, valid_data):
         # Zero is a valid total — e.g. a defect with no monetary value
-        valid_data["total_unit_price"] = Decimal("0.00")
+        valid_data["total_cost_price"] = Decimal("0.00")
         valid_data["total_revenue_price"] = Decimal("0.00")
         valid_data["total_amount"] = Decimal("0.00")
         Defect(**valid_data).save()
@@ -196,7 +196,7 @@ class TestNumericPrecision:
 
     def test_large_totals_within_numeric_bounds(self, app, valid_data):
         # Numeric(10, 2) supports values up to 99999999.99
-        valid_data["total_unit_price"] = Decimal("99999999.99")
+        valid_data["total_cost_price"] = Decimal("99999999.99")
         valid_data["total_revenue_price"] = Decimal("99999999.99")
         valid_data["total_amount"] = Decimal("99999999.99")
         Defect(**valid_data).save()
@@ -231,13 +231,13 @@ class TestUpdateBehavior:
         result = Defect.get_by_id(defect.defect_id)
         assert result.total_amount == Decimal("999.99")
 
-    def test_update_total_unit_price(self, app, defect):
-        # total_unit_price can be corrected and saved
-        defect.total_unit_price = Decimal("55.50")
+    def test_update_total_cost_price(self, app, defect):
+        # total_cost_price can be corrected and saved
+        defect.total_cost_price = Decimal("55.50")
         defect.save()
 
         result = Defect.get_by_id(defect.defect_id)
-        assert result.total_unit_price == Decimal("55.50")
+        assert result.total_cost_price == Decimal("55.50")
 
     def test_update_total_revenue_price(self, app, defect):
         # total_revenue_price can be corrected and saved
@@ -249,13 +249,13 @@ class TestUpdateBehavior:
 
     def test_update_all_totals(self, app, defect):
         # All three totals can be updated in one save()
-        defect.total_unit_price = Decimal("10.00")
+        defect.total_cost_price = Decimal("10.00")
         defect.total_revenue_price = Decimal("12.00")
         defect.total_amount = Decimal("15.00")
         defect.save()
 
         result = Defect.get_by_id(defect.defect_id)
-        assert result.total_unit_price == Decimal("10.00")
+        assert result.total_cost_price == Decimal("10.00")
         assert result.total_revenue_price == Decimal("12.00")
         assert result.total_amount == Decimal("15.00")
 
@@ -351,7 +351,7 @@ class TestDefectDetailRelationship:
             quantity=1,
             reason="defect",
             compensation="pending",
-            unit_price_at_defect=Decimal("10.00"),
+            cost_price_at_defect=Decimal("10.00"),
             revenue_price_at_defect=Decimal("12.00"),
             price_at_defect=Decimal("15.00"),
             subtotal_unit=Decimal("10.00"),

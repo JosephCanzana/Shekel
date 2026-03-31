@@ -42,9 +42,9 @@ def valid_data(category):
         product_id="TEST-SKU-001",
         product_name="Test Product",
         category_id=category.category_id,
-        unit_price=Decimal("10.00"),
+        cost_price=Decimal("10.00"),
         revenue_price=Decimal("12.00"),
-        product_price=Decimal("15.00"),
+        total_price=Decimal("15.00"),
         low_reorder_threshold=5,
         status="active",
     )
@@ -72,9 +72,9 @@ class TestColumnConstraints:
         with pytest.raises(Exception):
             Product(**valid_data).save()
 
-    def test_unit_price_is_required(self, app, valid_data):
-        """unit_price is NOT NULL — omitting raises an error."""
-        valid_data.pop("unit_price")
+    def test_cost_price_is_required(self, app, valid_data):
+        """cost_price is NOT NULL — omitting raises an error."""
+        valid_data.pop("cost_price")
         with pytest.raises(Exception):
             Product(**valid_data).save()
 
@@ -84,9 +84,9 @@ class TestColumnConstraints:
         with pytest.raises(Exception):
             Product(**valid_data).save()
 
-    def test_product_price_is_required(self, app, valid_data):
-        """product_price is NOT NULL — omitting raises an error."""
-        valid_data.pop("product_price")
+    def test_total_price_is_required(self, app, valid_data):
+        """total_price is NOT NULL — omitting raises an error."""
+        valid_data.pop("total_price")
         with pytest.raises(Exception):
             Product(**valid_data).save()
 
@@ -164,37 +164,37 @@ class TestNumericPrecision:
         """All price fields are retrieved as Decimal instances."""
         result = Product.get_by_id(product.product_id)
 
-        assert isinstance(result.unit_price, Decimal)
+        assert isinstance(result.cost_price, Decimal)
         assert isinstance(result.revenue_price, Decimal)
-        assert isinstance(result.product_price, Decimal)
+        assert isinstance(result.total_price, Decimal)
 
     def test_prices_stored_with_two_decimal_places(self, app, product):
         """Price values are stored and retrieved correctly at 2dp."""
         result = Product.get_by_id(product.product_id)
 
-        assert result.unit_price == Decimal("10.00")
+        assert result.cost_price == Decimal("10.00")
         assert result.revenue_price == Decimal("12.00")
-        assert result.product_price == Decimal("15.00")
+        assert result.total_price == Decimal("15.00")
 
     def test_large_price_within_numeric_bounds(self, app, valid_data):
         """Numeric(10, 2) allows values up to 99999999.99."""
-        valid_data["unit_price"] = Decimal("99999999.99")
+        valid_data["cost_price"] = Decimal("99999999.99")
         valid_data["revenue_price"] = Decimal("99999999.99")
-        valid_data["product_price"] = Decimal("99999999.99")
+        valid_data["total_price"] = Decimal("99999999.99")
         Product(**valid_data).save()
 
         result = Product.get_by_id(valid_data["product_id"])
-        assert result.unit_price == Decimal("99999999.99")
+        assert result.cost_price == Decimal("99999999.99")
 
     def test_zero_price_is_accepted(self, app, valid_data):
         """Zero is a valid Numeric value for prices."""
-        valid_data["unit_price"] = Decimal("0.00")
+        valid_data["cost_price"] = Decimal("0.00")
         valid_data["revenue_price"] = Decimal("0.00")
-        valid_data["product_price"] = Decimal("0.00")
+        valid_data["total_price"] = Decimal("0.00")
         Product(**valid_data).save()
 
         result = Product.get_by_id(valid_data["product_id"])
-        assert result.unit_price == Decimal("0.00")
+        assert result.cost_price == Decimal("0.00")
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +209,7 @@ class TestToDictNoRelationships:
         assert set(result.keys()) == {
             "product_id", "product_name", "category_id", "category_name",
             "bundle_id", "bundle_name", "bundle_count",
-            "unit_price", "revenue_price", "product_price",
+            "cost_price", "revenue_price", "total_price",
             "low_reorder_threshold", "status", "stock", "created_at",
         }
 
@@ -217,17 +217,17 @@ class TestToDictNoRelationships:
         """to_dict() converts Decimal prices to float via float()."""
         result = product.to_dict()
 
-        assert isinstance(result["unit_price"], float)
+        assert isinstance(result["cost_price"], float)
         assert isinstance(result["revenue_price"], float)
-        assert isinstance(result["product_price"], float)
+        assert isinstance(result["total_price"], float)
 
     def test_price_values_correct_in_dict(self, app, product):
         """to_dict() price values match the stored Decimal values."""
         result = product.to_dict()
 
-        assert result["unit_price"] == 10.00
+        assert result["cost_price"] == 10.00
         assert result["revenue_price"] == 12.00
-        assert result["product_price"] == 15.00
+        assert result["total_price"] == 15.00
 
     def test_no_inventory_returns_zero_stock(self, app, product):
         """When no Inventory row exists, stock defaults to 0."""
@@ -356,15 +356,15 @@ class TestProductUpdates:
 
     def test_update_prices(self, app, product):
         """Price fields can be updated and persisted."""
-        product.unit_price = Decimal("99.99")
+        product.cost_price = Decimal("99.99")
         product.revenue_price = Decimal("110.00")
-        product.product_price = Decimal("125.00")
+        product.total_price = Decimal("125.00")
         product.save()
 
         result = Product.get_by_id(product.product_id)
-        assert result.unit_price == Decimal("99.99")
+        assert result.cost_price == Decimal("99.99")
         assert result.revenue_price == Decimal("110.00")
-        assert result.product_price == Decimal("125.00")
+        assert result.total_price == Decimal("125.00")
 
     def test_update_low_reorder_threshold(self, app, product):
         """low_reorder_threshold can be updated."""

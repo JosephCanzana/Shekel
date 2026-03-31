@@ -129,9 +129,9 @@ def cart_item(product_with_stock):
         "product_id": product_with_stock.product_id,
         "product_name": product_with_stock.product_name,
         "qty": 2,
-        "unit_price": float(product_with_stock.unit_price),
+        "cost_price": float(product_with_stock.cost_price),
         "revenue_price": float(product_with_stock.revenue_price),
-        "product_price": float(product_with_stock.product_price),
+        "total_price": float(product_with_stock.total_price),
     }
 
 
@@ -291,7 +291,7 @@ class TestSearchAPI:
         data = get_json(response)
         if data:
             assert set(data[0].keys()) == {
-                "product_id", "product_name", "product_price", "stock"
+                "product_id", "product_name", "total_price", "stock"
             }
 
     def test_stock_reflects_inventory(self, cashier_client, product,
@@ -323,9 +323,9 @@ class TestSearchAPI:
                 product_id=f"SRCH-{i:03d}",
                 product_name=f"searchable product {i}",
                 category_id=category.category_id,
-                unit_price=Decimal("1.00"),
+                cost_price=Decimal("1.00"),
                 revenue_price=Decimal("1.00"),
-                product_price=Decimal("1.00"),
+                total_price=Decimal("1.00"),
                 low_reorder_threshold=1,
                 status="active",
             ).save()
@@ -437,8 +437,8 @@ class TestLookupAPI:
                               {"query": product.product_id})
         data = get_json(response)
         expected_keys = {
-            "product_id", "product_name", "unit_price",
-            "revenue_price", "product_price", "stock",
+            "product_id", "product_name", "cost_price",
+            "revenue_price", "total_price", "stock",
             "bundle", "scanned_as_bundle"
         }
         assert expected_keys.issubset(set(data.keys()))
@@ -557,7 +557,7 @@ class TestChargeAPI:
         assert SaleDetail.query.count() == initial_count + 1
 
     def test_returns_correct_change(self, cashier_client, cart_item):
-        # cart_item has product_price=15.00, qty=2 → total=30.00
+        # cart_item has total_price=15.00, qty=2 → total=30.00
         # tendered=50.00 → change=20.00
         response = post_json(cashier_client, "/cashier/api/charge", {
             "items": [cart_item],
@@ -576,7 +576,7 @@ class TestChargeAPI:
         assert data["transaction_id"] is not None
 
     def test_returns_correct_total(self, cashier_client, cart_item):
-        # qty=2, product_price=15.00 → total=30.00
+        # qty=2, total_price=15.00 → total=30.00
         response = post_json(cashier_client, "/cashier/api/charge", {
             "items": [cart_item],
             "tendered": 100.00,
@@ -615,17 +615,17 @@ class TestChargeAPI:
                 "product_id": product_with_stock.product_id,
                 "product_name": product_with_stock.product_name,
                 "qty": 1,
-                "unit_price": float(product_with_stock.unit_price),
+                "cost_price": float(product_with_stock.cost_price),
                 "revenue_price": float(product_with_stock.revenue_price),
-                "product_price": float(product_with_stock.product_price),
+                "total_price": float(product_with_stock.total_price),
             },
             {
                 "product_id": second_product.product_id,
                 "product_name": second_product.product_name,
                 "qty": 1,
-                "unit_price": float(second_product.unit_price),
+                "cost_price": float(second_product.cost_price),
                 "revenue_price": float(second_product.revenue_price),
-                "product_price": float(second_product.product_price),
+                "total_price": float(second_product.total_price),
             },
         ]
         initial_detail_count = SaleDetail.query.count()
@@ -636,7 +636,7 @@ class TestChargeAPI:
         assert SaleDetail.query.count() == initial_detail_count + 2
 
     def test_exact_tender_returns_zero_change(self, cashier_client, cart_item):
-        # qty=2, product_price=15.00 → total=30.00, tendered=30.00 → change=0
+        # qty=2, total_price=15.00 → total=30.00, tendered=30.00 → change=0
         response = post_json(cashier_client, "/cashier/api/charge", {
             "items": [cart_item],
             "tendered": 30.00,
@@ -708,9 +708,9 @@ class TestChargeAPI:
                 "product_id": "NONEXISTENT-SKU",
                 "product_name": "Ghost Product",
                 "qty": 1,
-                "unit_price": 10.00,
+                "cost_price": 10.00,
                 "revenue_price": 12.00,
-                "product_price": 15.00,
+                "total_price": 15.00,
             }],
             "tendered": 100.00,
         })
@@ -726,9 +726,9 @@ class TestChargeAPI:
                 "product_id": archived_product.product_id,
                 "product_name": archived_product.product_name,
                 "qty": 1,
-                "unit_price": float(archived_product.unit_price),
+                "cost_price": float(archived_product.cost_price),
                 "revenue_price": float(archived_product.revenue_price),
-                "product_price": float(archived_product.product_price),
+                "total_price": float(archived_product.total_price),
             }],
             "tendered": 100.00,
         })
@@ -869,9 +869,9 @@ class TestChargeAPI:
                 "product_id": "'; DROP TABLE Products; --",
                 "product_name": "Injected",
                 "qty": 1,
-                "unit_price": 10.00,
+                "cost_price": 10.00,
                 "revenue_price": 12.00,
-                "product_price": 15.00,
+                "total_price": 15.00,
             }],
             "tendered": 100.00,
         })

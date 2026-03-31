@@ -135,7 +135,7 @@ def populated_db(app, user, product, inventory, stock_in):
     """
     sale = Sale(
         user_id=user.user_id,
-        total_unit_price=Decimal("10.00"),
+        total_cost_price=Decimal("10.00"),
         total_revenue_price=Decimal("12.00"),
         total_amount=Decimal("15.00"),
         payment_method="cash",
@@ -146,7 +146,7 @@ def populated_db(app, user, product, inventory, stock_in):
         transaction_id=sale.transaction_id,
         product_id=product.product_id,
         quantity=2,
-        unit_price_at_sale=Decimal("10.00"),
+        cost_price_at_sale=Decimal("10.00"),
         revenue_price_at_sale=Decimal("12.00"),
         price_at_sale=Decimal("15.00"),
         subtotal_unit=Decimal("20.00"),
@@ -413,7 +413,7 @@ class TestAdversarial:
         # Create a sale normally — user exists
         sale = Sale(
             user_id=user.user_id,
-            total_unit_price=Decimal("10.00"),
+            total_cost_price=Decimal("10.00"),
             total_revenue_price=Decimal("12.00"),
             total_amount=Decimal("15.00"),
         ).save()

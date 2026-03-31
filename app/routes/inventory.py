@@ -35,7 +35,7 @@ def add():
             product_id    = request.form.get("product_id",    "").strip()
             product_name  = request.form.get("product_name",  "").strip()
             category_id   = request.form.get("category_id",   "").strip()
-            unit_price    = request.form.get("unit_price",    "").strip()
+            cost_price    = request.form.get("cost_price",    "").strip()
             revenue_price = request.form.get("revenue_price", "").strip()
             low_reorder   = request.form.get("low_reorder_threshold", "").strip()
             bundle_id     = request.form.get("bundle_id",    "").strip()
@@ -45,7 +45,7 @@ def add():
             if not bundle_count:
                 bundle_name = ""
 
-            if not all([product_id, product_name, unit_price, revenue_price, low_reorder]):
+            if not all([product_id, product_name, cost_price, revenue_price, low_reorder]):
                 flash("Product ID, name, prices, and low stock threshold are required.", "danger")
                 return redirect(url_for("inventory.add"))
 
@@ -54,7 +54,7 @@ def add():
                 flash(err, "danger")
                 return redirect(url_for("inventory.add"))
 
-            ok, err = validate_price(unit_price, "Unit price")
+            ok, err = validate_price(cost_price, "Unit price")
             if not ok:
                 flash(err, "danger")
                 return redirect(url_for("inventory.add"))
@@ -81,9 +81,9 @@ def add():
                 flash("Product ID and Bundle ID cannot be the same barcode.", "danger")
                 return redirect(url_for("inventory.add"))
 
-            unit_price    = float(unit_price)
+            cost_price    = float(cost_price)
             revenue_price = float(revenue_price)
-            product_price = round(unit_price + revenue_price, 2)
+            total_price = round(cost_price + revenue_price, 2)
             category_id   = int(category_id) if category_id else None
 
             has_bundle = any([bundle_id, bundle_name, bundle_count])
@@ -108,9 +108,9 @@ def add():
                 product_id            = product_id,
                 product_name          = product_name.lower(),
                 category_id           = category_id,
-                unit_price            = unit_price,
+                cost_price            = cost_price,
                 revenue_price         = revenue_price,
-                product_price         = product_price,
+                total_price         = total_price,
                 low_reorder_threshold = low_reorder,
                 status                = "active"
             )
@@ -184,7 +184,7 @@ def edit(product_id):
             product_id_new = request.form.get("product_id", "").strip()
             product_name  = request.form.get("product_name",  "").strip()
             category_id   = request.form.get("category_id",   "").strip()
-            unit_price    = request.form.get("unit_price",    "").strip()
+            cost_price    = request.form.get("cost_price",    "").strip()
             revenue_price = request.form.get("revenue_price", "").strip()
             low_reorder   = request.form.get("low_reorder_threshold", "").strip()
             status        = request.form.get("status", product.status).strip()
@@ -195,7 +195,7 @@ def edit(product_id):
             if not bundle_count:
                 bundle_name = ""
 
-            if not all([product_id_new, product_name, unit_price, revenue_price, low_reorder]):
+            if not all([product_id_new, product_name, cost_price, revenue_price, low_reorder]):
                 flash("Name, prices, and low stock threshold are required.", "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
 
@@ -204,7 +204,7 @@ def edit(product_id):
                 flash(err, "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
 
-            ok, err = validate_price(unit_price, "Unit price")
+            ok, err = validate_price(cost_price, "Unit price")
             if not ok:
                 flash(err, "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
@@ -257,9 +257,9 @@ def edit(product_id):
                     flash(err, "danger")
                     return redirect(url_for("inventory.edit", product_id=product_id))
 
-            unit_price    = float(unit_price)
+            cost_price    = float(cost_price)
             revenue_price = float(revenue_price)
-            product_price = round(unit_price + revenue_price, 2)
+            total_price = round(cost_price + revenue_price, 2)
 
             # ── apply product_id rename ───────────────────────────────────────────
             # MySQL has no ON UPDATE CASCADE on Inventory/ProductBundles FKs, so
@@ -288,9 +288,9 @@ def edit(product_id):
 
             product.product_name          = product_name.lower()
             product.category_id           = int(category_id) if category_id else None
-            product.unit_price            = unit_price
+            product.cost_price            = cost_price
             product.revenue_price         = revenue_price
-            product.product_price         = product_price
+            product.total_price         = total_price
             product.low_reorder_threshold = low_reorder
             product.status                = status
 

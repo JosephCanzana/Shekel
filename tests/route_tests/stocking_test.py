@@ -359,7 +359,7 @@ class TestSearchAPI:
         data = get_json(response)
         if data:
             assert set(data[0].keys()) == {
-                "product_id", "product_name", "product_price", "stock"
+                "product_id", "product_name", "total_price", "stock"
             }
 
     def test_stock_reflects_inventory(self, stocking_client, product,
@@ -389,9 +389,9 @@ class TestSearchAPI:
                 product_id=f"STCK-{i:03d}",
                 product_name=f"stockable product {i}",
                 category_id=category.category_id,
-                unit_price=Decimal("1.00"),
+                cost_price=Decimal("1.00"),
                 revenue_price=Decimal("1.00"),
-                product_price=Decimal("1.00"),
+                total_price=Decimal("1.00"),
                 low_reorder_threshold=1,
                 status="active",
             ).save()
@@ -482,7 +482,7 @@ class TestLookupAPI:
                               {"query": product.product_id})
         data = get_json(response)
         expected_keys = {
-            "product_id", "product_name", "product_price",
+            "product_id", "product_name", "total_price",
             "stock", "bundle", "scanned_as_bundle"
         }
         assert expected_keys.issubset(set(data.keys()))

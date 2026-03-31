@@ -186,9 +186,9 @@ def product(app, category):
         product_id="PROD-001",
         product_name="Test Product",
         category_id=category.category_id,
-        unit_price=Decimal("10.00"),
+        cost_price=Decimal("10.00"),
         revenue_price=Decimal("12.00"),
-        product_price=Decimal("15.00"),
+        total_price=Decimal("15.00"),
         low_reorder_threshold=5,
         status="active",
     )
@@ -202,9 +202,9 @@ def second_product(app, category):
         product_id="PROD-002",
         product_name="Second Product",
         category_id=category.category_id,
-        unit_price=Decimal("20.00"),
+        cost_price=Decimal("20.00"),
         revenue_price=Decimal("24.00"),
-        product_price=Decimal("30.00"),
+        total_price=Decimal("30.00"),
         low_reorder_threshold=3,
         status="active",
     )
@@ -218,9 +218,9 @@ def archived_product(app, category):
         product_id="PROD-ARCH",
         product_name="Archived Product",
         category_id=category.category_id,
-        unit_price=Decimal("5.00"),
+        cost_price=Decimal("5.00"),
         revenue_price=Decimal("6.00"),
-        product_price=Decimal("8.00"),
+        total_price=Decimal("8.00"),
         low_reorder_threshold=2,
         status="archived",
     )
@@ -235,9 +235,9 @@ def product_no_category(app):
         product_id="PROD-NOCAT",
         product_name="No Category Product",
         category_id=None,
-        unit_price=Decimal("5.00"),
+        cost_price=Decimal("5.00"),
         revenue_price=Decimal("6.00"),
-        product_price=Decimal("8.00"),
+        total_price=Decimal("8.00"),
         low_reorder_threshold=2,
         status="active",
     )
@@ -298,7 +298,7 @@ def product_bundle(app, product):
 def defect(app, user):
     d = Defect(
         user_id=user.user_id,
-        total_unit_price=Decimal("20.00"),
+        total_cost_price=Decimal("20.00"),
         total_revenue_price=Decimal("24.00"),
         total_amount=Decimal("30.00"),
     )
@@ -318,7 +318,7 @@ def defect_detail(app, defect, product):
         quantity=2,
         reason="defect",
         compensation="pending",
-        unit_price_at_defect=Decimal("10.00"),
+        cost_price_at_defect=Decimal("10.00"),
         revenue_price_at_defect=Decimal("12.00"),
         price_at_defect=Decimal("15.00"),
         subtotal_unit=Decimal("20.00"),
@@ -337,7 +337,7 @@ def defect_detail(app, defect, product):
 def sale(app, user):
     s = Sale(
         user_id=user.user_id,
-        total_unit_price=Decimal("20.00"),
+        total_cost_price=Decimal("20.00"),
         total_revenue_price=Decimal("24.00"),
         total_amount=Decimal("30.00"),
         payment_method="cash",
@@ -356,7 +356,7 @@ def sale_detail(app, sale, product):
         transaction_id=sale.transaction_id,
         product_id=product.product_id,
         quantity=2,
-        unit_price_at_sale=Decimal("10.00"),
+        cost_price_at_sale=Decimal("10.00"),
         revenue_price_at_sale=Decimal("12.00"),
         price_at_sale=Decimal("15.00"),
         subtotal_unit=Decimal("20.00"),

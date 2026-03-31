@@ -29,7 +29,7 @@ class DefectDetail(BaseModel):
     )
 
     # price snapshot at time of logging
-    unit_price_at_defect    = db.Column(db.Numeric(10, 2), nullable=False)
+    cost_price_at_defect    = db.Column(db.Numeric(10, 2), nullable=False)
     revenue_price_at_defect = db.Column(db.Numeric(10, 2), nullable=False)
     price_at_defect         = db.Column(db.Numeric(10, 2), nullable=False)
     subtotal_unit           = db.Column(db.Numeric(10, 2), nullable=False)

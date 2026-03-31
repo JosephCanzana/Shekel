@@ -43,7 +43,7 @@ def search():
         results.append({
             "product_id":    p.product_id,
             "product_name":  p.product_name.capitalize(),
-            "product_price": float(p.product_price),
+            "total_price": float(p.total_price),
             "stock":         stock,
         })
 
@@ -95,9 +95,9 @@ def lookup():
     return jsonify({
         "product_id":    product.product_id,
         "product_name":  product.product_name.capitalize(),
-        "unit_price":    float(product.unit_price),
+        "cost_price":    float(product.cost_price),
         "revenue_price": float(product.revenue_price),
-        "product_price": float(product.product_price),
+        "total_price": float(product.total_price),
         "stock":         stock,
         "bundle":        bundle_info,
         "scanned_as_bundle": scanned_as_bundle
@@ -147,9 +147,9 @@ def charge():
             )
 
     # ── Step 2: compute totals ─────────────────────────────────────────────
-    total_unit    = sum(float(i["unit_price"])    * int(i["qty"]) for i in items)
+    total_unit    = sum(float(i["cost_price"])    * int(i["qty"]) for i in items)
     total_revenue = sum(float(i["revenue_price"]) * int(i["qty"]) for i in items)
-    total_amount  = sum(float(i["product_price"]) * int(i["qty"]) for i in items)
+    total_amount  = sum(float(i["total_price"]) * int(i["qty"]) for i in items)
 
     if tendered < total_amount:
         return jsonify({"error": "Cash received is less than the total amount."}), 400
@@ -160,7 +160,7 @@ def charge():
     sale = Sale(
         sale_datetime       = datetime.utcnow(),
         user_id             = current_user.user_id,
-        total_unit_price    = round(total_unit,    2),
+        total_cost_price    = round(total_unit,    2),
         total_revenue_price = round(total_revenue, 2),
         total_amount        = round(total_amount,  2),
         payment_method      = "cash",
@@ -170,18 +170,18 @@ def charge():
 
     for item in items:
         qty           = int(item["qty"])
-        unit_price    = float(item["unit_price"])
+        cost_price    = float(item["cost_price"])
         revenue_price = float(item["revenue_price"])
-        price         = float(item["product_price"])
+        price         = float(item["total_price"])
 
         db.session.add(SaleDetail(
             transaction_id        = sale.transaction_id,
             product_id            = item["product_id"],
             quantity              = qty,
-            unit_price_at_sale    = unit_price,
+            cost_price_at_sale    = cost_price,
             revenue_price_at_sale = revenue_price,
             price_at_sale         = price,
-            subtotal_unit         = round(unit_price    * qty, 2),
+            subtotal_unit         = round(cost_price    * qty, 2),
             subtotal_revenue      = round(revenue_price * qty, 2),
             subtotal_amount       = round(price         * qty, 2),
         ))
@@ -206,8 +206,8 @@ def charge():
             {
                 "product_name":  i["product_name"],
                 "qty":           int(i["qty"]),
-                "product_price": float(i["product_price"]),
-                "subtotal":      round(float(i["product_price"]) * int(i["qty"]), 2),
+                "total_price": float(i["total_price"]),
+                "subtotal":      round(float(i["total_price"]) * int(i["qty"]), 2),
             }
             for i in items
         ],

@@ -16,7 +16,7 @@ WHAT THIS FILE COVERS:
    - Invalid user_id is blocked
 
 3. Numeric Precision — financial totals
-   - total_unit_price, total_revenue_price, total_amount stored as Decimal
+   - total_cost_price, total_revenue_price, total_amount stored as Decimal
    - Correct 2dp precision confirmed
    - Zero and large values accepted
 
@@ -59,7 +59,7 @@ def valid_data(user):
     """
     return dict(
         user_id=user.user_id,
-        total_unit_price=Decimal("20.00"),
+        total_cost_price=Decimal("20.00"),
         total_revenue_price=Decimal("24.00"),
         total_amount=Decimal("30.00"),
         payment_method="cash",
@@ -87,9 +87,9 @@ class TestColumnConstraints:
         with pytest.raises(Exception):
             Sale(**valid_data).save()
 
-    def test_total_unit_price_is_required(self, app, valid_data):
-        # total_unit_price is NOT NULL — omitting raises
-        valid_data.pop("total_unit_price")
+    def test_total_cost_price_is_required(self, app, valid_data):
+        # total_cost_price is NOT NULL — omitting raises
+        valid_data.pop("total_cost_price")
         with pytest.raises(Exception):
             Sale(**valid_data).save()
 
@@ -186,7 +186,7 @@ class TestNumericPrecision:
         # All three total fields must be Decimal, not float
         result = Sale.get_by_id(sale.transaction_id)
 
-        assert isinstance(result.total_unit_price, Decimal)
+        assert isinstance(result.total_cost_price, Decimal)
         assert isinstance(result.total_revenue_price, Decimal)
         assert isinstance(result.total_amount, Decimal)
 
@@ -194,13 +194,13 @@ class TestNumericPrecision:
         # Values should round-trip correctly at 2dp precision
         result = Sale.get_by_id(sale.transaction_id)
 
-        assert result.total_unit_price == Decimal("20.00")
+        assert result.total_cost_price == Decimal("20.00")
         assert result.total_revenue_price == Decimal("24.00")
         assert result.total_amount == Decimal("30.00")
 
     def test_zero_totals_accepted(self, app, valid_data):
         # Zero is a valid total — e.g. a voided or complimentary transaction
-        valid_data["total_unit_price"] = Decimal("0.00")
+        valid_data["total_cost_price"] = Decimal("0.00")
         valid_data["total_revenue_price"] = Decimal("0.00")
         valid_data["total_amount"] = Decimal("0.00")
         Sale(**valid_data).save()
@@ -210,7 +210,7 @@ class TestNumericPrecision:
 
     def test_large_totals_within_numeric_bounds(self, app, valid_data):
         # Numeric(10, 2) supports values up to 99999999.99
-        valid_data["total_unit_price"] = Decimal("99999999.99")
+        valid_data["total_cost_price"] = Decimal("99999999.99")
         valid_data["total_revenue_price"] = Decimal("99999999.99")
         valid_data["total_amount"] = Decimal("99999999.99")
         Sale(**valid_data).save()
@@ -264,13 +264,13 @@ class TestUpdateBehavior:
 
     def test_update_all_totals(self, app, sale):
         # All three total fields can be updated together
-        sale.total_unit_price = Decimal("50.00")
+        sale.total_cost_price = Decimal("50.00")
         sale.total_revenue_price = Decimal("60.00")
         sale.total_amount = Decimal("75.00")
         sale.save()
 
         result = Sale.get_by_id(sale.transaction_id)
-        assert result.total_unit_price == Decimal("50.00")
+        assert result.total_cost_price == Decimal("50.00")
         assert result.total_revenue_price == Decimal("60.00")
         assert result.total_amount == Decimal("75.00")
 

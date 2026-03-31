@@ -144,7 +144,7 @@
             this.items.push({
                 product_id:    prod.product_id,
                 product_name:  prod.product_name,
-                product_price: prod.product_price,
+                total_price: prod.total_price,
                 stock:         prod.stock,
                 bundle:        prod.bundle || null,
                 qty, bundleQty: bQty, unitQty: uQty, notes
@@ -181,7 +181,7 @@
         this.panelError  = ''
         this.itemNotes   = item.notes || ''
         this.product     = { product_id: item.product_id, product_name: item.product_name,
-                             product_price: item.product_price, stock: item.stock,
+                             total_price: item.total_price, stock: item.stock,
                              bundle: item.bundle || null }
         this.bundleQty   = item.bundleQty !== undefined ? item.bundleQty : 0
         this.unitQty     = item.unitQty   !== undefined ? item.unitQty   : item.qty
@@ -436,7 +436,7 @@
                                 </div>
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">Price</p>
-                                    <p class="text-xs font-semibold tabular-nums mt-0.5" style="color:var(--color-txt-primary);" x-text="fmt(product.product_price)"></p>
+                                    <p class="text-xs font-semibold tabular-nums mt-0.5" style="color:var(--color-txt-primary);" x-text="fmt(product.total_price)"></p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">Barcode</p>

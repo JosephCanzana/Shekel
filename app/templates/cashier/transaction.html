@@ -45,10 +45,10 @@
     },
     get panelSubtotal() {
         if (!this.product || this.totalUnits <= 0) return 0
-        return this.product.product_price * this.totalUnits
+        return this.product.total_price * this.totalUnits
     },
     get totalAmount() {
-        return this.cart.reduce((s, i) => s + i.product_price * i.qty, 0)
+        return this.cart.reduce((s, i) => s + i.total_price * i.qty, 0)
     },
     get cashNum() { return parseFloat(this.cashReceived) || 0 },
     get canComplete() { return this.cart.length > 0 && this.cashNum >= this.totalAmount },
@@ -136,8 +136,8 @@
             if (bQty !== undefined) { ex.bundleQty = bQty; ex.unitQty = uQty }
         } else {
             this.cart.push({ product_id: prod.product_id, product_name: prod.product_name,
-                             unit_price: prod.unit_price, revenue_price: prod.revenue_price,
-                             product_price: prod.product_price, qty, stock: prod.stock,
+                             cost_price: prod.cost_price, revenue_price: prod.revenue_price,
+                             total_price: prod.total_price, qty, stock: prod.stock,
                              bundle: prod.bundle || null,
                              bundleQty: bQty !== undefined ? bQty : 0,
                              unitQty:   uQty !== undefined ? uQty : qty })
@@ -168,8 +168,8 @@
     editRow(item) {
         this.editingId = item.product_id; this.searchQuery = item.product_id; this.panelError = ''
         this.product = { product_id: item.product_id, product_name: item.product_name,
-                         unit_price: item.unit_price, revenue_price: item.revenue_price,
-                         product_price: item.product_price, stock: item.stock,
+                         cost_price: item.cost_price, revenue_price: item.revenue_price,
+                         total_price: item.total_price, stock: item.stock,
                          bundle: item.bundle || null }
         this.bundleQty = item.bundleQty !== undefined ? item.bundleQty : 0
         this.unitQty   = item.unitQty  !== undefined ? item.unitQty  : item.qty
@@ -209,7 +209,7 @@
                 body: JSON.stringify({
                     items: this.cart.map(i => ({
                         product_id: i.product_id, product_name: i.product_name, qty: i.qty,
-                        unit_price: i.unit_price, revenue_price: i.revenue_price, product_price: i.product_price
+                        cost_price: i.cost_price, revenue_price: i.revenue_price, total_price: i.total_price
                     })),
                     tendered: this.cashNum
                 })
@@ -286,8 +286,8 @@
                             </template>
                         </div>
                         <p class="text-sm text-center font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="item.qty"></p>
-                        <p class="text-sm text-right tabular-nums" style="color:var(--color-txt-secondary);" x-text="fmt(item.product_price)"></p>
-                        <p class="text-sm text-right font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(item.product_price * item.qty)"></p>
+                        <p class="text-sm text-right tabular-nums" style="color:var(--color-txt-secondary);" x-text="fmt(item.total_price)"></p>
+                        <p class="text-sm text-right font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(item.total_price * item.qty)"></p>
                         <div class="flex items-center justify-center gap-1.5">
                             <button @click="removeRow(item)" class="w-7 h-7 rounded-lg flex items-center justify-center transition"
                                     style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
@@ -386,7 +386,7 @@
                                             <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="s.product_id"></p>
                                         </div>
                                         <div class="text-right shrink-0 ml-3">
-                                            <p class="text-sm font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(s.product_price)"></p>
+                                            <p class="text-sm font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(s.total_price)"></p>
                                             <p class="text-xs tabular-nums" :style="s.stock===0 ? 'color:var(--color-error)' : 'color:var(--color-txt-muted)'" x-text="s.stock + ' in stock'"></p>
                                         </div>
                                     </button>
@@ -418,7 +418,7 @@
                                 </div>
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">Price</p>
-                                    <p class="text-xs font-semibold tabular-nums mt-0.5" style="color:var(--color-txt-primary);" x-text="fmt(product.product_price)"></p>
+                                    <p class="text-xs font-semibold tabular-nums mt-0.5" style="color:var(--color-txt-primary);" x-text="fmt(product.total_price)"></p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">Barcode</p>
@@ -675,7 +675,7 @@
                                                 <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="s.product_id"></p>
                                             </div>
                                             <div class="text-right shrink-0 ml-3">
-                                                <p class="text-sm font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(s.product_price)"></p>
+                                                <p class="text-sm font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(s.total_price)"></p>
                                                 <p class="text-xs" :style="s.stock===0 ? 'color:var(--color-error)' : 'color:var(--color-txt-muted)'" x-text="s.stock + ' in stock'"></p>
                                             </div>
                                         </button>
@@ -708,7 +708,7 @@
                                     </template>
                                 </div>
                                 <div class="text-right shrink-0">
-                                    <p class="text-base font-bold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(product.product_price)"></p>
+                                    <p class="text-base font-bold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(product.total_price)"></p>
                                     <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full mt-0.5 inline-block"
                                           :style="product.stock===0
                                                   ? 'background:color-mix(in srgb,var(--color-error) 14%,transparent);color:var(--color-error)'
@@ -849,7 +849,7 @@
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
                                     <p class="text-xs tabular-nums mt-0.5" style="color:var(--color-txt-muted);"
-                                       x-text="item.qty + ' × ' + fmt(item.product_price)"></p>
+                                       x-text="item.qty + ' × ' + fmt(item.total_price)"></p>
                                     <template x-if="item.bundle && item.bundleQty > 0">
                                         <p class="text-[11px] mt-0.5" style="color:var(--color-accent);"
                                            x-text="item.bundleQty + 'B' + (item.unitQty > 0 ? ' + ' + item.unitQty + 'U' : '')"></p>
@@ -860,7 +860,7 @@
                                     </template>
                                 </div>
                                 <p class="text-sm font-bold tabular-nums shrink-0" style="color:var(--color-txt-primary);"
-                                   x-text="fmt(item.product_price * item.qty)"></p>
+                                   x-text="fmt(item.total_price * item.qty)"></p>
                                 <div class="flex gap-1.5 shrink-0">
                                     <button @click="editRow(item)" class="w-8 h-8 rounded-xl flex items-center justify-center"
                                             style="background:color-mix(in srgb,var(--color-warning) 15%,transparent); color:var(--color-warning);">
@@ -915,7 +915,7 @@
                                     <p class="text-sm" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
                                     <p class="text-xs" style="color:var(--color-txt-muted);" x-text="'×' + item.qty"></p>
                                 </div>
-                                <p class="text-sm font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(item.product_price * item.qty)"></p>
+                                <p class="text-sm font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(item.total_price * item.qty)"></p>
                             </div>
                         </template>
                         <div class="flex items-center justify-between px-4 py-3">

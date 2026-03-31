@@ -55,7 +55,7 @@ def search():
         results.append({
             "product_id":   p.product_id,
             "product_name": p.product_name.capitalize(),
-            "product_price": float(p.product_price),
+            "total_price": float(p.total_price),
             "stock":        stock,
         })
 
@@ -104,7 +104,7 @@ def lookup():
     return jsonify({
         "product_id":        product.product_id,
         "product_name":      product.product_name.capitalize(),
-        "product_price":     float(product.product_price),
+        "total_price":     float(product.total_price),
         "stock":             stock,
         "bundle":            bundle_info,
         "scanned_as_bundle": scanned_as_bundle,

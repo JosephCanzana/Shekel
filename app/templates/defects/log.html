@@ -154,10 +154,10 @@
     },
     get panelSubtotal() {
         if (!this.product || this.totalUnits <= 0) return 0
-        return this.product.product_price * this.totalUnits
+        return this.product.total_price * this.totalUnits
     },
     get totalLogging() { return this.items.reduce((s, i) => s + i.qty, 0) },
-    get totalAmount()  { return this.items.reduce((s, i) => s + i.product_price * i.qty, 0) },
+    get totalAmount()  { return this.items.reduce((s, i) => s + i.total_price * i.qty, 0) },
     get canComplete()  { return this.items.length > 0 },
 
     fmt(n) { return '₱' + parseFloat(n).toFixed(2) },
@@ -294,8 +294,8 @@
                     log_type:      this.logType,
                     product_id:    this.product.product_id,
                     product_name:  this.product.product_name,
-                    product_price: this.product.product_price,
-                    unit_price:    this.product.unit_price,
+                    total_price: this.product.total_price,
+                    cost_price:    this.product.cost_price,
                     revenue_price: this.product.revenue_price,
                     stock:         this.product.stock,
                     bundle:        this.product.bundle || null,
@@ -325,7 +325,7 @@
         this.txnRef = item.txn_ref || ''
         this.product = {
             product_id: item.product_id, product_name: item.product_name,
-            product_price: item.product_price, unit_price: item.unit_price,
+            total_price: item.total_price, cost_price: item.cost_price,
             revenue_price: item.revenue_price, stock: item.stock, bundle: item.bundle || null
         }
         this.bundleQty = item.bundleQty !== undefined ? item.bundleQty : 0
@@ -480,8 +480,8 @@
                             </div>
                         </div>
                         <p class="text-sm text-center font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="item.qty"></p>
-                        <p class="text-sm text-right tabular-nums" style="color:var(--color-txt-secondary);" x-text="fmt(item.product_price)"></p>
-                        <p class="text-sm text-right font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(item.product_price * item.qty)"></p>
+                        <p class="text-sm text-right tabular-nums" style="color:var(--color-txt-secondary);" x-text="fmt(item.total_price)"></p>
+                        <p class="text-sm text-right font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(item.total_price * item.qty)"></p>
                         <div class="flex items-center justify-center gap-1.5">
                             <button @click="removeRow(item)" class="w-7 h-7 rounded-lg flex items-center justify-center transition"
                                     style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
@@ -754,7 +754,7 @@
                                     <p><span style="color:var(--color-txt-muted);">Barcode: </span>
                                        <span class="font-mono" style="color:var(--color-txt-secondary);" x-text="product.product_id"></span></p>
                                     <p><span style="color:var(--color-txt-muted);">Price: </span>
-                                       <span class="font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(product.product_price)"></span></p>
+                                       <span class="font-semibold tabular-nums" style="color:var(--color-txt-primary);" x-text="fmt(product.total_price)"></span></p>
                                     <p><span style="color:var(--color-txt-muted);">In Stock: </span>
                                        <span class="font-semibold tabular-nums"
                                              :style="product.stock===0 ? 'color:var(--color-error)' : 'color:var(--color-txt-primary)'"
@@ -1132,7 +1132,7 @@
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-bold truncate" style="color:var(--color-txt-primary);" x-text="product.product_name"></p>
                                 <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
-                                   x-text="fmt(product.product_price) + ' · ' + product.stock + ' in stock'"></p>
+                                   x-text="fmt(product.total_price) + ' · ' + product.stock + ' in stock'"></p>
                             </div>
                         </div>
 
@@ -1239,7 +1239,7 @@
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
                                 <p class="text-xs tabular-nums mt-0.5" style="color:var(--color-txt-muted);"
-                                   x-text="item.qty + ' × ' + fmt(item.product_price)"></p>
+                                   x-text="item.qty + ' × ' + fmt(item.total_price)"></p>
                                 <div class="flex gap-1 mt-0.5 flex-wrap">
                                     <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
                                           :style="item.log_type==='instore'
@@ -1264,7 +1264,7 @@
                                 </div>
                             </div>
                             <p class="text-sm font-bold tabular-nums shrink-0" style="color:var(--color-txt-primary);"
-                               x-text="fmt(item.product_price * item.qty)"></p>
+                               x-text="fmt(item.total_price * item.qty)"></p>
                             <div class="flex gap-1.5 shrink-0">
                                 <button @click="editRow(item)" class="w-8 h-8 rounded-xl flex items-center justify-center"
                                         style="background:color-mix(in srgb,var(--color-warning) 15%,transparent); color:var(--color-warning);">
@@ -1309,7 +1309,7 @@
                             <div class="px-4 py-2.5" style="border-bottom:1px solid var(--color-border);">
                                 <div class="flex items-center justify-between gap-2">
                                     <p class="text-sm truncate" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
-                                    <p class="text-sm font-semibold tabular-nums shrink-0" style="color:var(--color-txt-primary);" x-text="fmt(item.product_price * item.qty)"></p>
+                                    <p class="text-sm font-semibold tabular-nums shrink-0" style="color:var(--color-txt-primary);" x-text="fmt(item.total_price * item.qty)"></p>
                                 </div>
                                 <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
                                    x-text="item.qty + ' units · ' + (item.log_type==='instore' ? 'In-Store' : 'Customer') + ' · ' + reasonLabel(item.reason) + ' · ' + compensationLabel(item.compensation)"></p>

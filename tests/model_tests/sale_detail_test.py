@@ -67,7 +67,7 @@ def valid_data(sale, product):
         transaction_id=sale.transaction_id,
         product_id=product.product_id,
         quantity=2,
-        unit_price_at_sale=Decimal("10.00"),
+        cost_price_at_sale=Decimal("10.00"),
         revenue_price_at_sale=Decimal("12.00"),
         price_at_sale=Decimal("15.00"),
         subtotal_unit=Decimal("20.00"),
@@ -104,9 +104,9 @@ class TestColumnConstraints:
         with pytest.raises(Exception):
             SaleDetail(**valid_data).save()
 
-    def test_unit_price_at_sale_is_required(self, app, valid_data):
-        # unit_price_at_sale is NOT NULL — omitting raises
-        valid_data.pop("unit_price_at_sale")
+    def test_cost_price_at_sale_is_required(self, app, valid_data):
+        # cost_price_at_sale is NOT NULL — omitting raises
+        valid_data.pop("cost_price_at_sale")
         with pytest.raises(Exception):
             SaleDetail(**valid_data).save()
 
@@ -233,7 +233,7 @@ class TestNumericPrecision:
         # All 6 price/subtotal fields must be Decimal, not float
         result = SaleDetail.get_by_id(sale_detail.sale_detail_id)
 
-        assert isinstance(result.unit_price_at_sale, Decimal)
+        assert isinstance(result.cost_price_at_sale, Decimal)
         assert isinstance(result.revenue_price_at_sale, Decimal)
         assert isinstance(result.price_at_sale, Decimal)
         assert isinstance(result.subtotal_unit, Decimal)
@@ -244,7 +244,7 @@ class TestNumericPrecision:
         # Values should round-trip correctly at 2dp precision
         result = SaleDetail.get_by_id(sale_detail.sale_detail_id)
 
-        assert result.unit_price_at_sale == Decimal("10.00")
+        assert result.cost_price_at_sale == Decimal("10.00")
         assert result.revenue_price_at_sale == Decimal("12.00")
         assert result.price_at_sale == Decimal("15.00")
         assert result.subtotal_unit == Decimal("20.00")
@@ -253,7 +253,7 @@ class TestNumericPrecision:
 
     def test_zero_prices_accepted(self, app, valid_data):
         # Zero is a valid price — e.g. a complimentary item
-        for field in ["unit_price_at_sale", "revenue_price_at_sale",
+        for field in ["cost_price_at_sale", "revenue_price_at_sale",
                       "price_at_sale", "subtotal_unit",
                       "subtotal_revenue", "subtotal_amount"]:
             valid_data[field] = Decimal("0.00")
@@ -265,7 +265,7 @@ class TestNumericPrecision:
 
     def test_large_prices_within_numeric_bounds(self, app, valid_data):
         # Numeric(10, 2) supports values up to 99999999.99
-        for field in ["unit_price_at_sale", "revenue_price_at_sale",
+        for field in ["cost_price_at_sale", "revenue_price_at_sale",
                       "price_at_sale", "subtotal_unit",
                       "subtotal_revenue", "subtotal_amount"]:
             valid_data[field] = Decimal("99999999.99")
