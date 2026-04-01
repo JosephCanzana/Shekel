@@ -8,6 +8,7 @@ class RecoveryDetail(BaseModel):
     user_id = db.Column(db.Integer, db.ForeignKey("Users.user_id"), primary_key=True)
     email = db.Column(db.String(100), nullable=False)
     phone_number = db.Column(db.String(20), nullable=True)
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)
     reset_token = db.Column(db.String(255), nullable=True)
     token_expiry = db.Column(db.DateTime, nullable=True)
 

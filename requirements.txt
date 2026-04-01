@@ -3,6 +3,7 @@ Flask-Login
 Flask-Migrate
 Flask-SQLAlchemy
 Flask-WTF
+Flask-Mail
 openpyxl
 pytest
 Werkzeug

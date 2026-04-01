@@ -7,6 +7,8 @@ from app.models.category import Category
 from app.models.product import Product
 from app.models.product_bundle import ProductBundle
 import uuid
+import secrets
+from datetime import datetime, timedelta
 
 PHT = pytz.timezone("Asia/Manila")
 
@@ -16,6 +18,13 @@ def generate_charge_token():
 
 def message(num=400, message="Error occur"):
     return render_template("message.html", message=message, error_code=num)
+
+# Forgot password
+def generate_reset_token():
+    return secrets.token_urlsafe(32)
+
+def get_token_expiry(minutes=30):
+    return datetime.utcnow() + timedelta(minutes=minutes)
 
 def to_pht(utc_dt):
     """Convert a naive UTC datetime to PHT."""

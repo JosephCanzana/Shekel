@@ -234,7 +234,7 @@
           {# forgot password — separated, centered, with divider #}
           <div class="flex items-center gap-3 mt-1">
               <div class="flex-1 h-px" style="background-color: var(--color-border);"></div>
-              <a href="#"
+              <a href="{{ url_for('auth.forgot_password') }}"   {# ← was href="#" #}
                 class="text-xs font-medium transition shrink-0"
                 style="color: var(--color-txt-muted);"
                 onmouseover="this.style.color='var(--color-accent)'"

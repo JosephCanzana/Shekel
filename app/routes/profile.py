@@ -81,6 +81,11 @@ def update_recovery():
     if not ok:
         flash(err, "danger")
         return redirect(url_for("profile.index"))
+    
+    if not recovery.is_verified:
+        # still show same message — don't reveal anything
+        flash("If that email belongs to a superadmin account, a reset link has been sent.", "info")
+        return redirect(url_for('auth.forgot_password'))
 
     try:
         if current_user.recovery_detail:

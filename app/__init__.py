@@ -1,7 +1,7 @@
 from flask import Flask, render_template, session
 from dotenv import load_dotenv
 from config import DevelopmentConfig
-from app.extensions import db, login_manager, migrate, csrf
+from app.extensions import db, login_manager, migrate, csrf, mail
 
 def create_app(test_config=None):
     load_dotenv()
@@ -24,6 +24,7 @@ def create_app(test_config=None):
     login_manager.init_app(app)
     migrate.init_app(app, db)
     csrf.init_app(app)
+    mail.init_app(app)
 
     @app.before_request
     def make_session_permanent():

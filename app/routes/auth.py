@@ -1,10 +1,14 @@
+import re
+from datetime import datetime
 from flask import Blueprint, render_template, redirect, request, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
+from flask_mail import Message
 from sqlalchemy import func
 from werkzeug.security import check_password_hash
+from app.extensions import mail, db
 from app.models.user import User
-from app.utils.helpers import message
-import re
+from app.models.recovery_detail import RecoveryDetail
+from app.utils.helpers import generate_reset_token, get_token_expiry, validate_password, message
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -152,3 +156,72 @@ def logout():
     logout_user()
     flash("You have been signed out.", "info")
     return redirect(url_for("auth.login"))
+
+
+
+# ── Forgot Password ───────────────────────────────────────
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email    = request.form.get("email", "").strip().lower()
+        recovery = RecoveryDetail.query.filter_by(email=email).first()
+
+        if recovery and recovery.user.role == "superadmin":
+            token                 = generate_reset_token()
+            recovery.reset_token  = token
+            recovery.token_expiry = get_token_expiry()
+            db.session.commit()
+
+            reset_url = url_for('auth.reset_password', token=token, _external=True)
+            msg       = Message("Password Reset — Shekel", recipients=[email])
+            msg.body  = (
+                f"Hello,\n\n"
+                f"Click the link below to reset your password. "
+                f"It expires in 30 minutes.\n\n"
+                f"{reset_url}\n\n"
+                f"If you did not request this, ignore this email."
+            )
+            mail.send(msg)
+
+        # always same message — don't reveal if email exists
+        flash("If that email belongs to a superadmin account, a reset link has been sent.", "info")
+        return redirect(url_for('auth.forgot_password'))
+
+    return render_template("auth/forgot_password.html")
+
+
+# ── Reset Password ────────────────────────────────────────
+@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    recovery = RecoveryDetail.query.filter_by(reset_token=token).first()
+
+    if not recovery or recovery.token_expiry < datetime.utcnow():
+        flash("Reset link is invalid or has expired.", "error")
+        return redirect(url_for('auth.forgot_password'))
+
+    if recovery.user.role != "superadmin":
+        flash("Reset link is invalid or has expired.", "error")
+        return redirect(url_for('auth.forgot_password'))
+
+    if request.method == "POST":
+        password = request.form.get("password", "").strip()
+        confirm  = request.form.get("confirm_password", "").strip()
+
+        if password != confirm:
+            flash("Passwords do not match.", "error")
+            return redirect(url_for('auth.reset_password', token=token))
+
+        valid, err = validate_password(password)
+        if not valid:
+            flash(err, "error")
+            return redirect(url_for('auth.reset_password', token=token))
+
+        recovery.user.set_password(password)
+        recovery.reset_token  = None
+        recovery.token_expiry = None
+        db.session.commit()
+
+        flash("Password reset successful. You can now log in.", "success")
+        return redirect(url_for('auth.login'))
+
+    return render_template("auth/reset_password.html", token=token)
