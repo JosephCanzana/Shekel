@@ -26,6 +26,10 @@ def generate_reset_token():
 def get_token_expiry(minutes=30):
     return datetime.utcnow() + timedelta(minutes=minutes)
 
+def generate_verification_token():
+    return secrets.token_urlsafe(32)
+
+# Convert utc to ph time
 def to_pht(utc_dt):
     """Convert a naive UTC datetime to PHT."""
     return utc_dt.replace(tzinfo=pytz.utc).astimezone(PHT)

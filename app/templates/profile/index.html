@@ -264,6 +264,21 @@
                             Add a recovery email so your account can be restored if you lose access.
                         </p>
                         {% endif %}
+                        {% if current_user.recovery_detail %}
+                        {% if current_user.recovery_detail.is_verified %}
+                            <span class="flex items-center gap-1 text-xs"
+                                style="color: var(--color-success);">
+                            <span class="material-symbols-outlined text-[14px]">verified</span>
+                            Verified
+                            </span>
+                        {% else %}
+                            <span class="flex items-center gap-1 text-xs"
+                                style="color: var(--color-warning);">
+                            <span class="material-symbols-outlined text-[14px]">warning</span>
+                            Not verified — check your inbox
+                            </span>
+                        {% endif %}
+                        {% endif %}
 
                         <div class="space-y-1">
                             <label class="text-[11px] font-semibold uppercase tracking-wider"

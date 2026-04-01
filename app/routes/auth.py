@@ -166,7 +166,9 @@ def forgot_password():
         email    = request.form.get("email", "").strip().lower()
         recovery = RecoveryDetail.query.filter_by(email=email).first()
 
-        if recovery and recovery.user.role == "superadmin":
+        if (recovery
+                and recovery.user.role == "superadmin"
+                and recovery.is_verified):          # ← only send if verified
             token                 = generate_reset_token()
             recovery.reset_token  = token
             recovery.token_expiry = get_token_expiry()
@@ -175,15 +177,12 @@ def forgot_password():
             reset_url = url_for('auth.reset_password', token=token, _external=True)
             msg       = Message("Password Reset — Shekel", recipients=[email])
             msg.body  = (
-                f"Hello,\n\n"
-                f"Click the link below to reset your password. "
-                f"It expires in 30 minutes.\n\n"
-                f"{reset_url}\n\n"
+                f"Hello,\n\nClick the link to reset your password "
+                f"(expires in 30 minutes).\n\n{reset_url}\n\n"
                 f"If you did not request this, ignore this email."
             )
             mail.send(msg)
 
-        # always same message — don't reveal if email exists
         flash("If that email belongs to a superadmin account, a reset link has been sent.", "info")
         return redirect(url_for('auth.forgot_password'))
 

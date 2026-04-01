@@ -9,6 +9,8 @@ class RecoveryDetail(BaseModel):
     email = db.Column(db.String(100), nullable=False)
     phone_number = db.Column(db.String(20), nullable=True)
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    verify_token        = db.Column(db.String(255), nullable=True)   # ← add
+    verify_token_expiry = db.Column(db.DateTime,    nullable=True)
     reset_token = db.Column(db.String(255), nullable=True)
     token_expiry = db.Column(db.DateTime, nullable=True)
 

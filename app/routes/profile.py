@@ -1,10 +1,12 @@
+from datetime import datetime
 from flask               import render_template, request, flash, redirect, url_for, Blueprint
 from flask_login         import login_required, current_user
+from flask_mail import Message
 from sqlalchemy.exc      import DataError
-from app.extensions      import db
+from app.extensions      import db, mail
 from app.utils.decorator import role_required
 from app.models.recovery_detail import RecoveryDetail
-from app.utils.helpers import validate_password,validate_email, validate_phone
+from app.utils.helpers import validate_password,validate_email, validate_phone, generate_verification_token, get_token_expiry, message
 
 profile_bp = Blueprint("profile", __name__, url_prefix="/profile")
 
@@ -69,36 +71,59 @@ def change_password():
 @login_required
 @role_required("superadmin")
 def update_recovery():
-    email  = request.form.get("email",        "").strip()
-    phone  = request.form.get("phone_number", "").strip()
+    email = request.form.get("email",        "").strip()
+    phone = request.form.get("phone_number", "").strip()
+
+    if not email:
+        flash("Email is required for account recovery.", "danger")
+        return redirect(url_for("profile.index"))
 
     ok, err = validate_email(email)
     if not ok:
         flash(err, "danger")
         return redirect(url_for("profile.index"))
-    
+
+    existing = RecoveryDetail.query.filter_by(email=email).first()
+    if existing and existing.user_id != current_user.user_id:
+        flash("That email is already used by another account.", "danger")
+        return redirect(url_for("profile.index"))
+
     ok, err = validate_phone(phone)
     if not ok:
         flash(err, "danger")
         return redirect(url_for("profile.index"))
-    
-    if not recovery.is_verified:
-        # still show same message — don't reveal anything
-        flash("If that email belongs to a superadmin account, a reset link has been sent.", "info")
-        return redirect(url_for('auth.forgot_password'))
 
     try:
+        token  = generate_verification_token()
+        expiry = get_token_expiry(minutes=60)
+
         if current_user.recovery_detail:
-            current_user.recovery_detail.email        = email
-            current_user.recovery_detail.phone_number = phone or None
+            current_user.recovery_detail.email               = email
+            current_user.recovery_detail.phone_number        = phone or None
+            current_user.recovery_detail.is_verified         = False  # reset on email change
+            current_user.recovery_detail.verify_token        = token
+            current_user.recovery_detail.verify_token_expiry = expiry
         else:
             db.session.add(RecoveryDetail(
-                user_id      = current_user.user_id,
-                email        = email,
-                phone_number = phone or None,
+                user_id             = current_user.user_id,
+                email               = email,
+                phone_number        = phone or None,
+                is_verified         = False,
+                verify_token        = token,
+                verify_token_expiry = expiry,
             ))
         db.session.commit()
-        flash("Recovery details saved.", "success")
+
+        verify_url = url_for('profile.verify_recovery_email', token=token, _external=True)
+        msg        = Message("Verify your recovery email — Shekel", recipients=[email])
+        msg.body   = (
+            f"Hello,\n\nClick the link to verify your recovery email "
+            f"(expires in 1 hour).\n\n{verify_url}\n\n"
+            f"If you did not request this, ignore this email."
+        )
+        mail.send(msg)
+        flash("Verification email sent. Please check your inbox to confirm.", "success")
+
     except DataError:
         db.session.rollback()
         flash("One or more values are out of range.", "danger")
@@ -132,4 +157,26 @@ def update_identity():
         db.session.rollback()
         flash("Something went wrong. Please try again.", "danger")
 
+    return redirect(url_for("profile.index"))
+
+
+@profile_bp.route("/recovery/verify/<token>")
+@login_required
+@role_required("superadmin")
+def verify_recovery_email(token):
+    recovery = RecoveryDetail.query.filter_by(
+        verify_token=token,
+        user_id=current_user.user_id
+    ).first()
+
+    if not recovery or recovery.verify_token_expiry < datetime.utcnow():
+        flash("Verification link is invalid or has expired.", "danger")
+        return redirect(url_for("profile.index"))
+
+    recovery.is_verified         = True
+    recovery.verify_token        = None   # consume token
+    recovery.verify_token_expiry = None
+    db.session.commit()
+
+    flash("Recovery email verified successfully.", "success")
     return redirect(url_for("profile.index"))
