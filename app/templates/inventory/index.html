@@ -12,14 +12,17 @@
 <div x-data='{
     search: "",
     filterStatus: "active",
-    filterCategory: "all",
+    filterCategory: "",
     filterLowStock: false,
+    filterNoStock: false,
+    sortOrder: "",
     rows: PRODUCTS_DATA,
     canManage: CAN_MANAGE,
     page: 1,
     perPage: 10,
     selectedProduct: null,
     mobileDetailOpen: false,
+    filterModalOpen: false,
 
     titleCase(str) {
         return str ? str.charAt(0).toUpperCase() + str.slice(1) : ""
@@ -39,33 +42,78 @@
         const seen = new Set()
         return this.rows
             .map(r => ({ id: r.category_id, name: r.category_name }))
-            .filter(c => c.name !== "—" && !seen.has(c.id) && seen.add(c.id))
+            .filter(c => c.name && c.name !== "—" && !seen.has(c.id) && seen.add(c.id))
     },
 
     get lowStockCount() {
-        return this.rows.filter(r => r.stock <= r.low_reorder_threshold && r.status === "active").length
+        return this.rows.filter(r =>
+            r.stock > 0 &&
+            r.stock <= r.low_reorder_threshold &&
+            r.status === "active"
+        ).length
+    },
+
+    get noStockCount() {
+        return this.rows.filter(r => r.stock === 0 && r.status === "active").length
+    },
+
+    get activeFilterCount() {
+        let n = 0
+        if (this.filterStatus !== "active")                                n++
+        if (this.filterCategory !== "" && this.filterCategory !== "all")   n++
+        if (this.filterLowStock)                                            n++
+        if (this.filterNoStock)                                             n++
+        if (this.sortOrder !== "")                                          n++
+        return n
+    },
+
+    resetFilters() {
+        this.filterStatus   = "active"
+        this.filterCategory = ""
+        this.filterLowStock = false
+        this.filterNoStock  = false
+        this.sortOrder      = ""
+        this.resetPage()
     },
 
     get filtered() {
         const q = this.search.toLowerCase()
-        return this.rows.filter(r => {
+        const catFilter = this.filterCategory.trim().toLowerCase()
+
+        let result = this.rows.filter(r => {
             const matchSearch   = q === "" ||
                                   r.product_name.toLowerCase().includes(q) ||
                                   r.category_name.toLowerCase().includes(q) ||
                                   r.product_id.toLowerCase().includes(q)
             const matchStatus   = this.filterStatus   === "all" || r.status === this.filterStatus
-            const matchCategory = this.filterCategory === "all" || String(r.category_id) === this.filterCategory
-            const matchLowStock = !this.filterLowStock || (r.stock <= r.low_reorder_threshold && r.status === "active")
-            return matchSearch && matchStatus && matchCategory && matchLowStock
+            const matchCategory = catFilter === "" || catFilter === "all" ||
+                                  r.category_name.toLowerCase().includes(catFilter)
+
+            // OR logic: if both are active, show items matching either condition
+            const stockFilterActive = this.filterLowStock || this.filterNoStock
+            const matchStockStatus  = !stockFilterActive || (
+                (this.filterLowStock && r.stock > 0 && r.stock <= r.low_reorder_threshold && r.status === "active") ||
+                (this.filterNoStock  && r.stock === 0 && r.status === "active")
+            )
+
+            return matchSearch && matchStatus && matchCategory && matchStockStatus
         })
+
+        if (this.sortOrder === "asc")  result.sort((a, b) => a.product_name.localeCompare(b.product_name))
+        if (this.sortOrder === "desc") result.sort((a, b) => b.product_name.localeCompare(a.product_name))
+
+        return result
     },
+
     get paginated() {
         const start = (this.page - 1) * this.perPage
         return this.filtered.slice(start, start + this.perPage)
     },
+
     get totalPages() {
         return Math.max(1, Math.ceil(this.filtered.length / this.perPage))
     },
+
     resetPage() { this.page = 1 }
 }'
 class="space-y-5">
@@ -81,7 +129,6 @@ class="space-y-5">
         </div>
 
         <div class="flex items-center gap-2">
-            {# Stock-In — all roles #}
             <a href="{{ url_for('stocking.stock_in') }}"
                title="Stock-In"
                class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
@@ -92,7 +139,6 @@ class="space-y-5">
                 <span class="hidden sm:inline">Stock-In</span>
             </a>
 
-            {# Add Product — admin / co-admin only #}
             <template x-if="canManage">
                 <a href="{{ url_for('inventory.add') }}"
                    class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
@@ -106,8 +152,8 @@ class="space-y-5">
         </div>
     </div>
 
-    {# ── Search + Filters ── #}
-    <div class="flex flex-col sm:flex-row gap-3">
+    {# ── Search + Filter button ── #}
+    <div class="flex gap-3">
 
         {# Search bar #}
         <div class="relative flex-1">
@@ -128,45 +174,196 @@ class="space-y-5">
                            this.style.boxShadow='none'">
         </div>
 
-        {# Filters — wrap on mobile, inline on desktop #}
-        <div class="flex flex-wrap sm:flex-nowrap gap-2 items-center">
+        {# Filter button #}
+        <button @click="filterModalOpen = true"
+                class="relative flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
+                :style="activeFilterCount > 0
+                    ? 'border:1px solid var(--color-accent);color:var(--color-accent);background-color:color-mix(in srgb,var(--color-accent) 8%,transparent)'
+                    : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface)'">
+            <span class="material-symbols-outlined text-[17px]">tune</span>
+            <span class="hidden sm:inline">Filters</span>
+            <template x-if="activeFilterCount > 0">
+                <span class="flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold leading-none"
+                      style="background-color: var(--color-accent); color: var(--color-bg);"
+                      x-text="activeFilterCount"></span>
+            </template>
+        </button>
+    </div>
 
-            <select x-model="filterCategory" @change="resetPage()"
-                    class="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm focus:outline-none transition"
+    {# ══════════════════════════════════════════════
+       FILTER MODAL
+    ══════════════════════════════════════════════ #}
+
+    {# Backdrop #}
+    <div x-show="filterModalOpen"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="filterModalOpen = false"
+         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+         style="display:none;">
+    </div>
+
+    {# Modal panel #}
+    <div x-show="filterModalOpen"
+         x-transition:enter="transition-all duration-200 ease-out"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition-all duration-150 ease-in"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         @click.outside="filterModalOpen = false"
+         class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+         style="top:50%;left:50%;transform:translate(-50%,-50%);
+                background-color: var(--color-surface);
+                border: 1px solid var(--color-border);
+                display:none;">
+
+        {# Modal header #}
+        <div class="flex items-center justify-between px-5 py-4"
+             style="border-bottom: 1px solid var(--color-border);">
+            <h2 class="text-base font-semibold" style="color: var(--color-txt-primary);">Filters &amp; Sort</h2>
+            <button @click="filterModalOpen = false"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                    style="color: var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+
+        {# Modal body #}
+        <div class="px-5 py-5 space-y-5">
+
+            {# Category — datalist #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">Category</label>
+
+                {# build datalist id list #}
+                <datalist id="category-list">
+                    <template x-for="cat in categories" :key="cat.id">
+                        <option :value="titleCase(cat.name)"></option>
+                    </template>
+                </datalist>
+
+                <div class="relative">
+                    <span class="material-symbols-outlined text-[16px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                          style="color: var(--color-txt-muted);">category</span>
+                    <input type="text"
+                           list="category-list"
+                           x-model="filterCategory"
+                           @input="resetPage()"
+                           @change="resetPage()"
+                           placeholder="All categories…"
+                           class="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none transition"
+                           style="border: 1px solid var(--color-border);
+                                  background-color: var(--color-surface-alt);
+                                  color: var(--color-txt-primary);"
+                           onfocus="this.style.borderColor='var(--color-accent)';this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                           onblur="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+                </div>
+            </div>
+
+            {# Status #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">Status</label>
+                <div class="flex gap-2">
+                    <template x-for="opt in [{val:'active',label:'Active'},{val:'archived',label:'Archived'},{val:'all',label:'All'}]" :key="opt.val">
+                        <button @click="filterStatus = opt.val; resetPage()"
+                                class="flex-1 py-2 rounded-lg text-sm font-medium transition"
+                                :style="filterStatus === opt.val
+                                    ? 'background-color:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)'
+                                    : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface-alt)'"
+                                x-text="opt.label">
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            {# Stock Status #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">Stock Status</label>
+                <div class="flex flex-col gap-2">
+
+                    {# Low Stock toggle #}
+                    <button @click="filterLowStock = !filterLowStock; resetPage()"
+                            class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition"
+                            :style="filterLowStock
+                                ? 'background-color:color-mix(in srgb,var(--color-warning) 12%,transparent);border:1px solid var(--color-warning);color:var(--color-warning)'
+                                : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface-alt)'">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">warning</span>
+                            <span>Low Stock</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              :style="filterLowStock
+                                  ? 'background-color:var(--color-warning);color:var(--color-bg)'
+                                  : 'background-color:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'"
+                              x-text="lowStockCount + ' items'"></span>
+                    </button>
+
+                    {# No Stock toggle #}
+                    <button @click="filterNoStock = !filterNoStock; resetPage()"
+                            class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition"
+                            :style="filterNoStock
+                                ? 'background-color:color-mix(in srgb,var(--color-error) 10%,transparent);border:1px solid var(--color-error);color:var(--color-error)'
+                                : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface-alt)'">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">remove_shopping_cart</span>
+                            <span>No Stock</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              :style="filterNoStock
+                                  ? 'background-color:var(--color-error);color:var(--color-bg)'
+                                  : 'background-color:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                              x-text="noStockCount + ' items'"></span>
+                    </button>
+                </div>
+            </div>
+
+            {# Sort alphabetically #}
+            <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                       style="color: var(--color-txt-muted);">Sort by Name</label>
+                <div class="flex gap-2">
+                    <template x-for="opt in [{val:'asc',label:'A → Z',icon:'arrow_downward'},{val:'desc',label:'Z → A',icon:'arrow_upward'}]" :key="opt.val">
+                        <button @click="sortOrder = (sortOrder === opt.val ? '' : opt.val); resetPage()"
+                                class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
+                                :style="sortOrder === opt.val
+                                    ? 'background-color:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)'
+                                    : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface-alt)'">
+                            <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span>
+                            <span x-text="opt.label"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        {# Modal footer #}
+        <div class="flex items-center gap-3 px-5 py-4"
+             style="border-top: 1px solid var(--color-border);">
+            <button @click="resetFilters()"
+                    class="flex-1 py-2 rounded-lg text-sm font-medium transition"
                     style="border: 1px solid var(--color-border);
-                           background-color: var(--color-surface);
-                           color: var(--color-txt-primary);">
-                <option value="all">All Categories</option>
-                <template x-for="cat in categories" :key="cat.id">
-                    <option :value="String(cat.id)" x-text="titleCase(cat.name)"></option>
-                </template>
-            </select>
-
-            <select x-model="filterStatus" @change="resetPage()"
-                    class="flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm focus:outline-none transition"
-                    style="border: 1px solid var(--color-border);
-                           background-color: var(--color-surface);
-                           color: var(--color-txt-primary);">
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="archived">Archived</option>
-            </select>
-
-            {# Low Stock toggle pill #}
-            <button @click="filterLowStock = !filterLowStock; resetPage()"
-                    class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium
-                           whitespace-nowrap transition-all duration-150"
-                    :style="filterLowStock
-                        ? 'background-color:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning);border:1px solid var(--color-warning)'
-                        : 'border:1px solid var(--color-border);color:var(--color-txt-muted);background-color:var(--color-surface)'">
-                <span class="material-symbols-outlined text-[16px]">warning</span>
-                <span>Low Stock</span>
-                <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none"
-                      :style="filterLowStock
-                          ? 'background-color:var(--color-warning);color:var(--color-bg)'
-                          : 'background-color:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'"
-                      x-text="lowStockCount">
-                </span>
+                           color: var(--color-txt-secondary);
+                           background-color: var(--color-surface-alt);"
+                    onmouseover="this.style.borderColor='var(--color-txt-muted)'"
+                    onmouseout="this.style.borderColor='var(--color-border)'">
+                Reset all
+            </button>
+            <button @click="filterModalOpen = false"
+                    class="flex-1 py-2 rounded-lg text-sm font-semibold transition"
+                    style="background-color: var(--color-primary); color: var(--color-bg);"
+                    onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+                    onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                Apply
             </button>
         </div>
     </div>
@@ -223,7 +420,14 @@ class="space-y-5">
                         <td class="px-4 py-3 font-medium"
                             style="color: var(--color-txt-primary);">
                             <span x-text="titleCase(p.product_name)"></span>
-                            <template x-if="p.stock <= p.low_reorder_threshold && p.status === 'active'">
+                            {# No Stock badge — takes priority #}
+                            <template x-if="p.stock === 0 && p.status === 'active'">
+                                <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                                      style="background:color-mix(in srgb,var(--color-error) 12%,transparent);
+                                             color:var(--color-error);">No Stock</span>
+                            </template>
+                            {# Low Stock badge — only when stock > 0 #}
+                            <template x-if="p.stock > 0 && p.stock <= p.low_reorder_threshold && p.status === 'active'">
                                 <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold"
                                       style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
                                              color:var(--color-warning);">Low Stock</span>
@@ -246,9 +450,11 @@ class="space-y-5">
                         </td>
 
                         <td class="px-4 py-3"
-                            :style="p.stock <= p.low_reorder_threshold
-                                ? 'color:var(--color-warning);font-weight:600'
-                                : 'color:var(--color-txt-secondary)'"
+                            :style="p.stock === 0
+                                ? 'color:var(--color-error);font-weight:600'
+                                : p.stock <= p.low_reorder_threshold
+                                    ? 'color:var(--color-warning);font-weight:600'
+                                    : 'color:var(--color-txt-secondary)'"
                             x-text="p.stock + ' units'"></td>
 
                         <td class="px-4 py-3"
@@ -360,13 +566,17 @@ class="space-y-5">
                     onmouseout="this.style.backgroundColor='var(--color-surface)'">
                 <div class="flex items-center justify-between gap-3">
 
-                    {# Name + low stock badge #}
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 flex-wrap">
                             <p class="text-sm font-semibold truncate"
                                style="color: var(--color-txt-primary);"
                                x-text="titleCase(p.product_name)"></p>
-                            <template x-if="p.stock <= p.low_reorder_threshold && p.status === 'active'">
+                            <template x-if="p.stock === 0 && p.status === 'active'">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0"
+                                      style="background:color-mix(in srgb,var(--color-error) 12%,transparent);
+                                             color:var(--color-error);">No Stock</span>
+                            </template>
+                            <template x-if="p.stock > 0 && p.stock <= p.low_reorder_threshold && p.status === 'active'">
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0"
                                       style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
                                              color:var(--color-warning);">Low Stock</span>
@@ -377,14 +587,15 @@ class="space-y-5">
                                   style="color: var(--color-txt-muted);"
                                   x-text="p.product_id"></span>
                             <span class="text-xs"
-                                  :style="p.stock <= p.low_reorder_threshold
-                                      ? 'color:var(--color-warning);font-weight:600'
-                                      : 'color:var(--color-txt-muted)'"
+                                  :style="p.stock === 0
+                                      ? 'color:var(--color-error);font-weight:600'
+                                      : p.stock <= p.low_reorder_threshold
+                                          ? 'color:var(--color-warning);font-weight:600'
+                                          : 'color:var(--color-txt-muted)'"
                                   x-text="p.stock + ' units'"></span>
                         </div>
                     </div>
 
-                    {# Price + chevron #}
                     <div class="flex items-center gap-2 shrink-0">
                         <div class="text-right">
                             <p class="text-sm font-semibold"
@@ -474,13 +685,11 @@ class="space-y-5">
 
         <template x-if="selectedProduct">
             <div>
-                {# Drag handle #}
                 <div class="flex justify-center pt-3 pb-1">
                     <div class="w-10 h-1 rounded-full"
                          style="background-color: var(--color-border-strong);"></div>
                 </div>
 
-                {# Product header #}
                 <div class="flex items-start gap-3 px-5 py-4"
                      style="border-bottom: 1px solid var(--color-border);">
                     <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
@@ -493,7 +702,12 @@ class="space-y-5">
                             <p class="font-semibold text-base"
                                style="color: var(--color-txt-primary);"
                                x-text="titleCase(selectedProduct.product_name)"></p>
-                            <template x-if="selectedProduct.stock <= selectedProduct.low_reorder_threshold && selectedProduct.status === 'active'">
+                            <template x-if="selectedProduct.stock === 0 && selectedProduct.status === 'active'">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                                      style="background:color-mix(in srgb,var(--color-error) 12%,transparent);
+                                             color:var(--color-error);">No Stock</span>
+                            </template>
+                            <template x-if="selectedProduct.stock > 0 && selectedProduct.stock <= selectedProduct.low_reorder_threshold && selectedProduct.status === 'active'">
                                 <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
                                       style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
                                              color:var(--color-warning);">Low Stock</span>
@@ -512,7 +726,6 @@ class="space-y-5">
                     </button>
                 </div>
 
-                {# Stats grid #}
                 <div class="grid grid-cols-3 divide-x px-0 py-0"
                      style="border-bottom: 1px solid var(--color-border);
                             --tw-divide-color: var(--color-border);">
@@ -520,9 +733,11 @@ class="space-y-5">
                     <div class="flex flex-col items-center py-3 px-2 gap-0.5">
                         <p class="text-xs" style="color: var(--color-txt-muted);">Units</p>
                         <p class="text-base font-bold"
-                           :style="selectedProduct.stock <= selectedProduct.low_reorder_threshold
-                               ? 'color:var(--color-warning)'
-                               : 'color:var(--color-txt-primary)'"
+                           :style="selectedProduct.stock === 0
+                               ? 'color:var(--color-error)'
+                               : selectedProduct.stock <= selectedProduct.low_reorder_threshold
+                                   ? 'color:var(--color-warning)'
+                                   : 'color:var(--color-txt-primary)'"
                            x-text="selectedProduct.stock"></p>
                     </div>
 
@@ -541,7 +756,6 @@ class="space-y-5">
                     </div>
                 </div>
 
-                {# Extra details #}
                 <div class="px-5 py-3 flex flex-wrap gap-x-5 gap-y-1 text-xs"
                      style="border-bottom: 1px solid var(--color-border);">
                     <span style="color: var(--color-txt-muted);">
@@ -565,10 +779,8 @@ class="space-y-5">
                     </span>
                 </div>
 
-                {# Actions #}
                 <div class="px-4 py-4 space-y-2 pb-8">
 
-                    {# Stocking role — adjust stock only #}
                     <template x-if="!canManage">
                         <a :href="`/inventory/${selectedProduct.product_id}/edit`"
                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
@@ -578,7 +790,6 @@ class="space-y-5">
                         </a>
                     </template>
 
-                    {# Admin / co-admin — active product #}
                     <template x-if="canManage && selectedProduct.status !== 'archived'">
                         <div class="space-y-2">
                             <a :href="`/inventory/${selectedProduct.product_id}/edit`"
@@ -601,7 +812,6 @@ class="space-y-5">
                         </div>
                     </template>
 
-                    {# Admin / co-admin — archived product #}
                     <template x-if="canManage && selectedProduct.status === 'archived'">
                         <div class="space-y-2">
                             <button @click='closeDetail(); $dispatch("confirm", {
