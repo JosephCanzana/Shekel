@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Settings — Shekel{% endblock %}
+{% block nav_title %}Settings{% endblock %}
+
+{% block body %}
+<div class="space-y-6" x-data="settingsIndex()">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {# ── Header ── #}
+    <div>
+        <h1 class="text-xl font-bold tracking-tight"
+            style="color: var(--color-txt-primary);">Settings</h1>
+        <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
+            System-wide configuration for Shekel
+        </p>
+    </div>
+
+    {# ── Cards grid ── #}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+        {# ── Card: Default Password ── #}
+        <div class="rounded-2xl p-5 flex flex-col gap-4"
+             style="background-color: var(--color-surface);
+                    border: 1px solid var(--color-border);">
+
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                     style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
+                    <span class="material-symbols-outlined text-[20px]"
+                          style="color: var(--color-accent);">password</span>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold"
+                       style="color: var(--color-txt-primary);">Default Password</p>
+                    <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+                        Password assigned to new accounts and on password reset.
+                    </p>
+                </div>
+            </div>
+
+            {# inline form #}
+            <div class="space-y-3">
+                <div class="relative" x-data="{ show: false }">
+                    <span class="material-symbols-outlined text-[16px]
+                                 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                          style="color: var(--color-txt-muted);">lock</span>
+                    <input :type="show ? 'text' : 'password'"
+                           x-model="newPassword"
+                           placeholder="New default password"
+                           class="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none transition"
+                           style="border: 1px solid var(--color-border);
+                                  background-color: var(--color-surface-alt);
+                                  color: var(--color-txt-primary);"
+                           onfocus="this.style.borderColor='var(--color-accent)';
+                                    this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                           onblur="this.style.borderColor='var(--color-border)';
+                                   this.style.boxShadow='none'">
+                    <button @click="show = !show"
+                            type="button"
+                            class="absolute right-3 top-1/2 -translate-y-1/2"
+                            style="color: var(--color-txt-muted);">
+                        <span class="material-symbols-outlined text-[16px]"
+                              :x-text="show ? 'visibility_off' : 'visibility'">visibility</span>
+                    </button>
+                </div>
+
+                <template x-if="passwordError">
+                    <p class="text-xs px-1" style="color: var(--color-error);"
+                       x-text="passwordError"></p>
+                </template>
+
+                <div class="flex items-center justify-between">
+                    <p class="text-xs" style="color: var(--color-txt-muted);">
+                        Current: <span class="font-mono font-semibold"
+                                       style="color: var(--color-txt-secondary);">
+                            {{ default_password }}
+                        </span>
+                    </p>
+                    <button @click="savePassword()"
+                            :disabled="savingPassword || !newPassword.trim()"
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs
+                                   font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            style="background-color: var(--color-primary); color: var(--color-bg);"
+                            onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-primary-hover)'"
+                            onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                        <span class="material-symbols-outlined text-[14px]"
+                              :class="savingPassword ? 'animate-spin' : ''"
+                              x-text="passwordSaved ? 'check' : (savingPassword ? 'progress_activity' : 'save')"></span>
+                        <span x-text="passwordSaved ? 'Saved!' : 'Save'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {# ── Card: Column Visibility ── #}
+        <a href="{{ url_for('settings.columns') }}"
+           class="rounded-2xl p-5 flex flex-col gap-4 transition group cursor-pointer"
+           style="background-color: var(--color-surface); border: 1px solid var(--color-border);"
+           onmouseover="this.style.borderColor='var(--color-accent)'"
+           onmouseout="this.style.borderColor='var(--color-border)'">
+
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                     style="background: color-mix(in srgb, var(--color-primary) 12%, transparent);">
+                    <span class="material-symbols-outlined text-[20px]"
+                          style="color: var(--color-primary);">view_column</span>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold"
+                       style="color: var(--color-txt-primary);">Column Visibility</p>
+                    <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+                        Control which inventory columns each role can see and what shows by default.
+                    </p>
+                </div>
+                <span class="material-symbols-outlined text-[18px] mt-0.5 transition-transform
+                             group-hover:translate-x-1"
+                      style="color: var(--color-txt-muted);">arrow_forward</span>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                      style="background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+                             color: var(--color-primary);">Admin</span>
+                <span class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                      style="background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+                             color: var(--color-accent);">Stocking</span>
+            </div>
+        </a>
+
+        {# ── Placeholder card for future settings ── #}
+        {# just remove x-cloak and add content when ready
+        <div class="rounded-2xl p-5 flex flex-col gap-4 opacity-40 cursor-not-allowed"
+             style="background-color: var(--color-surface);
+                    border: 1px dashed var(--color-border);">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                     style="background: var(--color-surface-alt);">
+                    <span class="material-symbols-outlined text-[20px]"
+                          style="color: var(--color-txt-muted);">add</span>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold"
+                       style="color: var(--color-txt-muted);">More settings coming</p>
+                </div>
+            </div>
+        </div>
+        #}
+
+    </div>
+</div>
+
+<script>
+function settingsIndex() {
+    return {
+        newPassword:   '',
+        passwordError: '',
+        savingPassword: false,
+        passwordSaved:  false,
+
+        async savePassword() {
+            this.passwordError  = ''
+            this.savingPassword = true
+            this.passwordSaved  = false
+            try {
+                const res = await fetch('/settings/api/default-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+                    },
+                    body: JSON.stringify({ password: this.newPassword })
+                })
+                const data = await res.json()
+                if (!res.ok) {
+                    this.passwordError = data.error || 'Failed to save.'
+                } else {
+                    this.passwordSaved = true
+                    this.newPassword   = ''
+                    setTimeout(() => this.passwordSaved = false, 3000)
+                }
+            } catch(e) {
+                this.passwordError = 'Network error. Please try again.'
+            } finally {
+                this.savingPassword = false
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

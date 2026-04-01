@@ -77,6 +77,9 @@ def create_app(test_config=None):
     from app.routes.info import info_bp
     app.register_blueprint(info_bp)
 
+    from app.routes.settings import settings_bp
+    app.register_blueprint(settings_bp)
+
     @app.route("/test")
     def test():
         return render_template("test.html")

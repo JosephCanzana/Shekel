@@ -1,14 +1,17 @@
+import json
 from datetime import datetime
-from sqlalchemy import text
-from flask import Blueprint, render_template, redirect, request, url_for, flash
+from flask import Blueprint, render_template, redirect, request, url_for, flash, jsonify
 from flask_login import login_required, current_user
+from sqlalchemy import text
+from sqlalchemy.exc import DataError
+from app.extensions import db
+from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use
 from app.utils.decorator import role_required
 from app.models.product import Product
 from app.models.product_bundle import ProductBundle
 from app.models.inventory import Inventory
-from sqlalchemy.exc import DataError
-from app.extensions import db
-from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use
+from app.models.user_column_preference import UserColumnPreference
+from app.models.role_column_setting    import RoleColumnSetting
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -411,3 +414,196 @@ def delete(product_id):
 
     flash(f'Product "{name}" has been permanently deleted.', "success")
     return redirect(url_for("inventory.index"))
+
+import json
+from app.models.user_column_preference import UserColumnPreference
+from app.models.role_column_setting    import RoleColumnSetting
+
+# ── Default columns per role ──────────────────────────────────────────────────
+ROLE_COLUMN_DEFAULTS = {
+    "superadmin": {
+        "available": ["sku", "bundle_barcode", "bundle_name", "units_per_bundle",
+                      "stock", "unit_cost", "unit_revenue", "unit_price",
+                      "bundle_cost", "bundle_revenue", "bundle_price",
+                      "stock_cost_value", "stock_revenue_value", "stock_total_value",
+                      "category", "low_stock_threshold", "status", "last_updated"],
+        "defaults":  ["stock", "unit_price", "stock_total_value", "low_stock_threshold"]
+    },
+    "admin": {
+        "available": ["sku", "bundle_barcode", "bundle_name", "units_per_bundle",
+                      "stock", "unit_cost", "unit_revenue", "unit_price",
+                      "bundle_cost", "bundle_revenue", "bundle_price",
+                      "stock_cost_value", "stock_revenue_value", "stock_total_value",
+                      "category", "low_stock_threshold", "status", "last_updated"],
+        "defaults":  ["stock", "unit_price", "stock_total_value", "low_stock_threshold"]
+    },
+    "stocking": {
+        "available": ["sku", "bundle_name", "stock", "unit_price",
+                      "bundle_price", "stock_total_value",
+                      "category", "low_stock_threshold", "status", "last_updated"],
+        "defaults":  ["stock", "unit_price", "low_stock_threshold"]
+    }
+}
+
+
+# ── GET column preferences ────────────────────────────────────────────────────
+@inventory_bp.route("/api/column-preferences", methods=["GET"])
+@login_required
+@role_required("superadmin", "admin", "stocking")
+def get_column_preferences():
+    page = request.args.get("page", "inventory")
+    role = current_user.role
+
+    # get user's personal preference
+    pref = UserColumnPreference.query.filter_by(
+        user_id=current_user.user_id, page=page
+    ).first()
+
+    # get role setting (superadmin-defined whitelist + defaults)
+    role_setting = RoleColumnSetting.query.filter_by(role=role, page=page).first()
+
+    if role_setting:
+        available = json.loads(role_setting.available)
+        defaults  = json.loads(role_setting.defaults)
+    else:
+        # fallback to hardcoded defaults
+        available = ROLE_COLUMN_DEFAULTS.get(role, {}).get("available", [])
+        defaults  = ROLE_COLUMN_DEFAULTS.get(role, {}).get("defaults",  [])
+
+    # superadmin always gets full access regardless of role_setting
+    if role == "superadmin":
+        available = ROLE_COLUMN_DEFAULTS["superadmin"]["available"]
+
+    if pref:
+        # filter saved columns to only those still in available whitelist
+        columns = [c for c in json.loads(pref.columns) if c in available]
+    else:
+        columns = defaults
+
+    return jsonify({
+        "columns":   columns,
+        "available": available,
+        "defaults":  defaults
+    })
+
+
+# ── POST save column preferences ─────────────────────────────────────────────
+@inventory_bp.route("/api/column-preferences", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin", "stocking")
+def save_column_preferences():
+    data    = request.json or {}
+    page    = data.get("page", "inventory")
+    columns = data.get("columns", [])
+    role    = current_user.role
+
+    # validate against whitelist
+    role_setting = RoleColumnSetting.query.filter_by(role=role, page=page).first()
+    if role_setting:
+        available = json.loads(role_setting.available)
+    else:
+        available = ROLE_COLUMN_DEFAULTS.get(role, {}).get("available", [])
+
+    if role == "superadmin":
+        available = ROLE_COLUMN_DEFAULTS["superadmin"]["available"]
+
+    # strip any columns not in whitelist
+    columns = [c for c in columns if c in available]
+
+    pref = UserColumnPreference.query.filter_by(
+        user_id=current_user.user_id, page=page
+    ).first()
+
+    if pref:
+        pref.columns = json.dumps(columns)
+    else:
+        db.session.add(UserColumnPreference(
+            user_id=current_user.user_id,
+            page=page,
+            columns=json.dumps(columns)
+        ))
+
+    db.session.commit()
+    return jsonify({"ok": True, "columns": columns})
+
+
+# ── POST inline threshold update ──────────────────────────────────────────────
+@inventory_bp.route("/<string:product_id>/threshold", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def update_threshold(product_id):
+    product = get_product(product_id)
+    if not product:
+        return jsonify({"error": "Product not found."}), 404
+
+    try:
+        threshold = int((request.json or {}).get("threshold", -1))
+        if threshold < 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return jsonify({"error": "Threshold must be a positive whole number."}), 400
+
+    product.low_reorder_threshold = threshold
+    db.session.commit()
+    return jsonify({"ok": True, "threshold": threshold})
+
+
+# ── POST bulk actions ─────────────────────────────────────────────────────────
+@inventory_bp.route("/bulk/status-update", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def bulk_status_update():
+    data        = request.json or {}
+    product_ids = data.get("product_ids", [])
+    new_status  = data.get("status", "")
+
+    if not product_ids:
+        return jsonify({"error": "No products selected."}), 400
+    if new_status not in {"active", "archived"}:
+        return jsonify({"error": "Invalid status."}), 400
+
+    products = Product.query.filter(Product.product_id.in_(product_ids)).all()
+    for p in products:
+        p.status = new_status
+
+    db.session.commit()
+    return jsonify({"ok": True, "updated": len(products)})
+
+
+@inventory_bp.route("/bulk/delete", methods=["POST"])
+@login_required
+@role_required("superadmin")
+def bulk_delete():
+    from app.models.sale_detail   import SaleDetail
+    from app.models.defect_detail import DefectDetail
+
+    data        = request.json or {}
+    product_ids = data.get("product_ids", [])
+
+    if not product_ids:
+        return jsonify({"error": "No products selected."}), 400
+
+    skipped = []
+    deleted = []
+
+    for pid in product_ids:
+        product = get_product(pid)
+        if not product:
+            continue
+        if product.status != "archived":
+            skipped.append(pid)
+            continue
+        has_sales   = SaleDetail.query.filter_by(product_id=pid).first()
+        has_defects = DefectDetail.query.filter_by(product_id=pid).first()
+        if has_sales or has_defects:
+            skipped.append(pid)
+            continue
+        if product.bundle:
+            db.session.delete(product.bundle)
+        if product.inventory:
+            db.session.delete(product.inventory)
+        db.session.delete(product)
+        deleted.append(pid)
+
+    db.session.commit()
+    return jsonify({"ok": True, "deleted": len(deleted), "skipped": len(skipped)})

@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}Column Visibility — Shekel{% endblock %}
+{% block nav_title %}Settings{% endblock %}
+
+{% block body %}
+<script>
+    const ADMIN_AVAILABLE    = {{ admin_available    | tojson }};
+    const ADMIN_DEFAULTS     = {{ admin_defaults     | tojson }};
+    const STOCKING_AVAILABLE = {{ stocking_available | tojson }};
+    const STOCKING_DEFAULTS  = {{ stocking_defaults  | tojson }};
+    const ALL_COLUMNS        = {{ all_columns        | tojson }};
+    const LOCKED_COLUMNS     = {{ locked_columns     | tojson }};
+
+    function columnsSettings() {
+        return {
+            roleTab:           'admin',
+            adminAvailable:    [...ADMIN_AVAILABLE],
+            adminDefaults:     [...ADMIN_DEFAULTS],
+            stockingAvailable: [...STOCKING_AVAILABLE],
+            stockingDefaults:  [...STOCKING_DEFAULTS],
+            savingCols:        false,
+            colsSaved:         false,
+            colsError:         '',
+
+            get currentAvailable() {
+                return this.roleTab === 'admin' ? this.adminAvailable : this.stockingAvailable
+            },
+            get currentDefaults() {
+                return this.roleTab === 'admin' ? this.adminDefaults : this.stockingDefaults
+            },
+            get groups() {
+                const g = {}
+                ALL_COLUMNS.forEach(col => {
+                    if (!g[col.group]) g[col.group] = []
+                    g[col.group].push(col)
+                })
+                return Object.entries(g).map(([name, cols]) => ({ name, cols }))
+            },
+
+            isAvailable(key) { return this.currentAvailable.includes(key) },
+            isDefault(key)   { return this.currentDefaults.includes(key) },
+
+            toggleAvailable(key) {
+                const list = this.roleTab === 'admin' ? this.adminAvailable : this.stockingAvailable
+                const idx  = list.indexOf(key)
+                if (idx === -1) { list.push(key) }
+                else {
+                    list.splice(idx, 1)
+                    this.removeFromDefaults(key)
+                }
+            },
+
+            toggleDefault(key) {
+                if (!this.isAvailable(key)) return
+                const list = this.roleTab === 'admin' ? this.adminDefaults : this.stockingDefaults
+                const idx  = list.indexOf(key)
+                if (idx === -1) { list.push(key) }
+                else            { list.splice(idx, 1) }
+            },
+
+            removeFromDefaults(key) {
+                const list = this.roleTab === 'admin' ? this.adminDefaults : this.stockingDefaults
+                const idx  = list.indexOf(key)
+                if (idx !== -1) list.splice(idx, 1)
+            },
+
+            async saveColumnSettings() {
+                this.savingCols = true
+                this.colsSaved  = false
+                this.colsError  = ''
+                try {
+                    const res = await fetch(`/settings/api/role-columns/${this.roleTab}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+                        },
+                        body: JSON.stringify({
+                            page:      'inventory',
+                            available: this.currentAvailable,
+                            defaults:  this.currentDefaults
+                        })
+                    })
+                    const data = await res.json()
+                    if (!res.ok) { this.colsError = data.error || 'Failed to save.' }
+                    else {
+                        this.colsSaved = true
+                        setTimeout(() => this.colsSaved = false, 3000)
+                    }
+                } catch(e) { this.colsError = 'Network error. Please try again.' }
+                finally { this.savingCols = false }
+            }
+        }
+    }
+</script>
+
+<div class="space-y-5" x-data="columnsSettings()">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {# ── Header ── #}
+    <div class="flex items-center gap-4">
+        <a href="{{ url_for('settings.index') }}"
+           class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+           style="border: 1px solid var(--color-border); color: var(--color-txt-muted);"
+           onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+           onmouseout="this.style.backgroundColor='transparent'">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        </a>
+        <div>
+            <h1 class="text-xl font-bold tracking-tight"
+                style="color: var(--color-txt-primary);">Column Visibility</h1>
+            <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
+                Set which columns each role can see and what shows by default.
+            </p>
+        </div>
+    </div>
+
+    {# ── Main card ── #}
+    <div class="rounded-2xl overflow-hidden"
+         style="border: 1px solid var(--color-border); background-color: var(--color-surface);">
+
+        {# toolbar #}
+        <div class="flex items-center justify-between gap-4 px-5 py-4"
+             style="border-bottom: 1px solid var(--color-border);
+                    background-color: var(--color-surface-alt);">
+
+            {# role tabs #}
+            <div class="flex gap-1 p-1 rounded-xl"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+                <template x-for="r in [{key:'admin',label:'Admin'},{key:'stocking',label:'Stocking'}]"
+                          :key="r.key">
+                    <button @click="roleTab = r.key"
+                            class="px-4 py-1.5 rounded-lg text-sm font-medium transition"
+                            :style="roleTab === r.key
+                                ? 'background-color:var(--color-primary);color:var(--color-bg)'
+                                : 'color:var(--color-txt-muted)'">
+                        <span x-text="r.label"></span>
+                    </button>
+                </template>
+            </div>
+
+            {# save button #}
+            <div class="flex items-center gap-3">
+                <template x-if="colsError">
+                    <p class="text-xs" style="color: var(--color-error);" x-text="colsError"></p>
+                </template>
+                <button @click="saveColumnSettings()"
+                        :disabled="savingCols"
+                        class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm
+                               font-semibold transition disabled:opacity-50"
+                        style="background-color: var(--color-primary); color: var(--color-bg);"
+                        onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-primary-hover)'"
+                        onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                    <span class="material-symbols-outlined text-[16px]"
+                          :class="savingCols ? 'animate-spin' : ''"
+                          x-text="colsSaved ? 'check' : (savingCols ? 'progress_activity' : 'save')"></span>
+                    <span x-text="colsSaved ? 'Saved!' : 'Save'"></span>
+                </button>
+            </div>
+        </div>
+
+        {# legend #}
+        <div class="flex items-center gap-6 px-5 py-3 text-xs"
+             style="border-bottom: 1px solid var(--color-border);
+                    background-color: var(--color-surface-alt);
+                    color: var(--color-txt-muted);">
+            <span class="flex items-center gap-2">
+                <span class="w-8 h-5 rounded-full"
+                      style="background-color: var(--color-accent); opacity:0.8;"></span>
+                Available to role
+            </span>
+            <span class="flex items-center gap-2">
+                <span class="w-8 h-5 rounded-full"
+                      style="background-color: var(--color-success); opacity:0.8;"></span>
+                On by default
+            </span>
+            <span class="flex items-center gap-2">
+                <span class="w-8 h-5 rounded-full"
+                      style="background-color: var(--color-border-strong);"></span>
+                Off
+            </span>
+        </div>
+
+        {# column header labels — sticky #}
+        <div class="hidden sm:grid grid-cols-[1fr_120px_120px] items-center
+                    px-5 py-2 text-xs font-semibold uppercase tracking-wider sticky top-0 z-10"
+             style="color: var(--color-txt-muted);
+                    border-bottom: 1px solid var(--color-border);
+                    background-color: var(--color-surface);">
+            <span>Column</span>
+            <span class="text-center">Available</span>
+            <span class="text-center">Default</span>
+        </div>
+
+        {# locked columns #}
+        <div style="border-bottom: 2px solid var(--color-border);">
+            <div class="px-5 py-2 text-[11px] font-bold uppercase tracking-wider"
+                 style="color: var(--color-txt-muted);
+                        background-color: var(--color-surface-alt);">
+                Always Visible
+            </div>
+            <template x-for="col in [{key:'name',label:'Name'},{key:'actions',label:'Actions'}]"
+                      :key="col.key">
+                <div class="grid grid-cols-[1fr_120px_120px] items-center px-5 py-3"
+                     style="border-top: 1px solid var(--color-border);">
+                    <div>
+                        <p class="text-sm font-medium"
+                           style="color: var(--color-txt-primary);" x-text="col.label"></p>
+                        <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+                            Cannot be hidden
+                        </p>
+                    </div>
+                    <div class="flex justify-center">
+                        <span class="text-xs px-2 py-0.5 rounded"
+                              style="background: color-mix(in srgb,var(--color-border-strong) 20%,transparent);
+                                     color: var(--color-txt-muted);">Locked</span>
+                    </div>
+                    <div class="flex justify-center">
+                        <span class="text-xs px-2 py-0.5 rounded"
+                              style="background: color-mix(in srgb,var(--color-border-strong) 20%,transparent);
+                                     color: var(--color-txt-muted);">Locked</span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        {# grouped columns #}
+        <template x-for="group in groups" :key="group.name">
+            <div style="border-bottom: 1px solid var(--color-border);">
+
+                {# group label #}
+                <div class="px-5 py-2 text-[11px] font-bold uppercase tracking-wider"
+                     style="color: var(--color-txt-muted);
+                            background-color: var(--color-surface-alt);"
+                     x-text="group.name">
+                </div>
+
+                <template x-for="col in group.cols" :key="col.key">
+                    <div class="grid grid-cols-[1fr_120px_120px] items-center px-5 py-3"
+                         style="border-top: 1px solid var(--color-border);"
+                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                         onmouseout="this.style.backgroundColor='transparent'">
+
+                        <p class="text-sm font-medium"
+                           style="color: var(--color-txt-primary);" x-text="col.label"></p>
+
+                        {# Available toggle #}
+                        <div class="flex justify-center">
+                            <button @click="toggleAvailable(col.key)"
+                                    class="w-11 h-6 rounded-full transition-colors relative">
+                                <span class="absolute inset-0 rounded-full transition-colors"
+                                      :style="isAvailable(col.key)
+                                          ? 'background-color:var(--color-accent)'
+                                          : 'background-color:var(--color-border-strong)'"></span>
+                                <span class="absolute top-1 w-4 h-4 rounded-full bg-white
+                                             shadow transition-all"
+                                      :style="isAvailable(col.key) ? 'left:1.375rem' : 'left:0.25rem'">
+                                </span>
+                            </button>
+                        </div>
+
+                        {# Default toggle #}
+                        <div class="flex justify-center">
+                            <button @click="toggleDefault(col.key)"
+                                    :disabled="!isAvailable(col.key)"
+                                    class="w-11 h-6 rounded-full transition-colors relative
+                                           disabled:opacity-30 disabled:cursor-not-allowed">
+                                <span class="absolute inset-0 rounded-full transition-colors"
+                                      :style="isDefault(col.key)
+                                          ? 'background-color:var(--color-success)'
+                                          : 'background-color:var(--color-border-strong)'"></span>
+                                <span class="absolute top-1 w-4 h-4 rounded-full bg-white
+                                             shadow transition-all"
+                                      :style="isDefault(col.key) ? 'left:1.375rem' : 'left:0.25rem'">
+                                </span>
+                            </button>
+                        </div>
+
+                    </div>
+                </template>
+            </div>
+        </template>
+
+    </div>
+</div>
+{% endblock %}

@@ -26,6 +26,7 @@ class User(BaseModel, UserMixin):
     sales = db.relationship("Sale", back_populates="user")
     defects = db.relationship("Defect", back_populates="user")
     audit_logs = db.relationship("AuditLog", back_populates="user")
+    column_preferences = db.relationship("UserColumnPreference", back_populates="user")
 
 
     # Flask-Login requires get_id() to return a string
