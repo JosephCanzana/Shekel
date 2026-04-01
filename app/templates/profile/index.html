@@ -265,19 +265,35 @@
                         </p>
                         {% endif %}
                         {% if current_user.recovery_detail %}
-                        {% if current_user.recovery_detail.is_verified %}
-                            <span class="flex items-center gap-1 text-xs"
-                                style="color: var(--color-success);">
-                            <span class="material-symbols-outlined text-[14px]">verified</span>
-                            Verified
-                            </span>
-                        {% else %}
-                            <span class="flex items-center gap-1 text-xs"
-                                style="color: var(--color-warning);">
-                            <span class="material-symbols-outlined text-[14px]">warning</span>
-                            Not verified — check your inbox
-                            </span>
-                        {% endif %}
+                            {% if current_user.recovery_detail.is_verified %}
+                                <span class="flex items-center gap-1 text-xs"
+                                    style="color: var(--color-success);">
+                                    <span class="material-symbols-outlined text-[14px]">verified</span>
+                                    Verified
+                                </span>
+                            {% else %}
+                                <div class="flex items-center gap-3">
+                                    <span class="flex items-center gap-1 text-xs"
+                                        style="color: var(--color-warning);">
+                                        <span class="material-symbols-outlined text-[14px]">warning</span>
+                                        Not verified — check your inbox
+                                    </span>
+
+                                    {# resend button #}
+                                    <form action="{{ url_for('profile.resend_verification') }}"
+                                        method="post">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit"
+                                                class="flex items-center gap-1 text-xs font-medium transition"
+                                                style="color: var(--color-accent);"
+                                                onmouseover="this.style.opacity='0.75'"
+                                                onmouseout="this.style.opacity='1'">
+                                            <span class="material-symbols-outlined text-[14px]">refresh</span>
+                                            Resend
+                                        </button>
+                                    </form>
+                                </div>
+                            {% endif %}
                         {% endif %}
 
                         <div class="space-y-1">
@@ -299,7 +315,7 @@
                                            this.style.boxShadow='none'">
                         </div>
 
-                        <div class="space-y-1">
+                        <!-- <div class="space-y-1">
                             <label class="text-[11px] font-semibold uppercase tracking-wider"
                                    style="color: var(--color-txt-muted);">
                                 Phone
@@ -318,7 +334,7 @@
                                             this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                                    onblur="this.style.borderColor='var(--color-border)';
                                            this.style.boxShadow='none'">
-                        </div>
+                        </div> -->
 
                     </div>
 

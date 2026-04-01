@@ -180,3 +180,46 @@ def verify_recovery_email(token):
 
     flash("Recovery email verified successfully.", "success")
     return redirect(url_for("profile.index"))
+
+@profile_bp.route("/recovery/resend-verification", methods=["POST"])
+@login_required
+@role_required("superadmin")
+def resend_verification():
+    recovery = current_user.recovery_detail
+
+    if not recovery:
+        flash("No recovery email set yet.", "danger")
+        return redirect(url_for("profile.index"))
+
+    if recovery.is_verified:
+        flash("Your recovery email is already verified.", "info")
+        return redirect(url_for("profile.index"))
+
+    try:
+        token  = generate_verification_token()
+        expiry = get_token_expiry(minutes=60)
+
+        recovery.verify_token        = token
+        recovery.verify_token_expiry = expiry
+        db.session.commit()
+
+        verify_url = url_for('profile.verify_recovery_email', token=token, _external=True)
+        msg        = Message(
+            "Verify your recovery email — Shekel",
+            sender=os.getenv("MAIL_USERNAME"),
+            recipients=[recovery.email]
+        )
+        msg.body = (
+            f"Hello,\n\nClick the link to verify your recovery email "
+            f"(expires in 1 hour).\n\n{verify_url}\n\n"
+            f"If you did not request this, ignore this email."
+        )
+        mail.send(msg)
+        flash("Verification email resent. Please check your inbox.", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Resend verification error: {e}")
+        flash("Something went wrong. Please try again.", "danger")
+
+    return redirect(url_for("profile.index"))
