@@ -722,7 +722,12 @@ class="space-y-5">
                                         style="color:var(--color-txt-muted);"
                                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-accent)'"
                                         onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
-                                            <span class="material-symbols-outlined text-[18px]">tune</span>  {# ← tune icon instead of edit #}
+                                            {% if current_user.role == 'stocking' %}
+                                            <span class="material-symbols-outlined text-[18px]">tune</span>
+                                            {% else %}
+                                            <span class="material-symbols-outlined text-[18px]">edit</span>
+                                            {% endif %}
+
                                         </a>
                                         <template x-if="canManage">
                                             <button @click='$dispatch("confirm", {
