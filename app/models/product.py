@@ -34,9 +34,10 @@ class Product(BaseModel):
             "bundle_count":          self.bundle.bundle_count if self.bundle else None,
             "cost_price":            float(self.cost_price),
             "revenue_price":         float(self.revenue_price),
-            "total_price":         float(self.total_price),
+            "total_price":           float(self.total_price),
             "low_reorder_threshold": self.low_reorder_threshold,
             "status":                self.status,
             "stock":                 self.inventory.quantity_available if self.inventory else 0,
             "created_at":            self.created_at.strftime("%b %d, %Y") if self.created_at else "",
+            "last_updated":          self.inventory.last_updated.strftime("%b %d, %Y") if self.inventory and self.inventory.last_updated else "—",  # ← add
         }
