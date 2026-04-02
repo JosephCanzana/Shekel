@@ -964,88 +964,21 @@ class="space-y-5">
                 </div>
 
                 {# ── Admin stats grid: Units / Cost / Revenue / Total Price / Low Stock ── #}
-                <template x-if="canManage">
-                    <div>
-                        <div class="grid grid-cols-3 divide-x"
-                             style="border-bottom: 1px solid var(--color-border);
-                                    --tw-divide-color: var(--color-border);">
-                            <div class="flex flex-col items-center py-3 px-2 gap-0.5">
-                                <p class="text-xs" style="color: var(--color-txt-muted);">Units</p>
-                                <p class="text-base font-bold tabular-nums"
-                                   :style="selectedProduct.stock === 0
-                                       ? 'color:var(--color-error)'
-                                       : selectedProduct.stock <= selectedProduct.low_reorder_threshold
-                                           ? 'color:var(--color-warning)'
-                                           : 'color:var(--color-txt-primary)'"
-                                   x-text="selectedProduct.stock"></p>
-                            </div>
-                            <div class="flex flex-col items-center py-3 px-2 gap-0.5">
-                                <p class="text-xs" style="color: var(--color-txt-muted);">Cost</p>
-                                <p class="text-base font-bold tabular-nums"
-                                   style="color: var(--color-txt-primary);"
-                                   x-text="formatPeso(selectedProduct.cost_price)"></p>
-                            </div>
-                            <div class="flex flex-col items-center py-3 px-2 gap-0.5">
-                                <p class="text-xs" style="color: var(--color-txt-muted);">Revenue</p>
-                                <p class="text-base font-bold tabular-nums"
-                                   style="color: var(--color-txt-primary);"
-                                   x-text="formatPeso(selectedProduct.revenue_price)"></p>
-                            </div>
+                <div class="grid grid-cols-3"
+                    style="border-bottom: 1px solid var(--color-border);">
+                    <template x-for="col in columnDefs.filter(c => isVisible(c.key))" :key="col.key">
+                        <div class="flex flex-col items-center py-3 px-2 gap-0.5"
+                            style="border-right: 1px solid var(--color-border);
+                                    border-bottom: 1px solid var(--color-border);">
+                            <p class="text-xs text-center"
+                            style="color: var(--color-txt-muted);"
+                            x-text="col.label"></p>
+                            <p class="text-sm font-bold tabular-nums text-center"
+                            :style="colStyle(selectedProduct, col.key)"
+                            x-text="colValue(selectedProduct, col.key)"></p>
                         </div>
-                        <div class="grid grid-cols-3 divide-x"
-                             style="border-bottom: 1px solid var(--color-border);
-                                    --tw-divide-color: var(--color-border);">
-                            <div class="flex flex-col items-center py-3 px-2 gap-0.5">
-                                <p class="text-xs" style="color: var(--color-txt-muted);">Total Price</p>
-                                <p class="text-base font-bold tabular-nums"
-                                   style="color: var(--color-txt-primary);"
-                                   x-text="formatPeso(selectedProduct.total_price)"></p>
-                            </div>
-                            <div class="flex flex-col items-center py-3 px-2 gap-0.5">
-                                <p class="text-xs" style="color: var(--color-txt-muted);">Low Stock At</p>
-                                <p class="text-base font-bold tabular-nums"
-                                   style="color: var(--color-txt-muted);"
-                                   x-text="selectedProduct.low_reorder_threshold + ' u'"></p>
-                            </div>
-                            <div class="flex flex-col items-center py-3 px-2 gap-0.5">
-                                <p class="text-xs" style="color: var(--color-txt-muted);">Inv. Value</p>
-                                <p class="text-sm font-bold tabular-nums"
-                                   style="color: var(--color-txt-primary);"
-                                   x-text="formatPeso(selectedProduct.total_price * selectedProduct.stock)"></p>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-
-                {# ── Stocking stats grid: Units / Total Price / Low Stock ── #}
-                <template x-if="!canManage">
-                    <div class="grid grid-cols-3 divide-x"
-                         style="border-bottom: 1px solid var(--color-border);
-                                --tw-divide-color: var(--color-border);">
-                        <div class="flex flex-col items-center py-3 px-2 gap-0.5">
-                            <p class="text-xs" style="color: var(--color-txt-muted);">Units</p>
-                            <p class="text-base font-bold tabular-nums"
-                               :style="selectedProduct.stock === 0
-                                   ? 'color:var(--color-error)'
-                                   : selectedProduct.stock <= selectedProduct.low_reorder_threshold
-                                       ? 'color:var(--color-warning)'
-                                       : 'color:var(--color-txt-primary)'"
-                               x-text="selectedProduct.stock"></p>
-                        </div>
-                        <div class="flex flex-col items-center py-3 px-2 gap-0.5">
-                            <p class="text-xs" style="color: var(--color-txt-muted);">Total Price</p>
-                            <p class="text-base font-bold tabular-nums"
-                               style="color: var(--color-txt-primary);"
-                               x-text="formatPeso(selectedProduct.total_price)"></p>
-                        </div>
-                        <div class="flex flex-col items-center py-3 px-2 gap-0.5">
-                            <p class="text-xs" style="color: var(--color-txt-muted);">Low Stock At</p>
-                            <p class="text-base font-bold tabular-nums"
-                               style="color: var(--color-txt-muted);"
-                               x-text="selectedProduct.low_reorder_threshold + ' u'"></p>
-                        </div>
-                    </div>
-                </template>
+                    </template>
+                </div>
 
                 <div class="px-5 py-3 flex flex-wrap gap-x-5 gap-y-1 text-xs"
                      style="border-bottom: 1px solid var(--color-border);">
