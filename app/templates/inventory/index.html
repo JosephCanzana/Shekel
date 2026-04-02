@@ -717,12 +717,12 @@ class="space-y-5">
                                 <template x-if="p.status !== 'archived'">
                                     <div class="flex items-center gap-1">
                                         <a :href="`/inventory/${p.product_id}/edit`"
-                                        title="Edit"
+                                        title="Submit Adjustment Request"   {# ← update title #}
                                         class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
                                         style="color:var(--color-txt-muted);"
                                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-accent)'"
                                         onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
-                                            <span class="material-symbols-outlined text-[18px]">edit</span>
+                                            <span class="material-symbols-outlined text-[18px]">tune</span>  {# ← tune icon instead of edit #}
                                         </a>
                                         <template x-if="canManage">
                                             <button @click='$dispatch("confirm", {

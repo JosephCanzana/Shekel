@@ -79,6 +79,8 @@ def review_request(request_id):
 
         action = decision.get("action")
 
+        product = detail.product
+        
         if action == "approve":
             # default to full requested qty; admin may lower (partial approval)
             raw_qty = decision.get("quantity_approved")
@@ -90,29 +92,35 @@ def review_request(request_id):
                 return jsonify({"error": f"Invalid quantity for '{detail.product.product_name}'."}), 400
 
             detail.approve(qty)
+            if detail.request.request_type == "adjustment":
+                # set absolute value, not increment
+                if product and product.status != "archived":
+                    if product.inventory:
+                        product.inventory.quantity_available = qty  # ← set, not +=
+                        product.inventory.last_updated        = datetime.utcnow()
+            else:
 
-            # apply to inventory
-            product = detail.product
-            if product and product.status != "archived":
-                if product.inventory:
-                    product.inventory.quantity_available += qty
-                    product.inventory.last_updated        = datetime.utcnow()
-                else:
-                    db.session.add(Inventory(
-                        product_id         = detail.product_id,
-                        quantity_available = qty,
-                        quantity_defective = 0,
-                        last_updated       = datetime.utcnow()
+                # apply to inventory
+                if product and product.status != "archived":
+                    if product.inventory:
+                        product.inventory.quantity_available += qty
+                        product.inventory.last_updated        = datetime.utcnow()
+                    else:
+                        db.session.add(Inventory(
+                            product_id         = detail.product_id,
+                            quantity_available = qty,
+                            quantity_defective = 0,
+                            last_updated       = datetime.utcnow()
+                        ))
+
+                    # permanent stock-in record
+                    db.session.add(StockIn(
+                        product_id        = detail.product_id,
+                        user_id           = current_user.user_id,
+                        quantity_received = qty,
+                        stockin_datetime  = datetime.utcnow(),
+                        notes             = detail.note or None
                     ))
-
-                # permanent stock-in record
-                db.session.add(StockIn(
-                    product_id        = detail.product_id,
-                    user_id           = current_user.user_id,
-                    quantity_received = qty,
-                    stockin_datetime  = datetime.utcnow(),
-                    notes             = detail.note or None
-                ))
 
         elif action == "reject":
             reason = (decision.get("rejection_reason") or "").strip() or None

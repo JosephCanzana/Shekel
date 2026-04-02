@@ -163,24 +163,58 @@ def edit(product_id):
             new_stock        = request.form.get("quantity_available", "").strip()
             adjustment_notes = request.form.get("adjustment_notes",   "").strip()
 
-            # ── stocking: stock adjustment only ──────────────────────────────────
+            # ── stocking: stock adjustment → pending request ──────────────────────────
             if not can_manage:
-                if product.inventory and new_stock != "":
-                    try:
-                        new_stock_val = int(new_stock)
-                        if new_stock_val < 0 or new_stock_val > 2_147_483_647:
-                            raise ValueError
-                        product.inventory.quantity_available = new_stock_val
-                        product.inventory.last_updated       = datetime.utcnow()
-                        db.session.commit()
-                        flash(f'Stock for "{product.product_name}" has been updated.', "success")
-                    except ValueError:
-                        flash("Stock must be a non-negative whole number.", "danger")
-                    except DataError:
-                        db.session.rollback()
-                        flash("Stock value is out of range.", "danger")
-                else:
+                new_stock    = request.form.get("quantity_available", "").strip()
+                item_notes   = request.form.get("adjustment_notes",  "").strip()
+
+                if new_stock == "":
                     flash("No stock changes were made.", "info")
+                    return redirect(url_for("inventory.index"))
+
+                try:
+                    new_stock_val = int(new_stock)
+                    if new_stock_val < 0 or new_stock_val > 2_147_483_647:
+                        raise ValueError
+                except ValueError:
+                    flash("Stock must be a non-negative whole number.", "danger")
+                    return redirect(url_for("inventory.edit", product_id=product_id))
+
+                current_stock = product.inventory.quantity_available if product.inventory else 0
+
+                if new_stock_val == current_stock:
+                    flash("No change detected — stock is already at that value.", "info")
+                    return redirect(url_for("inventory.index"))
+
+                # create a pending adjustment request instead of direct update
+                from app.models.stock_adjustment_request import StockAdjustmentRequest
+                from app.models.stock_adjustment_detail  import StockAdjustmentDetail
+
+                req = StockAdjustmentRequest(
+                    requested_by = current_user.user_id,
+                    request_type = "adjustment",
+                    status       = "pending",
+                    submitted_at = datetime.utcnow()
+                )
+                db.session.add(req)
+                db.session.flush()
+
+                db.session.add(StockAdjustmentDetail(
+                    request_id         = req.request_id,
+                    product_id         = product_id,
+                    quantity_requested = new_stock_val,  # ← the target count, not a delta
+                    quantity_approved  = None,
+                    status             = "pending",
+                    note               = item_notes or None,
+                ))
+
+                try:
+                    db.session.commit()
+                    flash(f'Adjustment request submitted for "{product.product_name.capitalize()}". Awaiting admin approval.', "success")
+                except Exception:
+                    db.session.rollback()
+                    flash("Failed to submit request. Please try again.", "danger")
+
                 return redirect(url_for("inventory.index"))
 
             # ── admin / co-admin: full edit ───────────────────────────────────────

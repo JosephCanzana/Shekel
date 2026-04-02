@@ -272,3 +272,84 @@ def complete():
 def refresh_token():
     session["stockin_token"] = generate_charge_token()
     return jsonify({"stockin_token": session["stockin_token"]})
+
+
+# ── Stocking: view own requests ───────────────────────────────────────────────
+@stocking_bp.route("/requests")
+@login_required
+@role_required("stocking")
+def my_requests():
+    pending = StockAdjustmentRequest.query.filter_by(
+        requested_by=current_user.user_id,
+        status="pending"
+    ).order_by(StockAdjustmentRequest.submitted_at.desc()).all()
+
+    history = StockAdjustmentRequest.query.filter(
+        StockAdjustmentRequest.requested_by == current_user.user_id,
+        StockAdjustmentRequest.status != "pending"
+    ).order_by(StockAdjustmentRequest.reviewed_at.desc()).limit(30).all()
+
+    return render_template("stocking/requests.html",
+                           pending_data=[r.to_dict() for r in pending],
+                           history_data=[r.to_dict() for r in history])
+
+
+# ── Stocking: edit a pending request item ─────────────────────────────────────
+@stocking_bp.route("/requests/<int:request_id>/edit", methods=["POST"])
+@login_required
+@role_required("stocking")
+def edit_request(request_id):
+    req = StockAdjustmentRequest.query.get_or_404(request_id)
+
+    # only own requests, only pending
+    if req.requested_by != current_user.user_id:
+        return jsonify({"error": "Not authorized."}), 403
+    if req.status != "pending":
+        return jsonify({"error": "Only pending requests can be edited."}), 409
+
+    data  = request.json or {}
+    items = data.get("items", [])  # [{detail_id, qty, notes}]
+
+    for item in items:
+        detail = StockAdjustmentDetail.query.get(item.get("detail_id"))
+        if not detail or detail.request_id != request_id:
+            continue
+        try:
+            qty = int(item.get("qty", 0))
+            if qty <= 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            return jsonify({"error": f"Invalid quantity for item {item.get('detail_id')}."}), 400
+
+        detail.quantity_requested = qty
+        detail.note = (item.get("notes") or "").strip() or detail.note
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to save changes."}), 500
+
+    return jsonify({"ok": True})
+
+
+# ── Stocking: cancel a pending request ───────────────────────────────────────
+@stocking_bp.route("/requests/<int:request_id>/cancel", methods=["POST"])
+@login_required
+@role_required("stocking")
+def cancel_request(request_id):
+    req = StockAdjustmentRequest.query.get_or_404(request_id)
+
+    if req.requested_by != current_user.user_id:
+        return jsonify({"error": "Not authorized."}), 403
+    if req.status != "pending":
+        return jsonify({"error": "Only pending requests can be cancelled."}), 409
+
+    try:
+        db.session.delete(req)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to cancel request."}), 500
+
+    return jsonify({"ok": True})

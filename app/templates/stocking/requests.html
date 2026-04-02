@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+{% block title %}My Requests — Shekel{% endblock %}
+{% block nav_title %}My Requests{% endblock %}
+
+{% block body %}
+<script>
+const PENDING_DATA = {{ pending_data | tojson }};
+const HISTORY_DATA = {{ history_data | tojson }};
+
+function myRequestsData() {
+    return {
+        tab: 'pending',
+
+        batches: PENDING_DATA.map(b => ({
+            ...b,
+            expanded:   false,
+            editing:    false,
+            cancelling: false,
+            saving:     false,
+            // editable copy of each item
+            edits: b.details.map(d => ({
+                detail_id: d.detail_id,
+                product_id: d.product_id,
+                product_name: d.product_name,
+                qty: d.quantity_requested,
+                notes: d.note || '',
+                original_qty: d.quantity_requested,
+            }))
+        })),
+
+        history: HISTORY_DATA,
+
+        statusColor(s) {
+            return {
+                pending:            'var(--color-warning)',
+                approved:           'var(--color-success)',
+                partially_approved: 'var(--color-accent)',
+                rejected:           'var(--color-error)',
+            }[s] || 'var(--color-txt-muted)'
+        },
+
+        statusLabel(s) {
+            return {
+                pending:            'Pending',
+                approved:           'Approved',
+                partially_approved: 'Partially Approved',
+                rejected:           'Rejected',
+            }[s] || s
+        },
+
+        typeLabel(t) { return t === 'stock_in' ? 'Stock-In' : 'Adjustment' },
+        typeColor(t) { return t === 'stock_in' ? 'var(--color-accent)' : 'var(--color-warning)' },
+
+        // ── Edit ─────────────────────────────────────────────────────────────
+        async saveEdits(batch) {
+            batch.saving = true
+            try {
+                const res = await fetch(`/stocking/requests/${batch.request_id}/edit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+                    },
+                    body: JSON.stringify({
+                        items: batch.edits.map(e => ({
+                            detail_id: e.detail_id,
+                            qty:       e.qty,
+                            notes:     e.notes
+                        }))
+                    })
+                })
+                const data = await res.json()
+                if (!res.ok) {
+                    alert(data.error || 'Failed to save.')
+                    return
+                }
+                // sync original_qty to new saved qty
+                batch.edits.forEach(e => e.original_qty = e.qty)
+                batch.editing = false
+            } catch(e) {
+                alert('Network error. Please try again.')
+            } finally {
+                batch.saving = false
+            }
+        },
+
+        cancelEdits(batch) {
+            // revert to original qty
+            batch.edits.forEach(e => {
+                e.qty   = e.original_qty
+                e.notes = batch.details.find(d => d.detail_id === e.detail_id)?.note || ''
+            })
+            batch.editing = false
+        },
+
+        // ── Cancel request ────────────────────────────────────────────────────
+        async cancelRequest(batch) {
+            if (!confirm('Cancel this request? This cannot be undone.')) return
+            batch.cancelling = true
+            try {
+                const res = await fetch(`/stocking/requests/${batch.request_id}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+                    }
+                })
+                const data = await res.json()
+                if (!res.ok) {
+                    alert(data.error || 'Failed to cancel.')
+                    batch.cancelling = false
+                    return
+                }
+                this.batches = this.batches.filter(b => b.request_id !== batch.request_id)
+            } catch(e) {
+                alert('Network error. Please try again.')
+                batch.cancelling = false
+            }
+        }
+    }
+}
+</script>
+
+<div x-data="myRequestsData()" class="space-y-5">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {# ── Header ── #}
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight"
+                style="color:var(--color-txt-primary);">My Requests</h1>
+            <p class="text-sm mt-0.5" style="color:var(--color-txt-muted);">
+                Your submitted stock-in and adjustment requests.
+            </p>
+        </div>
+        <a href="{{ url_for('stocking.stock_in') }}"
+           class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition"
+           style="background-color:var(--color-primary); color:var(--color-bg);"
+           onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+           onmouseout="this.style.backgroundColor='var(--color-primary)'">
+            <span class="material-symbols-outlined text-[17px]">add_box</span>
+            New Stock-In
+        </a>
+    </div>
+
+    {# ── Tabs ── #}
+    <div class="flex gap-1 p-1 rounded-xl w-fit"
+         style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
+        <button @click="tab='pending'"
+                class="px-4 py-1.5 rounded-lg text-sm font-semibold transition"
+                :style="tab==='pending'
+                    ? 'background-color:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
+                    : 'color:var(--color-txt-muted)'">
+            Pending
+            <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                  :style="tab==='pending'
+                      ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
+                      : 'background:var(--color-border);color:var(--color-txt-muted)'"
+                  x-text="batches.length"></span>
+        </button>
+        <button @click="tab='history'"
+                class="px-4 py-1.5 rounded-lg text-sm font-semibold transition"
+                :style="tab==='history'
+                    ? 'background-color:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
+                    : 'color:var(--color-txt-muted)'">
+            History
+        </button>
+    </div>
+
+    {# ══════════════════════════════════════════
+       PENDING TAB
+    ══════════════════════════════════════════ #}
+    <div x-show="tab === 'pending'" x-transition>
+
+        <template x-if="batches.length === 0">
+            <div class="rounded-2xl py-20 flex flex-col items-center justify-center gap-3"
+                 style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                <span class="material-symbols-outlined text-[48px]"
+                      style="color:var(--color-border-strong);">pending_actions</span>
+                <p class="text-sm font-medium" style="color:var(--color-txt-muted);">
+                    No pending requests.
+                </p>
+                <a href="{{ url_for('stocking.stock_in') }}"
+                   class="text-sm font-semibold transition"
+                   style="color:var(--color-primary);">
+                    Submit a stock-in →
+                </a>
+            </div>
+        </template>
+
+        <div class="space-y-4">
+            <template x-for="batch in batches" :key="batch.request_id">
+                <div class="rounded-2xl overflow-hidden"
+                     style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
+                    {# ── Card header ── #}
+                    <div class="flex items-center gap-4 px-5 py-4">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                             style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);">
+                            <span class="material-symbols-outlined text-[20px]"
+                                  style="color:var(--color-warning);">pending_actions</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="text-sm font-semibold"
+                                   style="color:var(--color-txt-primary);"
+                                   x-text="'Request #' + batch.request_id"></p>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                                      :style="`background:color-mix(in srgb,${typeColor(batch.request_type)} 12%,transparent);color:${typeColor(batch.request_type)}`"
+                                      x-text="typeLabel(batch.request_type)"></span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                                      style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);
+                                             color:var(--color-warning);">
+                                    Awaiting Approval
+                                </span>
+                            </div>
+                            <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                               x-text="batch.submitted_at + ' · ' + batch.details.length + ' item(s)'"></p>
+                        </div>
+
+                        {# expand toggle #}
+                        <button @click="batch.expanded = !batch.expanded"
+                                class="w-8 h-8 rounded-lg flex items-center justify-center transition shrink-0"
+                                style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                onmouseout="this.style.backgroundColor='transparent'">
+                            <span class="material-symbols-outlined text-[18px] transition-transform"
+                                  :style="batch.expanded ? 'transform:rotate(180deg)' : ''"
+                                  >expand_more</span>
+                        </button>
+                    </div>
+
+                    {# ── Expanded panel ── #}
+                    <div x-show="batch.expanded"
+                         x-transition:enter="transition-all duration-200"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         style="border-top:1px solid var(--color-border);">
+
+                        {# edit/cancel toolbar #}
+                        <div class="flex items-center justify-between px-5 py-3"
+                             style="background-color:var(--color-surface-alt);
+                                    border-bottom:1px solid var(--color-border);">
+                            <p class="text-xs font-semibold uppercase tracking-wider"
+                               style="color:var(--color-txt-muted);">
+                                <span x-text="batch.editing ? 'Editing Items' : 'Items'"></span>
+                            </p>
+                            <div class="flex items-center gap-2">
+                                <template x-if="!batch.editing">
+                                    <div class="flex items-center gap-2">
+                                        <button @click="batch.editing = true"
+                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                                                style="background:color-mix(in srgb,var(--color-accent) 10%,transparent);
+                                                       color:var(--color-accent);
+                                                       border:1px solid color-mix(in srgb,var(--color-accent) 25%,transparent);"
+                                                onmouseover="this.style.background='color-mix(in srgb,var(--color-accent) 20%,transparent)'"
+                                                onmouseout="this.style.background='color-mix(in srgb,var(--color-accent) 10%,transparent)'">
+                                            <span class="material-symbols-outlined text-[14px]">edit</span>
+                                            Edit
+                                        </button>
+                                        <button @click="cancelRequest(batch)"
+                                                :disabled="batch.cancelling"
+                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                                                style="background:color-mix(in srgb,var(--color-error) 8%,transparent);
+                                                       color:var(--color-error);
+                                                       border:1px solid color-mix(in srgb,var(--color-error) 20%,transparent);"
+                                                onmouseover="this.style.background='color-mix(in srgb,var(--color-error) 16%,transparent)'"
+                                                onmouseout="this.style.background='color-mix(in srgb,var(--color-error) 8%,transparent)'">
+                                            <span class="material-symbols-outlined text-[14px]">cancel</span>
+                                            <span x-text="batch.cancelling ? 'Cancelling...' : 'Cancel Request'"></span>
+                                        </button>
+                                    </div>
+                                </template>
+
+                                <template x-if="batch.editing">
+                                    <div class="flex items-center gap-2">
+                                        <button @click="cancelEdits(batch)"
+                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                                                style="border:1px solid var(--color-border);
+                                                       color:var(--color-txt-secondary);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface)'"
+                                                onmouseout="this.style.backgroundColor='transparent'">
+                                            Discard
+                                        </button>
+                                        <button @click="saveEdits(batch)"
+                                                :disabled="batch.saving"
+                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                                                style="background-color:var(--color-primary); color:var(--color-bg);"
+                                                onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-primary-hover)'"
+                                                onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                                            <span class="material-symbols-outlined text-[14px]"
+                                                  :class="batch.saving ? 'animate-spin' : ''"
+                                                  x-text="batch.saving ? 'progress_activity' : 'save'"></span>
+                                            <span x-text="batch.saving ? 'Saving...' : 'Save Changes'"></span>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        {# item rows #}
+                        <template x-for="(edit, idx) in batch.edits" :key="edit.detail_id">
+                            <div class="px-5 py-4"
+                                 style="border-bottom:1px solid var(--color-border);">
+
+                                <div class="flex items-start gap-4">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold"
+                                           style="color:var(--color-txt-primary);"
+                                           x-text="edit.product_name"></p>
+                                        <p class="text-xs font-mono mt-0.5"
+                                           style="color:var(--color-txt-muted);"
+                                           x-text="edit.product_id"></p>
+                                    </div>
+
+                                    {# view mode #}
+                                    <template x-if="!batch.editing">
+                                        <div class="text-right shrink-0">
+                                            <p class="text-lg font-bold tabular-nums"
+                                               style="color:var(--color-primary);"
+                                               x-text="'+' + edit.qty"></p>
+                                            <p class="text-xs" style="color:var(--color-txt-muted);">requested</p>
+                                            <template x-if="edit.notes">
+                                                <p class="text-[11px] italic mt-1"
+                                                   style="color:var(--color-txt-muted);"
+                                                   x-text="edit.notes"></p>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    {# edit mode #}
+                                    <template x-if="batch.editing">
+                                        <div class="flex flex-col items-end gap-2 shrink-0">
+                                            <div class="flex items-center gap-1">
+                                                <button @click="if(edit.qty > 1) edit.qty--"
+                                                        :disabled="edit.qty <= 1"
+                                                        class="w-7 h-7 rounded-lg flex items-center justify-center transition disabled:opacity-30"
+                                                        style="border:1px solid var(--color-border);
+                                                               background:var(--color-surface-alt);
+                                                               color:var(--color-txt-muted);">
+                                                    <span class="material-symbols-outlined text-[13px]">remove</span>
+                                                </button>
+                                                <input type="number"
+                                                       x-model="edit.qty"
+                                                       min="1"
+                                                       @focus="$event.target.select()"
+                                                       class="w-14 py-1 rounded-lg text-sm text-center font-bold focus:outline-none"
+                                                       style="border:1px solid var(--color-border);
+                                                              background:var(--color-surface-alt);
+                                                              color:var(--color-txt-primary);"
+                                                       onfocus="this.style.borderColor='var(--color-accent)'"
+                                                       onblur="this.style.borderColor='var(--color-border)'">
+                                                <button @click="edit.qty++"
+                                                        class="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                                                        style="border:1px solid var(--color-border);
+                                                               background:var(--color-surface-alt);
+                                                               color:var(--color-txt-muted);">
+                                                    <span class="material-symbols-outlined text-[13px]">add</span>
+                                                </button>
+                                            </div>
+                                            <input type="text"
+                                                   x-model="edit.notes"
+                                                   placeholder="Notes (optional)..."
+                                                   class="w-48 px-2.5 py-1.5 rounded-lg text-xs focus:outline-none"
+                                                   style="border:1px solid var(--color-border);
+                                                          background:var(--color-surface-alt);
+                                                          color:var(--color-txt-primary);"
+                                                   onfocus="this.style.borderColor='var(--color-accent)'"
+                                                   onblur="this.style.borderColor='var(--color-border)'">
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                    </div>{# /expanded #}
+                </div>
+            </template>
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════
+       HISTORY TAB
+    ══════════════════════════════════════════ #}
+    <div x-show="tab === 'history'" x-transition>
+
+        <template x-if="history.length === 0">
+            <div class="rounded-2xl py-20 flex flex-col items-center justify-center gap-3"
+                 style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                <span class="material-symbols-outlined text-[48px]"
+                      style="color:var(--color-border-strong);">history</span>
+                <p class="text-sm" style="color:var(--color-txt-muted);">No reviewed requests yet.</p>
+            </div>
+        </template>
+
+        <div class="rounded-2xl overflow-hidden"
+             x-show="history.length > 0"
+             style="border:1px solid var(--color-border);">
+
+            <div class="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr] px-5 py-3
+                        text-xs font-semibold uppercase tracking-wider"
+                 style="background-color:var(--color-surface-alt);
+                        border-bottom:1px solid var(--color-border);
+                        color:var(--color-txt-muted);">
+                <span>Request</span>
+                <span>Type</span>
+                <span class="text-center">Items</span>
+                <span class="text-right">Status</span>
+            </div>
+
+            <template x-for="b in history" :key="b.request_id">
+                <div class="px-5 py-4 flex flex-col sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr] sm:items-center gap-2"
+                     style="border-bottom:1px solid var(--color-border);
+                            background-color:var(--color-surface);"
+                     onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                     onmouseout="this.style.backgroundColor='var(--color-surface)'">
+
+                    <div>
+                        <p class="text-sm font-semibold"
+                           style="color:var(--color-txt-primary);"
+                           x-text="'Request #' + b.request_id"></p>
+                        <p class="text-xs mt-0.5"
+                           style="color:var(--color-txt-muted);"
+                           x-text="b.submitted_at"></p>
+                    </div>
+
+                    <span class="text-xs px-2 py-0.5 rounded-full font-semibold w-fit"
+                          :style="`background:color-mix(in srgb,${typeColor(b.request_type)} 12%,transparent);color:${typeColor(b.request_type)}`"
+                          x-text="typeLabel(b.request_type)"></span>
+
+                    <div class="text-center">
+                        <p class="text-sm font-bold"
+                           style="color:var(--color-txt-primary);"
+                           x-text="b.approved_count + '/' + b.details.length"></p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);">approved</p>
+                    </div>
+
+                    <div class="sm:text-right">
+                        <span class="text-xs px-2 py-1 rounded-lg font-semibold capitalize"
+                              :style="`background:color-mix(in srgb,${statusColor(b.status)} 10%,transparent);color:${statusColor(b.status)}`"
+                              x-text="statusLabel(b.status)"></span>
+                    </div>
+
+                </div>
+            </template>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -93,6 +93,16 @@
                         </div>
                     </div>
 
+                    {# ── pending approval notice ── #}
+                    <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
+                        style="background:color-mix(in srgb,var(--color-accent) 8%,transparent);
+                                border:1px solid color-mix(in srgb,var(--color-accent) 20%,transparent);
+                                color:var(--color-txt-muted);">
+                        <span class="material-symbols-outlined text-[15px] mt-0.5 shrink-0"
+                            style="color:var(--color-accent);">pending_actions</span>
+                        <span>Your adjustment will be submitted for admin approval before stock is updated.</span>
+                    </div>
+
                     {# Warning note #}
                     <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
                          style="background: color-mix(in srgb, var(--color-warning) 10%, transparent);
@@ -105,7 +115,11 @@
                     {# New stock input #}
                     <div class="space-y-1.5">
                         <label class="text-xs font-semibold uppercase tracking-wider"
-                               style="color: var(--color-txt-muted);">New Stock Count</label>
+                            style="color: var(--color-txt-muted);">
+                            Set Stock To
+                            <span class="normal-case font-normal ml-1"
+                                style="color: var(--color-txt-muted);">(target count)</span>
+                        </label>
                         <input type="number"
                                name="quantity_available"
                                value="{{ product.inventory.quantity_available }}"
@@ -156,10 +170,10 @@
                 </a>
                 <button type="submit"
                         class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition active:scale-[.98]"
-                        style="background-color: var(--color-primary); color: var(--color-bg);"
+                        style="background-color:var(--color-accent); color:var(--color-bg);"
                         onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
-                        onmouseout="this.style.backgroundColor='var(--color-primary)'">
-                    Save Stock
+                        onmouseout="this.style.backgroundColor='var(--color-accent)'">
+                    Submit Adjustment Request
                 </button>
             </div>
 
