@@ -12,3 +12,5 @@ from app.models.defect_detail import DefectDetail
 from app.models.audit_log import AuditLog
 from app.models.app_settings import AppSettings
 from app.models.product_bundle import ProductBundle
+from app.models.stock_adjustment_request import StockAdjustmentRequest
+from app.models.stock_adjustment_detail  import StockAdjustmentDetail

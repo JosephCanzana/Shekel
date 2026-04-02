@@ -117,6 +117,102 @@
 
     </div>
 
+    {# ══════════════════════════════════════════════════════════════
+    INSERT THIS BLOCK between the "Stat Cards" div and the
+    "Bottom Section" div inside admin/dashboard.html.
+    It only renders when there are pending requests.
+    ══════════════════════════════════════════════════════════════ #}
+
+    {% if pending_requests_preview %}
+    <div class="rounded-2xl overflow-hidden"
+        style="background-color:var(--color-surface);
+                border:1px solid color-mix(in srgb,var(--color-warning) 35%,transparent);">
+
+        {# header #}
+        <div class="px-5 py-4 flex items-center justify-between"
+            style="background:color-mix(in srgb,var(--color-warning) 6%,transparent);
+                    border-bottom:1px solid color-mix(in srgb,var(--color-warning) 20%,transparent);">
+            <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);">
+                    <span class="material-symbols-outlined text-[15px]"
+                        style="color:var(--color-warning);">pending_actions</span>
+                </div>
+                <div>
+                    <h2 class="text-sm font-semibold" style="color:var(--color-txt-primary);">
+                        Pending Stock Requests
+                    </h2>
+                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
+                        Awaiting your approval before inventory updates
+                    </p>
+                </div>
+            </div>
+            <a href="{{ url_for('admin.requests_page') }}"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+            style="background-color:var(--color-warning); color:#fff;"
+            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                Review All
+                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+            </a>
+        </div>
+
+        {# request rows (latest 3) #}
+        {% for req in pending_requests_preview %}
+        <div class="px-5 py-3.5 flex items-center gap-4"
+            style="border-bottom:1px solid var(--color-border);">
+
+            {# type icon #}
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                style="background:color-mix(in srgb,var(--color-accent) 10%,transparent);">
+                <span class="material-symbols-outlined text-[15px]"
+                    style="color:var(--color-accent);">
+                    {{ 'move_to_inbox' if req.request_type == 'stock_in' else 'tune' }}
+                </span>
+            </div>
+
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <p class="text-sm font-medium" style="color:var(--color-txt-primary);">
+                        {{ req.requested_by }}
+                    </p>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                        style="background:color-mix(in srgb,var(--color-accent) 12%,transparent);
+                                color:var(--color-accent);">
+                        {{ 'Stock-In' if req.request_type == 'stock_in' else 'Adjustment' }}
+                    </span>
+                </div>
+                <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
+                    {{ req.details | length }} item{{ 's' if req.details | length != 1 else '' }}
+                    &middot; {{ req.submitted_at }}
+                </p>
+            </div>
+
+            <a href="{{ url_for('admin.requests_page') }}"
+            class="flex items-center gap-1 text-xs font-semibold transition shrink-0"
+            style="color:var(--color-warning);"
+            onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'">
+                Review
+                <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+            </a>
+        </div>
+        {% endfor %}
+
+        {# overflow hint if there are more than 3 #}
+        {% if pending_requests_count > 3 %}
+        <div class="px-5 py-3 text-center">
+            <a href="{{ url_for('admin.requests_page') }}"
+            class="text-xs font-semibold transition"
+            style="color:var(--color-txt-muted);"
+            onmouseover="this.style.color='var(--color-accent)'"
+            onmouseout="this.style.color='var(--color-txt-muted)'">
+                + {{ pending_requests_count - 3 }} more pending request{{ 's' if (pending_requests_count - 3) != 1 else '' }}
+            </a>
+        </div>
+        {% endif %}
+
+    </div>
+    {% endif %}
+
     {# ── Bottom Section ── #}
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
 

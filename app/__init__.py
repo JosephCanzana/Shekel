@@ -1,4 +1,5 @@
 from flask import Flask, render_template, session
+from flask_login import current_user, LoginManager
 from dotenv import load_dotenv
 from config import DevelopmentConfig
 from app.extensions import db, login_manager, migrate, csrf, mail
@@ -79,6 +80,16 @@ def create_app(test_config=None):
 
     from app.routes.settings import settings_bp
     app.register_blueprint(settings_bp)
+
+    # ─── Context Processor ────────────────────────────────────────────────────────
+    # Injects pending_requests_count into every template for the navbar badge.
+    @app.context_processor
+    def inject_pending_count():
+        if current_user.is_authenticated and current_user.role in ("admin", "superadmin"):
+            from app.models.stock_adjustment_request import StockAdjustmentRequest
+            count = StockAdjustmentRequest.query.filter_by(status="pending").count()
+            return {"pending_requests_count": count}
+        return {"pending_requests_count": 0}   
 
     @app.route("/test")
     def test():

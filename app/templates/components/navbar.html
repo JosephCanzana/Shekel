@@ -38,22 +38,76 @@
                     onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)'"
                     onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
                 <span class="material-symbols-outlined text-[20px]">notifications</span>
+
+                {# ── Pending requests badge (admin / superadmin only) ── #}
+                {% if current_user.role in ('admin', 'superadmin') and pending_requests_count > 0 %}
+                <span class="absolute -top-0.5 -right-0.5
+                             min-w-[16px] h-4 px-0.5
+                             rounded-full text-[9px] font-bold
+                             flex items-center justify-center"
+                      style="background-color:var(--color-error);
+                             color:#fff;
+                             box-shadow:0 0 0 1.5px var(--color-surface);">
+                    {{ pending_requests_count if pending_requests_count <= 99 else '99+' }}
+                </span>
+                {% elif current_user.role not in ('admin', 'superadmin') %}
+                {# generic unread dot for other roles #}
                 <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
-                      style="background-color:var(--color-error); box-shadow:0 0 0 1.5px var(--color-surface);"></span>
+                      style="background-color:var(--color-error);
+                             box-shadow:0 0 0 1.5px var(--color-surface);"></span>
+                {% endif %}
             </button>
+
+            {# ── Dropdown ── #}
             <div x-show="notifOpen"
                  x-transition
                  @click.outside="notifOpen = false"
-                 class="absolute right-0 mt-2 w-72 rounded-xl overflow-hidden shadow-lg z-50"
+                 class="absolute right-0 mt-2 w-80 rounded-xl overflow-hidden shadow-lg z-50"
                  style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
                 <div class="px-4 py-3 flex items-center justify-between"
                      style="border-bottom:1px solid var(--color-border);">
                     <p class="text-xs font-semibold" style="color:var(--color-txt-primary);">Notifications</p>
-                    <span class="text-[10px]" style="color:var(--color-txt-muted);">Mark all read</span>
+                    {% if current_user.role in ('admin', 'superadmin') and pending_requests_count > 0 %}
+                    <a href="{{ url_for('admin.requests_page') }}"
+                       class="text-[10px] font-semibold transition"
+                       style="color:var(--color-accent);"
+                       @click="notifOpen = false">
+                        View all
+                    </a>
+                    {% endif %}
                 </div>
+
+                {# Pending stock requests — admin / superadmin only #}
+                {% if current_user.role in ('admin', 'superadmin') and pending_requests_count > 0 %}
+                <a href="{{ url_for('admin.requests_page') }}"
+                   @click="notifOpen = false"
+                   class="flex items-start gap-3 px-4 py-3.5 transition"
+                   style="border-bottom:1px solid var(--color-border);"
+                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                   onmouseout="this.style.backgroundColor='transparent'">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                         style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);">
+                        <span class="material-symbols-outlined text-[16px]"
+                              style="color:var(--color-warning);">pending_actions</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">
+                            {{ pending_requests_count }} pending stock request{{ 's' if pending_requests_count != 1 else '' }}
+                        </p>
+                        <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
+                            Tap to review and approve
+                        </p>
+                    </div>
+                    <span class="material-symbols-outlined text-[16px] shrink-0 mt-1"
+                          style="color:var(--color-txt-muted);">chevron_right</span>
+                </a>
+                {% else %}
                 <div class="py-8 text-xs text-center" style="color:var(--color-txt-muted);">
                     No new notifications
                 </div>
+                {% endif %}
+
             </div>
         </div>
         {% endif %}
