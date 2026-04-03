@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block title %}Adjust Stock — Shekel{% endblock %}
+{% block nav_title %}Stock Adjustment{% endblock %}
+
+{% block body %}
+<div x-data="adjustData()" class="space-y-5">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {# ── Header ── #}
+    <div class="flex items-center gap-3">
+        <button onclick="history.back()"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition shrink-0"
+                style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+                onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)'"
+                onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        </button>
+        <div>
+            <h1 class="text-xl font-bold tracking-tight" style="color:var(--color-txt-primary);">
+                Stock Adjustment
+            </h1>
+            <p class="text-sm mt-0.5" style="color:var(--color-txt-muted);">
+                Set the new stock count for each item.
+                {% if not can_manage %}
+                    Your changes will be sent for admin approval.
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    {# ── Role notice for stocking ── #}
+    {% if not can_manage %}
+    <div class="flex items-start gap-3 px-4 py-3 rounded-xl text-sm"
+         style="background:color-mix(in srgb,var(--color-warning) 8%,transparent);
+                border:1px solid color-mix(in srgb,var(--color-warning) 25%,transparent);
+                color:var(--color-txt-muted);">
+        <span class="material-symbols-outlined text-[18px] shrink-0 mt-0.5"
+              style="color:var(--color-warning);">info</span>
+        <span>
+            As a stocking account, your adjustment will be submitted for admin review.
+            Stock will only change once approved. A <strong>note is required</strong> for each item.
+        </span>
+    </div>
+    {% endif %}
+
+    {# ── Items ── #}
+    <div class="rounded-2xl overflow-hidden"
+         style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
+        {# Table header — desktop #}
+        <div class="hidden sm:grid px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+             style="grid-template-columns: 2fr 1fr 1.5fr 2fr;
+                    background-color:var(--color-surface-alt);
+                    border-bottom:1px solid var(--color-border);
+                    color:var(--color-txt-muted);">
+            <span>Product</span>
+            <span class="text-center">Current Stock</span>
+            <span class="text-center">New Quantity</span>
+            <span>Note {% if not can_manage %}<span style="color:var(--color-error);">*</span>{% else %}(optional){% endif %}</span>
+        </div>
+
+        {# Item rows #}
+        <template x-for="(item, idx) in items" :key="item.product_id">
+            <div class="px-4 sm:px-5 py-4"
+                 style="border-bottom:1px solid var(--color-border);">
+
+                {# Mobile label + desktop grid #}
+                <div class="flex flex-col sm:grid sm:items-center gap-3"
+                     style="grid-template-columns: 2fr 1fr 1.5fr 2fr;">
+
+                    {# Product info #}
+                    <div>
+                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);"
+                           x-text="item.product_name"></p>
+                        <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);"
+                           x-text="item.product_id"></p>
+                        <template x-if="item.is_low_stock">
+                            <span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                                  style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
+                                         color:var(--color-warning);">Low Stock</span>
+                        </template>
+                        <template x-if="item.stock === 0">
+                            <span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                                  style="background:color-mix(in srgb,var(--color-error) 12%,transparent);
+                                         color:var(--color-error);">No Stock</span>
+                        </template>
+                    </div>
+
+                    {# Current stock #}
+                    <div class="flex sm:flex-col sm:items-center gap-2">
+                        <span class="text-xs sm:hidden" style="color:var(--color-txt-muted);">Current:</span>
+                        <p class="text-sm font-bold tabular-nums text-center"
+                           style="color:var(--color-txt-secondary);"
+                           x-text="item.stock + ' units'"></p>
+                    </div>
+
+                    {# New qty input #}
+                    <div class="flex sm:flex-col sm:items-center gap-2">
+                        <span class="text-xs sm:hidden shrink-0" style="color:var(--color-txt-muted);">New qty:</span>
+                        <div class="flex items-center gap-1.5">
+                            <button @click="if(item.new_qty > 0) item.new_qty--"
+                                    :disabled="item.new_qty <= 0"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center transition shrink-0 disabled:opacity-30"
+                                    style="border:1px solid var(--color-border);
+                                           background:var(--color-surface-alt);
+                                           color:var(--color-txt-muted);"
+                                    onmouseover="if(!this.disabled) this.style.borderColor='var(--color-accent)'"
+                                    onmouseout="this.style.borderColor='var(--color-border)'">
+                                <span class="material-symbols-outlined text-[14px]">remove</span>
+                            </button>
+                            <input type="number"
+                                   x-model="item.new_qty"
+                                   min="0"
+                                   @focus="$event.target.select()"
+                                   class="w-16 py-1.5 rounded-lg text-sm text-center font-bold focus:outline-none"
+                                   style="border:1px solid var(--color-border);
+                                          background:var(--color-surface-alt);
+                                          color:var(--color-txt-primary);"
+                                   onfocus="this.style.borderColor='var(--color-accent)'"
+                                   onblur="this.style.borderColor='var(--color-border)'">
+                            <button @click="item.new_qty++"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center transition shrink-0"
+                                    style="border:1px solid var(--color-border);
+                                           background:var(--color-surface-alt);
+                                           color:var(--color-txt-muted);"
+                                    onmouseover="this.style.borderColor='var(--color-accent)'"
+                                    onmouseout="this.style.borderColor='var(--color-border)'">
+                                <span class="material-symbols-outlined text-[14px]">add</span>
+                            </button>
+                        </div>
+                        {# Delta indicator #}
+                        <template x-if="item.new_qty !== item.stock">
+                            <span class="text-xs font-semibold tabular-nums"
+                                  :style="item.new_qty > item.stock
+                                      ? 'color:var(--color-success)'
+                                      : 'color:var(--color-error)'"
+                                  x-text="(item.new_qty > item.stock ? '+' : '') + (item.new_qty - item.stock)">
+                            </span>
+                        </template>
+                    </div>
+
+                    {# Note input #}
+                    <div>
+                        <input type="text"
+                               x-model="item.note"
+                               :placeholder="requireNote ? 'Reason required…' : 'Reason (optional)…'"
+                               class="w-full px-3 py-1.5 rounded-lg text-xs focus:outline-none transition"
+                               :style="requireNote && !item.note.trim()
+                                   ? 'border:1px solid color-mix(in srgb,var(--color-error) 40%,transparent);background:var(--color-surface-alt);color:var(--color-txt-primary)'
+                                   : 'border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary)'"
+                               onfocus="this.style.borderColor='var(--color-accent)'"
+                               onblur="this.style.borderColor='var(--color-border)'">
+                        <template x-if="requireNote && !item.note.trim()">
+                            <p class="text-[10px] mt-1" style="color:var(--color-error);">Required</p>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    {# ── Error banner ── #}
+    <div x-show="globalError" x-transition
+         class="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
+         style="background:color-mix(in srgb,var(--color-error) 10%,transparent);
+                color:var(--color-error);">
+        <span class="material-symbols-outlined text-[16px]">error</span>
+        <span x-text="globalError"></span>
+    </div>
+
+    {# ── Submit footer ── #}
+    <div class="flex items-center justify-between gap-4 flex-wrap">
+        <p class="text-sm" style="color:var(--color-txt-muted);">
+            <span x-text="items.length"></span> product(s) selected
+        </p>
+        <div class="flex items-center gap-3">
+            <button onclick="history.back()"
+                    class="px-4 py-2.5 rounded-xl text-sm font-medium transition"
+                    style="border:1px solid var(--color-border);
+                           color:var(--color-txt-secondary);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                Cancel
+            </button>
+            <button @click="submit()"
+                    :disabled="submitting || !canSubmit"
+                    class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition
+                           disabled:opacity-40 disabled:cursor-not-allowed active:scale-[.98]"
+                    style="background-color:var(--color-primary); color:var(--color-bg);"
+                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-primary-hover)'"
+                    onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                <span x-show="!submitting" class="material-symbols-outlined text-[17px]">
+                    task_alt
+                </span>
+                <span x-show="submitting" class="material-symbols-outlined text-[17px] animate-spin">
+                    progress_activity
+                </span>
+                <span x-text="submitting
+                    ? 'Submitting…'
+                    : (isPrivileged ? 'Apply Adjustment' : 'Submit for Approval')">
+                </span>
+            </button>
+        </div>
+    </div>
+
+</div>
+
+{# ── Success modal ── #}
+<template x-if="showSuccess">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="background:rgba(0,0,0,0.55);">
+        <div class="rounded-2xl w-full max-w-sm overflow-hidden"
+             style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
+            <div class="px-6 py-5 flex items-center gap-3"
+                 style="border-bottom:1px solid var(--color-border);">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                     :style="isPrivileged
+                         ? 'background:color-mix(in srgb,var(--color-success) 12%,transparent)'
+                         : 'background:color-mix(in srgb,var(--color-warning) 12%,transparent)'">
+                    <span class="material-symbols-outlined text-[22px]"
+                          :style="isPrivileged ? 'color:var(--color-success)' : 'color:var(--color-warning)'"
+                          x-text="isPrivileged ? 'check_circle' : 'pending_actions'"></span>
+                </div>
+                <div>
+                    <p class="font-bold text-base" style="color:var(--color-txt-primary);"
+                       x-text="isPrivileged ? 'Adjustment Applied' : 'Request Submitted'"></p>
+                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                       x-text="isPrivileged
+                           ? 'Stock has been updated immediately.'
+                           : 'Awaiting admin approval before stock changes.'">
+                    </p>
+                </div>
+            </div>
+
+            <div class="px-6 py-4">
+                <button @click="window.location.href = successRedirect"
+                        class="w-full py-3 rounded-xl text-sm font-semibold transition"
+                        :style="isPrivileged
+                            ? 'background-color:var(--color-primary);color:var(--color-bg)'
+                            : 'background-color:var(--color-warning);color:#fff'">
+                    Back to Inventory
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+const ADJUST_PRODUCTS = {{ products_data | tojson }};
+const IS_PRIVILEGED   = {{ can_manage | tojson }};
+
+function adjustData() {
+    return {
+        isPrivileged:    IS_PRIVILEGED,
+        requireNote:     !IS_PRIVILEGED,
+        submitting:      false,
+        globalError:     '',
+        showSuccess:     false,
+        successRedirect: '{{ url_for("inventory.index") }}',
+
+        items: ADJUST_PRODUCTS.map(p => ({
+            product_id:   p.product_id,
+            product_name: p.product_name,
+            stock:        p.stock,
+            new_qty:      p.stock,           // default: no change
+            note:         '',
+            is_low_stock: p.stock > 0 && p.stock <= p.low_reorder_threshold,
+        })),
+
+        get canSubmit() {
+            if (this.requireNote) {
+                return this.items.every(i => i.note.trim() !== '')
+            }
+            return true
+        },
+
+        async submit() {
+            if (this.submitting || !this.canSubmit) return
+            this.submitting  = true
+            this.globalError = ''
+
+            const payload = this.items.map(i => ({
+                product_id: i.product_id,
+                new_qty:    parseInt(i.new_qty) || 0,
+                note:       i.note.trim(),
+            }))
+
+            try {
+                const res = await fetch('{{ url_for("inventory.adjust_submit") }}', {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken':  document.querySelector('[name=csrf_token]').value,
+                    },
+                    body: JSON.stringify({ items: payload }),
+                })
+                const data = await res.json()
+                if (!res.ok) {
+                    this.globalError = data.error || 'Failed to submit.'
+                    this.submitting  = false
+                    return
+                }
+                this.showSuccess = true
+            } catch(e) {
+                this.globalError = 'Network error. Please try again.'
+                this.submitting  = false
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

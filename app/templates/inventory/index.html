@@ -25,6 +25,11 @@
         selectedProduct: null,
         mobileDetailOpen: false,
         filterModalOpen:  false,
+        // ── select mode state ─────────────────────────────
+        selectMode:       false,
+        selectedIds:      [],
+        confirmArchiveOpen: false,
+        
 
         // ── column picker state ───────────────────────────
         columnPickerOpen: false,
@@ -254,7 +259,84 @@
             return Math.max(1, Math.ceil(this.filtered.length / this.perPage))
         },
 
-        resetPage() { this.page = 1 }
+        resetPage() { this.page = 1 },
+
+         // ── select mode ───────────────────────────────────
+        toggleSelectMode() {
+            this.selectMode = !this.selectMode
+            if (!this.selectMode) this.selectedIds = []
+        },
+        isSelected(id) { return this.selectedIds.includes(id) },
+        toggleItem(id) {
+            const idx = this.selectedIds.indexOf(id)
+            if (idx === -1) this.selectedIds.push(id)
+            else            this.selectedIds.splice(idx, 1)
+        },
+        togglePageAll() {
+            const ids = this.paginated.map(p => p.product_id)
+            const allOn = ids.every(id => this.selectedIds.includes(id))
+            if (allOn) this.selectedIds = this.selectedIds.filter(id => !ids.includes(id))
+            else ids.forEach(id => { if (!this.selectedIds.includes(id)) this.selectedIds.push(id) })
+        },
+        get pageAllSelected() {
+            const ids = this.paginated.map(p => p.product_id)
+            return ids.length > 0 && ids.every(id => this.selectedIds.includes(id))
+        },
+        goToAdjust() {
+            if (this.selectedIds.length === 0) return
+            window.location.href = '/inventory/adjust?ids=' + this.selectedIds.join(',')
+        },
+        async archiveSelected() {
+            if (this.selectedIds.length === 0) return
+            const res = await fetch('/inventory/bulk/status-update', {
+                method:  'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken':  document.querySelector('[name=csrf_token]').value,
+                },
+                body: JSON.stringify({ product_ids: this.selectedIds, status: 'archived' })
+            })
+            if (res.ok) {
+                this.selectedIds.forEach(id => {
+                    const row = this.rows.find(r => r.product_id === id)
+                    if (row) row.status = 'archived'
+                })
+                this.selectedIds      = []
+                this.selectMode       = false
+                this.confirmArchiveOpen = false
+            }
+        },
+        async unarchiveSelected() {
+            if (this.selectedIds.length === 0) return
+            const res = await fetch('/inventory/bulk/status-update', {
+                method:  'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken':  document.querySelector('[name=csrf_token]').value,
+                },
+                body: JSON.stringify({ product_ids: this.selectedIds, status: 'active' })
+            })
+            if (res.ok) {
+                this.selectedIds.forEach(id => {
+                    const row = this.rows.find(r => r.product_id === id)
+                    if (row) row.status = 'active'
+                })
+                this.selectedIds = []
+                this.selectMode  = false
+            }
+        },
+        get anySelectedArchived() {
+            return this.selectedIds.some(id => {
+                const row = this.rows.find(r => r.product_id === id)
+                return row && row.status === 'archived'
+            })
+        },
+        get anySelectedActive() {
+            return this.selectedIds.some(id => {
+                const row = this.rows.find(r => r.product_id === id)
+                return row && row.status === 'active'
+            })
+        }
     }
 }
 </script>
@@ -274,6 +356,19 @@ class="space-y-5">
         </div>
 
         <div class="flex items-center gap-2">
+
+            {# ── Select toggle ── #}
+            <button @click="toggleSelectMode()"
+                    class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
+                    :style="selectMode
+                        ? 'border:1px solid var(--color-accent);color:var(--color-accent);background-color:color-mix(in srgb,var(--color-accent) 8%,transparent)'
+                        : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface)'"
+                    onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                <span class="material-symbols-outlined text-[17px]"
+                      x-text="selectMode ? 'check_box' : 'check_box_outline_blank'"></span>
+                <span class="hidden sm:inline" x-text="selectMode ? 'Cancel Select' : 'Select'"></span>
+            </button>
+
             <a href="{{ url_for('stocking.stock_in') }}"
                title="Stock-In"
                class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
@@ -643,6 +738,18 @@ class="space-y-5">
                 <tr style="background-color:var(--color-surface-alt);
                         border-bottom:1px solid var(--color-border);">
 
+                    
+                    {# select-all checkbox — only visible in selectMode #}
+                    <th x-show="selectMode" class="px-3 py-3 w-10">
+                        <button @click="togglePageAll()"
+                                class="w-5 h-5 rounded flex items-center justify-center transition"
+                                :style="pageAllSelected
+                                    ? 'background:var(--color-accent);color:var(--color-bg)'
+                                    : 'border:1.5px solid var(--color-border-strong);color:transparent'">
+                            <span class="material-symbols-outlined text-[13px]">check</span>
+                        </button>
+                    </th>
+
                     {# always: row number #}
                     <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
                         style="color:var(--color-txt-muted);">#</th>
@@ -681,6 +788,18 @@ class="space-y-5">
                     <tr style="border-top:1px solid var(--color-border);"
                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                         onmouseout="this.style.backgroundColor='transparent'">
+
+                        {# row checkbox #}
+                        <td x-show="selectMode" class="px-3 py-3 w-10">
+                            <button @click="toggleItem(p.product_id)"
+                                    class="w-5 h-5 rounded flex items-center justify-center transition"
+                                    :style="isSelected(p.product_id)
+                                        ? 'background:var(--color-accent);color:var(--color-bg)'
+                                        : 'border:1.5px solid var(--color-border-strong);color:transparent'">
+                                <span class="material-symbols-outlined text-[13px]">check</span>
+                            </button>
+                        </td>
+ 
 
                         {# row number #}
                         <td class="px-4 py-3 text-xs"
@@ -801,12 +920,13 @@ class="space-y-5">
         </template>
 
         <template x-for="(p, index) in paginated" :key="p.product_id">
-            <button @click="openDetail(p)"
-                    class="w-full text-left rounded-xl px-4 py-3 transition-colors"
-                    style="border: 1px solid var(--color-border); background-color: var(--color-surface);"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='var(--color-surface)'">
-                <div class="flex items-center justify-between gap-3">
+                <button @click="selectMode ? toggleItem(p.product_id) : openDetail(p)"
+                        class="w-full text-left rounded-xl px-4 py-3 transition-colors"
+                        :style="selectMode && isSelected(p.product_id)
+                            ? 'border:1.5px solid var(--color-accent);background-color:color-mix(in srgb,var(--color-accent) 6%,transparent)'
+                            : 'border:1px solid var(--color-border);background-color:var(--color-surface)'"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="this.style.backgroundColor='var(--color-surface)'">
 
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 flex-wrap">
@@ -1072,6 +1192,113 @@ class="space-y-5">
             </div>
         </template>
     </div>
+        {# ── Floating action bar — appears when items are selected ── #}
+        <div x-show="selectMode && selectedIds.length > 0"
+            x-transition:enter="transition-all duration-200 ease-out"
+            x-transition:enter-start="opacity-0 translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition-all duration-150 ease-in"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 translate-y-4"
+            class="fixed bottom-16 md:bottom-6 left-1/2 z-40 -translate-x-1/2
+                    flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl"
+            style="background-color:var(--color-surface);
+                    border:1px solid var(--color-border);
+                    backdrop-filter:blur(12px);
+                    white-space:nowrap;">
+    
+            {# count badge #}
+            <span class="flex items-center gap-1.5 text-sm font-semibold pr-3"
+                style="color:var(--color-txt-primary);
+                        border-right:1px solid var(--color-border);">
+                <span class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold"
+                    style="background:color-mix(in srgb,var(--color-accent) 15%,transparent);
+                            color:var(--color-accent);"
+                    x-text="selectedIds.length"></span>
+                <span x-text="selectedIds.length === 1 ? 'item selected' : 'items selected'"></span>
+            </span>
+    
+            {# Adjust Selected — all roles #}
+            <button @click="goToAdjust()"
+                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
+                    style="background-color:var(--color-primary); color:var(--color-bg);"
+                    onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+                    onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                <span class="material-symbols-outlined text-[16px]">tune</span>
+                <span class="hidden sm:inline">Adjust Selected</span>
+                <span class="sm:hidden">Adjust</span>
+            </button>
+    
+            {# Archive Selected — admin / superadmin only #}
+            <template x-if="canManage && anySelectedActive">
+                <button @click="confirmArchiveOpen = true"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
+                        style="background-color:var(--color-error); color:#fff;"
+                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    <span class="material-symbols-outlined text-[16px]">archive</span>
+                    <span class="hidden sm:inline">Archive Selected</span>
+                    <span class="sm:hidden">Archive</span>
+                </button>
+            </template>
 
-</div>
+            {# Unarchive Selected — admin / superadmin only #}
+            <template x-if="canManage && anySelectedArchived">
+                <button @click="unarchiveSelected()"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
+                        style="background-color:var(--color-success); color:#fff;"
+                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    <span class="material-symbols-outlined text-[16px]">unarchive</span>
+                    <span class="hidden sm:inline">Unarchive Selected</span>
+                    <span class="sm:hidden">Unarchive</span>
+                </button>
+            </template>
+    
+            {# Deselect all #}
+            <button @click="selectedIds = []"
+                    class="w-8 h-8 rounded-xl flex items-center justify-center transition"
+                    style="color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'"
+                    title="Clear selection">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+        </div>
+    
+        {# ── Archive confirm modal ── #}
+        <template x-if="confirmArchiveOpen">
+            <div class="fixed inset-0 z-50 flex items-center justify-center px-4"
+                style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);">
+                <div class="w-full max-w-sm rounded-2xl p-7 text-center"
+                    style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                    <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+                        style="background:color-mix(in srgb,var(--color-error) 12%,transparent);">
+                        <span class="material-symbols-outlined text-[24px]"
+                            style="color:var(--color-error);">archive</span>
+                    </div>
+                    <h2 class="text-lg font-bold mb-2" style="color:var(--color-txt-primary);">
+                        Archive Selected?
+                    </h2>
+                    <p class="text-sm mb-7" style="color:var(--color-txt-muted);">
+                        Archive <span x-text="selectedIds.length"></span> product(s)?
+                        They will be hidden from the POS.
+                    </p>
+                    <div class="flex gap-3">
+                        <button @click="confirmArchiveOpen = false"
+                                class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                                style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
+                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                onmouseout="this.style.backgroundColor='transparent'">
+                            Cancel
+                        </button>
+                        <button @click="archiveSelected()"
+                                class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                                style="background-color:var(--color-error); color:#fff;"
+                                onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                            Yes, Archive
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
 {% endblock %}

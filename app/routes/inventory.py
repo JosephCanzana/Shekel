@@ -5,13 +5,16 @@ from flask_login import login_required, current_user
 from sqlalchemy import text
 from sqlalchemy.exc import DataError
 from app.extensions import db
-from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use
-from app.utils.decorator import role_required
 from app.models.product import Product
 from app.models.product_bundle import ProductBundle
 from app.models.inventory import Inventory
 from app.models.user_column_preference import UserColumnPreference
-from app.models.role_column_setting    import RoleColumnSetting
+from app.models.role_column_setting import RoleColumnSetting
+from app.models.stock_adjustment_request import StockAdjustmentRequest
+from app.models.stock_adjustment_detail import StockAdjustmentDetail
+from app.models.stock_in import StockIn
+from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use
+from app.utils.decorator import role_required
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -641,3 +644,145 @@ def bulk_delete():
 
     db.session.commit()
     return jsonify({"ok": True, "deleted": len(deleted), "skipped": len(skipped)})
+
+@inventory_bp.route("/adjust", methods=["GET"])
+@login_required
+@role_required("superadmin", "admin", "stocking")
+def adjust():
+    """
+    Renders the adjustment form for a selection of products.
+    Expects ?ids=id1,id2,id3 in the query string (passed from the inventory page).
+    """
+    raw_ids = request.args.get("ids", "").strip()
+    if not raw_ids:
+        flash("No products selected.", "warning")
+        return redirect(url_for("inventory.index"))
+
+    product_ids = [i.strip() for i in raw_ids.split(",") if i.strip()]
+    products    = Product.query.filter(Product.product_id.in_(product_ids)).all()
+
+    if not products:
+        flash("No valid products found.", "warning")
+        return redirect(url_for("inventory.index"))
+
+    products_data = [p.to_dict() for p in products]
+
+    return render_template(
+        "inventory/adjust.html",
+        products_data = products_data,
+        can_manage    = is_admin_or_coadmin(),
+    )
+
+
+@inventory_bp.route("/adjust/submit", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin", "stocking")
+def adjust_submit():
+    """
+    Processes the adjustment form submission.
+
+    admin / superadmin → direct inventory update, StockIn log written.
+    stocking           → creates a pending StockAdjustmentRequest for admin approval.
+    """
+    data  = request.json or {}
+    items = data.get("items", [])
+
+    if not items:
+        return jsonify({"error": "No items provided."}), 400
+
+    is_privileged = current_user.role in ("admin", "superadmin")
+
+    # ── PATH A: admin / superadmin — apply immediately ────────────────────────
+    if is_privileged:
+        for item in items:
+            product_id = item.get("product_id")
+            note       = item.get("note", "").strip() or None
+            try:
+                new_qty = int(item.get("new_qty", 0))
+                if new_qty < 0:
+                    raise ValueError
+            except (ValueError, TypeError):
+                return jsonify({"error": f"Invalid quantity for '{product_id}'."}), 400
+
+            product = Product.query.get(product_id)
+            if not product or product.status == "archived":
+                return jsonify({"error": f'Product "{product_id}" not found or archived.'}), 400
+
+            if product.inventory:
+                old_qty = product.inventory.quantity_available
+                product.inventory.quantity_available = new_qty
+                product.inventory.last_updated       = datetime.utcnow()
+            else:
+                old_qty = 0
+                db.session.add(Inventory(
+                    product_id         = product_id,
+                    quantity_available = new_qty,
+                    quantity_defective = 0,
+                    last_updated       = datetime.utcnow(),
+                ))
+
+            # log as a StockIn record (qty = delta; can be negative for reductions)
+            delta = new_qty - old_qty
+            if delta != 0:
+                db.session.add(StockIn(
+                    product_id        = product_id,
+                    user_id           = current_user.user_id,
+                    quantity_received = delta,        # negative = reduction
+                    stockin_datetime  = datetime.utcnow(),
+                    notes             = note,
+                ))
+
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            return jsonify({"error": "Failed to save. Please try again."}), 500
+
+        return jsonify({"success": True, "mode": "direct"})
+
+    # ── PATH B: stocking — create pending request ─────────────────────────────
+    req = StockAdjustmentRequest(
+        requested_by = current_user.user_id,
+        request_type = "adjustment",
+        status       = "pending",
+        submitted_at = datetime.utcnow(),
+    )
+    db.session.add(req)
+    db.session.flush()
+
+    for item in items:
+        product_id = item.get("product_id")
+        note       = item.get("note", "").strip()
+        try:
+            new_qty = int(item.get("new_qty", 0))
+            if new_qty < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            db.session.rollback()
+            return jsonify({"error": f"Invalid quantity for '{product_id}'."}), 400
+
+        if not note:
+            db.session.rollback()
+            return jsonify({"error": "A note is required for each item."}), 400
+
+        product = Product.query.get(product_id)
+        if not product or product.status == "archived":
+            db.session.rollback()
+            return jsonify({"error": f'Product "{product_id}" not found or archived.'}), 400
+
+        db.session.add(StockAdjustmentDetail(
+            request_id         = req.request_id,
+            product_id         = product_id,
+            quantity_requested = new_qty,    # the absolute target qty
+            quantity_approved  = None,
+            status             = "pending",
+            note               = note,
+        ))
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to submit request. Please try again."}), 500
+
+    return jsonify({"success": True, "mode": "pending", "request_id": req.request_id})
