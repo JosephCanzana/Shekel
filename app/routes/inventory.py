@@ -13,7 +13,7 @@ from app.models.role_column_setting import RoleColumnSetting
 from app.models.stock_adjustment_request import StockAdjustmentRequest
 from app.models.stock_adjustment_detail import StockAdjustmentDetail
 from app.models.stock_in import StockIn
-from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use
+from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use, get_category_thresholds
 from app.utils.decorator import role_required
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
@@ -51,6 +51,12 @@ def add():
             if not bundle_count:
                 bundle_name = ""
 
+            if not low_reorder and category_id:
+                from app.models.category import Category
+                cat = Category.query.get(int(category_id))
+                if cat:
+                    low_reorder = str(cat.default_low_stock_threshold)
+    
             if not all([product_id, product_name, cost_price, revenue_price, low_reorder]):
                 flash("Product ID, name, prices, and low stock threshold are required.", "danger")
                 return redirect(url_for("inventory.add"))
@@ -145,9 +151,9 @@ def add():
         return redirect(url_for("inventory.index"))
 
     return render_template("inventory/form.html",
-                           categories=categories,
-                           can_manage=True)
-
+                             categories=categories,
+                             category_thresholds=get_category_thresholds(),
+                             can_manage=True)
 
 @inventory_bp.route("/<string:product_id>/edit", methods=["GET", "POST"])
 @login_required
@@ -235,9 +241,16 @@ def edit(product_id):
             if not bundle_count:
                 bundle_name = ""
 
+            if not low_reorder and category_id:
+                from app.models.category import Category
+                cat = Category.query.get(int(category_id))
+                if cat:
+                    low_reorder = str(cat.default_low_stock_threshold)
+    
             if not all([product_id_new, product_name, cost_price, revenue_price, low_reorder]):
                 flash("Name, prices, and low stock threshold are required.", "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
+ 
 
             ok, err = validate_product_name(product_name)
             if not ok:
@@ -386,10 +399,10 @@ def edit(product_id):
         return redirect(url_for("inventory.index"))
 
     return render_template("inventory/form.html",
-                           product=product,
-                           categories=categories,
-                           can_manage=can_manage)
-
+                             product=product,
+                             categories=categories,
+                             category_thresholds=get_category_thresholds(),
+                             can_manage=can_manage)
 
 @inventory_bp.route("/<string:product_id>/status_update", methods=["POST"])
 @login_required

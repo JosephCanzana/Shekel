@@ -17,6 +17,10 @@
     </span>
 </div>
 
+<script>
+const CATEGORY_THRESHOLDS = {{ category_thresholds | tojson }};
+</script>
+
 <form action="{{ url_for('inventory.edit', product_id=product.product_id) if product is defined else url_for('inventory.add') }}"
       method="post"
       x-data="{
@@ -25,6 +29,19 @@
           hasBundle:    {{ 'true' if product is defined and product.bundle else 'false' }},
           editingStock: {{ 'true' if not can_manage else 'false' }},
           originalStock: {{ product.inventory.quantity_available if product is defined and product.inventory else 0 }},
+            categoryThresholds: CATEGORY_THRESHOLDS,
+            thresholdFromCategory: false,
+
+            onCategoryChange(categoryId) {
+                const input = this.$el.querySelector('[name=low_reorder_threshold]')
+                const t = this.categoryThresholds[categoryId]
+                if (t !== undefined && input && input.value === '') {
+                    input.value = t
+                    this.thresholdFromCategory = true
+                } else {
+                    this.thresholdFromCategory = false
+                }
+            },
 
           get productPrice() {
               return (parseFloat(this.unitPrice || 0) + parseFloat(this.revenuePrice || 0)).toFixed(2)
@@ -260,6 +277,7 @@
                               style="color: var(--color-txt-muted);">(optional)</span>
                     </label>
                     <select name="category_id"
+                            @change="onCategoryChange($event.target.value)"
                             class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
                             style="border: 1px solid var(--color-border);
                                    background-color: var(--color-surface-alt);
@@ -556,22 +574,42 @@
 
                 <div class="space-y-1.5">
                     <label class="text-xs font-semibold uppercase tracking-wider"
-                           style="color: var(--color-txt-muted);">
-                        Low Stock Threshold <span style="color: var(--color-error);">*</span>
+                        style="color: var(--color-txt-muted);">
+                        Low Stock Threshold
+                        {# required only when no category selected #}
+                        <span x-show="!$el.closest('form').querySelector('[name=category_id]').value"
+                            style="color: var(--color-error);">*</span>
+                        <span x-show="!!$el.closest('form').querySelector('[name=category_id]').value"
+                            class="normal-case font-normal ml-1"
+                            style="color: var(--color-txt-muted);">(optional — inherits from category)</span>
                     </label>
                     <input type="number" name="low_reorder_threshold"
-                           value="{{ product.low_reorder_threshold if product is defined else '' }}"
-                           min="0" step="1" placeholder="e.g. 10" required
-                           class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                           style="border: 1px solid var(--color-border);
-                                  background-color: var(--color-surface-alt);
-                                  color: var(--color-txt-primary);"
-                           onfocus="this.style.borderColor='var(--color-accent)';
+                        value="{{ product.low_reorder_threshold if product is defined else '' }}"
+                        min="0" step="1"
+                        :placeholder="thresholdFromCategory ? 'Auto-filled from category' : 'e.g. 10'"
+                        @input="thresholdFromCategory = false"
+                        class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                        style="border: 1px solid var(--color-border);
+                                background-color: var(--color-surface-alt);
+                                color: var(--color-txt-primary);"
+                        onfocus="this.style.borderColor='var(--color-accent)';
                                     this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                           onblur="this.style.borderColor='var(--color-border)';
-                                   this.style.boxShadow='none'">
-                    <p class="text-xs" style="color: var(--color-txt-muted);">
+                        onblur="this.style.borderColor='var(--color-border)';
+                                this.style.boxShadow='none'">
+                
+                    {# hint shown when value was auto-filled from the selected category #}
+                    <p x-show="thresholdFromCategory"
+                    x-transition
+                    class="text-xs flex items-center gap-1"
+                    style="color: var(--color-accent);">
+                        <span class="material-symbols-outlined text-[13px]">auto_fix_high</span>
+                        Auto-filled from category default. You can override this.
+                    </p>
+                    <p x-show="!thresholdFromCategory"
+                    class="text-xs"
+                    style="color: var(--color-txt-muted);">
                         Low stock warning shows when units drop to or below this number.
+                        Leave blank to inherit from the selected category.
                     </p>
                 </div>
 

@@ -25,6 +25,7 @@ def add():
     if request.method == "POST":
         category_name = request.form.get("category_name", "").strip()
         description   = request.form.get("description",   "").strip()
+        threshold_raw = request.form.get("default_low_stock_threshold", "").strip()
 
         if not category_name:
             flash("Category name is required.", "danger")
@@ -42,10 +43,20 @@ def add():
             flash(f'A category named "{category_name}" already exists.', "danger")
             return redirect(url_for("manage_categories.add"))
 
+        # ── parse threshold — default to 5 if blank or invalid ───────────────
+        try:
+            threshold = int(threshold_raw)
+            if threshold < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            flash("Default low stock threshold must be a positive whole number.", "danger")
+            return redirect(url_for("manage_categories.add"))
+
         category = Category(
-            category_name = category_name.lower(),
-            description   = description or None,
-            status        = "active"
+            category_name               = category_name.lower(),
+            description                 = description or None,
+            status                      = "active",
+            default_low_stock_threshold = threshold,
         )
         category.save()
 
@@ -68,6 +79,7 @@ def edit(category_id):
         category_name = request.form.get("category_name", "").strip()
         description   = request.form.get("description",   "").strip()
         status        = request.form.get("status",        category.status).strip()
+        threshold_raw = request.form.get("default_low_stock_threshold", "").strip()
 
         if not category_name:
             flash("Category name is required.", "danger")
@@ -86,9 +98,19 @@ def edit(category_id):
             flash(f'A category named "{category_name}" already exists.', "danger")
             return redirect(url_for("manage_categories.edit", category_id=category_id))
 
-        category.category_name = category_name.lower()
-        category.description   = description or None
-        category.status        = status
+        # ── parse threshold ───────────────────────────────────────────────────
+        try:
+            threshold = int(threshold_raw)
+            if threshold < 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            flash("Default low stock threshold must be a positive whole number.", "danger")
+            return redirect(url_for("manage_categories.edit", category_id=category_id))
+
+        category.category_name               = category_name.lower()
+        category.description                 = description or None
+        category.status                      = status
+        category.default_low_stock_threshold = threshold
         category.save()
 
         flash(f'Category "{category_name}" has been updated.', "success")

@@ -176,3 +176,13 @@ def barcode_in_use(barcode, exclude_product_id=None, exclude_bundle_id=None):
 
     return None
 
+# Category
+
+def get_category_thresholds():
+    """Returns {category_id: default_low_stock_threshold} for all active categories."""
+    from app.models.category import Category
+    return {
+        c.category_id: c.default_low_stock_threshold
+        for c in Category.query.filter_by(status="active").all()
+    }
+ 
