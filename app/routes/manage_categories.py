@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, redirect, request, url_for, flash
+from flask import Blueprint, render_template, redirect, request, url_for, flash, jsonify
 from flask_login import login_required
 from app.utils.decorator import role_required
 from app.models.category import Category
+from app.models.product import Product
 from app.utils.helpers import validate_category_name
 
 manage_categories_bp = Blueprint("manage_categories", __name__, url_prefix="/admin/categories")
@@ -107,6 +108,9 @@ def edit(category_id):
             flash("Default low stock threshold must be a positive whole number.", "danger")
             return redirect(url_for("manage_categories.edit", category_id=category_id))
 
+        old_threshold     = category.default_low_stock_threshold
+        threshold_changed = old_threshold != threshold
+
         category.category_name               = category_name.lower()
         category.description                 = description or None
         category.status                      = status
@@ -114,6 +118,12 @@ def edit(category_id):
         category.save()
 
         flash(f'Category "{category_name}" has been updated.', "success")
+
+        # if threshold changed, redirect with sync param so modal auto-opens
+        if threshold_changed:
+            return redirect(url_for("manage_categories.index",
+                                    sync=category_id,
+                                    old_threshold=old_threshold))
         return redirect(url_for("manage_categories.index"))
 
     return render_template("admin/categories/form.html", category=category)
@@ -156,3 +166,83 @@ def delete(category_id):
     category.delete()
     flash(f'Category "{name}" has been permanently deleted.', "success")
     return redirect(url_for("manage_categories.index"))
+
+@manage_categories_bp.route("/<int:category_id>/sync-preview", methods=["GET"])
+@login_required
+@role_required("superadmin", "admin")
+def sync_preview(category_id):
+    """
+    Returns all products under this category with a flag indicating
+    whether their threshold already matches the category default.
+    """
+    category = Category.get_by_id(category_id)
+    if not category:
+        return jsonify({"error": "Category not found."}), 404
+
+    products = Product.query.filter_by(
+        category_id = category_id,
+        status      = "active"
+    ).order_by(Product.product_name).all()
+
+    try:
+        old_threshold = int(request.args.get("old_threshold", -1))
+    except (ValueError, TypeError):
+        old_threshold = -1
+
+    use_old = old_threshold >= 0
+
+    return jsonify({
+        "category_id":       category.category_id,
+        "category_name":     category.category_name,
+        "default_threshold": category.default_low_stock_threshold,
+        "products": [
+            {
+                "product_id":        p.product_id,
+                "product_name":      p.product_name.capitalize(),
+                "current_threshold": p.low_reorder_threshold,
+                "matches": p.low_reorder_threshold == (old_threshold if use_old else category.default_low_stock_threshold),
+            }
+            for p in products
+        ]
+    })
+
+
+@manage_categories_bp.route("/<int:category_id>/sync-threshold", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def sync_threshold(category_id):
+    """
+    Updates low_reorder_threshold on selected products to match
+    the category's default_low_stock_threshold.
+    """
+    from app.extensions import db
+
+    category = Category.get_by_id(category_id)
+    if not category:
+        return jsonify({"error": "Category not found."}), 404
+
+    data        = request.get_json() or {}
+    product_ids = data.get("product_ids", [])
+
+    if not product_ids:
+        return jsonify({"error": "No products selected."}), 400
+
+    products = Product.query.filter(
+        Product.product_id.in_(product_ids),
+        Product.category_id == category_id
+    ).all()
+
+    for p in products:
+        p.low_reorder_threshold = category.default_low_stock_threshold
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Failed to sync. Please try again."}), 500
+
+    return jsonify({
+        "success": True,
+        "synced":  len(products),
+        "threshold": category.default_low_stock_threshold,
+    })
