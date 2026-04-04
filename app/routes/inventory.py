@@ -658,6 +658,38 @@ def bulk_delete():
     db.session.commit()
     return jsonify({"ok": True, "deleted": len(deleted), "skipped": len(skipped)})
 
+
+# ── POST bulk threshold update ────────────────────────────────────────────────
+@inventory_bp.route("/bulk/threshold-update", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def bulk_threshold_update():
+    """
+    Updates the low-reorder threshold for multiple products at once.
+    Expects: { "product_ids": [...], "threshold": <int> }
+    """
+    data        = request.json or {}
+    product_ids = data.get("product_ids", [])
+    threshold   = data.get("threshold")
+
+    if not product_ids:
+        return jsonify({"error": "No products selected."}), 400
+
+    try:
+        threshold = int(threshold)
+        if threshold < 0 or threshold > 2_147_483_647:
+            raise ValueError
+    except (ValueError, TypeError):
+        return jsonify({"error": "Threshold must be a non-negative whole number."}), 400
+
+    products = Product.query.filter(Product.product_id.in_(product_ids)).all()
+    for p in products:
+        p.low_reorder_threshold = threshold
+
+    db.session.commit()
+    return jsonify({"ok": True, "updated": len(products), "threshold": threshold})
+
+
 @inventory_bp.route("/adjust", methods=["GET"])
 @login_required
 @role_required("superadmin", "admin", "stocking")
@@ -694,8 +726,12 @@ def adjust_submit():
     """
     Processes the adjustment form submission.
 
-    admin / superadmin → direct inventory update, StockIn log written.
-    stocking           → creates a pending StockAdjustmentRequest for admin approval.
+    Threshold changes apply immediately for ALL roles (non-sensitive metadata).
+
+    admin / superadmin → direct inventory update + StockIn log written.
+    stocking           → creates a pending StockAdjustmentRequest for stock qty;
+                         threshold still applied immediately.
+    Notes are optional for all roles.
     """
     data  = request.json or {}
     items = data.get("items", [])
@@ -705,11 +741,13 @@ def adjust_submit():
 
     is_privileged = current_user.role in ("admin", "superadmin")
 
-    # ── PATH A: admin / superadmin — apply immediately ────────────────────────
+    # ── PATH A: admin / superadmin — apply stock changes immediately ──────────
     if is_privileged:
         for item in items:
-            product_id = item.get("product_id")
-            note       = item.get("note", "").strip() or None
+            product_id    = item.get("product_id")
+            note          = item.get("note", "").strip() or None
+            new_threshold = item.get("new_threshold")
+
             try:
                 new_qty = int(item.get("new_qty", 0))
                 if new_qty < 0:
@@ -721,6 +759,7 @@ def adjust_submit():
             if not product or product.status == "archived":
                 return jsonify({"error": f'Product "{product_id}" not found or archived.'}), 400
 
+            # apply stock
             if product.inventory:
                 old_qty = product.inventory.quantity_available
                 product.inventory.quantity_available = new_qty
@@ -745,6 +784,15 @@ def adjust_submit():
                     notes             = note,
                 ))
 
+            # apply threshold update (always immediate)
+            if new_threshold is not None:
+                try:
+                    threshold_val = int(new_threshold)
+                    if 0 <= threshold_val <= 2_147_483_647:
+                        product.low_reorder_threshold = threshold_val
+                except (ValueError, TypeError):
+                    pass  # silently skip invalid threshold values
+
         try:
             db.session.commit()
         except Exception:
@@ -753,7 +801,8 @@ def adjust_submit():
 
         return jsonify({"success": True, "mode": "direct"})
 
-    # ── PATH B: stocking — create pending request ─────────────────────────────
+    # ── PATH B: stocking — create pending request for stock qty ───────────────
+    # Threshold changes still apply immediately (non-sensitive metadata).
     req = StockAdjustmentRequest(
         requested_by = current_user.user_id,
         request_type = "adjustment",
@@ -764,8 +813,10 @@ def adjust_submit():
     db.session.flush()
 
     for item in items:
-        product_id = item.get("product_id")
-        note       = item.get("note", "").strip()
+        product_id    = item.get("product_id")
+        note          = item.get("note", "").strip() or None   # always optional
+        new_threshold = item.get("new_threshold")
+
         try:
             new_qty = int(item.get("new_qty", 0))
             if new_qty < 0:
@@ -773,10 +824,6 @@ def adjust_submit():
         except (ValueError, TypeError):
             db.session.rollback()
             return jsonify({"error": f"Invalid quantity for '{product_id}'."}), 400
-
-        if not note:
-            db.session.rollback()
-            return jsonify({"error": "A note is required for each item."}), 400
 
         product = Product.query.get(product_id)
         if not product or product.status == "archived":
@@ -791,6 +838,15 @@ def adjust_submit():
             status             = "pending",
             note               = note,
         ))
+
+        # apply threshold update immediately even for stocking role
+        if new_threshold is not None:
+            try:
+                threshold_val = int(new_threshold)
+                if 0 <= threshold_val <= 2_147_483_647:
+                    product.low_reorder_threshold = threshold_val
+            except (ValueError, TypeError):
+                pass  # silently skip invalid threshold values
 
     try:
         db.session.commit()

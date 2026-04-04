@@ -21,9 +21,9 @@
                 Stock Adjustment
             </h1>
             <p class="text-sm mt-0.5" style="color:var(--color-txt-muted);">
-                Set the new stock count for each item.
+                Set the new stock count and low‑stock threshold for each item.
                 {% if not can_manage %}
-                    Your changes will be sent for admin approval.
+                    Stock changes will be sent for admin approval.
                 {% endif %}
             </p>
         </div>
@@ -38,92 +38,91 @@
         <span class="material-symbols-outlined text-[18px] shrink-0 mt-0.5"
               style="color:var(--color-warning);">info</span>
         <span>
-            As a stocking account, your adjustment will be submitted for admin review.
-            Stock will only change once approved. A <strong>note is required</strong> for each item.
+            As a stocking account, stock quantity changes will be submitted for admin review
+            and will only apply once approved. Threshold changes take effect immediately.
+            Adding a note is optional but encouraged.
         </span>
     </div>
     {% endif %}
 
-    {# ── Items ── #}
-    <div class="rounded-2xl overflow-hidden"
-         style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+   {# ── Items ── #}
+    <div class="rounded-2xl overflow-x-auto"
+        style="background-color:var(--color-surface); border:1px solid var(--color-border);">
 
         {# Table header — desktop #}
-        <div class="hidden sm:grid px-5 py-3 text-xs font-semibold uppercase tracking-wider"
-             style="grid-template-columns: 2fr 1fr 1.5fr 2fr;
+        <div class="hidden sm:grid px-5 py-3 text-xs font-semibold uppercase tracking-wider gap-0"
+            style="grid-template-columns: 1.6fr 0.9fr 1.4fr 1.2fr 1fr;
                     background-color:var(--color-surface-alt);
                     border-bottom:1px solid var(--color-border);
                     color:var(--color-txt-muted);">
             <span>Product</span>
             <span class="text-center">Current Stock</span>
             <span class="text-center">New Quantity</span>
-            <span>Note {% if not can_manage %}<span style="color:var(--color-error);">*</span>{% else %}(optional){% endif %}</span>
+            <span>Note (optional)</span>
+            <span></span> <!-- filler column to absorb remaining space -->
         </div>
 
         {# Item rows #}
         <template x-for="(item, idx) in items" :key="item.product_id">
-            <div class="px-4 sm:px-5 py-4"
-                 style="border-bottom:1px solid var(--color-border);">
-
-                {# Mobile label + desktop grid #}
-                <div class="flex flex-col sm:grid sm:items-center gap-3"
-                     style="grid-template-columns: 2fr 1fr 1.5fr 2fr;">
-
+            <div class="px-5 py-4 border-b border-border">
+                <div class="grid items-center gap-3"
+                    style="grid-template-columns: 1.6fr 0.9fr 1.4fr 1.2fr 1fr;"> <!-- match header -->
+                    
                     {# Product info #}
                     <div>
                         <p class="text-sm font-semibold" style="color:var(--color-txt-primary);"
-                           x-text="item.product_name"></p>
+                        x-text="item.product_name"></p>
                         <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);"
-                           x-text="item.product_id"></p>
+                        x-text="item.product_id"></p>
                         <template x-if="item.is_low_stock">
                             <span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded font-semibold"
-                                  style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
-                                         color:var(--color-warning);">Low Stock</span>
+                                style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
+                                        color:var(--color-warning);">Low Stock</span>
                         </template>
                         <template x-if="item.stock === 0">
                             <span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded font-semibold"
-                                  style="background:color-mix(in srgb,var(--color-error) 12%,transparent);
-                                         color:var(--color-error);">No Stock</span>
+                                style="background:color-mix(in srgb,var(--color-error) 12%,transparent);
+                                        color:var(--color-error);">No Stock</span>
                         </template>
                     </div>
 
                     {# Current stock #}
-                    <div class="flex sm:flex-col sm:items-center gap-2">
+                    <div class="flex flex-col items-center gap-2">
                         <span class="text-xs sm:hidden" style="color:var(--color-txt-muted);">Current:</span>
                         <p class="text-sm font-bold tabular-nums text-center"
-                           style="color:var(--color-txt-secondary);"
-                           x-text="item.stock + ' units'"></p>
+                        style="color:var(--color-txt-secondary);"
+                        x-text="item.stock + ' units'"></p>
                     </div>
 
                     {# New qty input #}
-                    <div class="flex sm:flex-col sm:items-center gap-2">
+                    <div class="flex flex-col items-center gap-2">
                         <span class="text-xs sm:hidden shrink-0" style="color:var(--color-txt-muted);">New qty:</span>
                         <div class="flex items-center gap-1.5">
                             <button @click="if(item.new_qty > 0) item.new_qty--"
                                     :disabled="item.new_qty <= 0"
                                     class="w-8 h-8 rounded-lg flex items-center justify-center transition shrink-0 disabled:opacity-30"
                                     style="border:1px solid var(--color-border);
-                                           background:var(--color-surface-alt);
-                                           color:var(--color-txt-muted);"
+                                        background:var(--color-surface-alt);
+                                        color:var(--color-txt-muted);"
                                     onmouseover="if(!this.disabled) this.style.borderColor='var(--color-accent)'"
                                     onmouseout="this.style.borderColor='var(--color-border)'">
                                 <span class="material-symbols-outlined text-[14px]">remove</span>
                             </button>
                             <input type="number"
-                                   x-model="item.new_qty"
-                                   min="0"
-                                   @focus="$event.target.select()"
-                                   class="w-16 py-1.5 rounded-lg text-sm text-center font-bold focus:outline-none"
-                                   style="border:1px solid var(--color-border);
-                                          background:var(--color-surface-alt);
-                                          color:var(--color-txt-primary);"
-                                   onfocus="this.style.borderColor='var(--color-accent)'"
-                                   onblur="this.style.borderColor='var(--color-border)'">
+                                x-model="item.new_qty"
+                                min="0"
+                                @focus="$event.target.select()"
+                                class="w-16 py-1.5 rounded-lg text-sm text-center font-bold focus:outline-none"
+                                style="border:1px solid var(--color-border);
+                                        background:var(--color-surface-alt);
+                                        color:var(--color-txt-primary);"
+                                onfocus="this.style.borderColor='var(--color-accent)'"
+                                onblur="this.style.borderColor='var(--color-border)'">
                             <button @click="item.new_qty++"
                                     class="w-8 h-8 rounded-lg flex items-center justify-center transition shrink-0"
                                     style="border:1px solid var(--color-border);
-                                           background:var(--color-surface-alt);
-                                           color:var(--color-txt-muted);"
+                                        background:var(--color-surface-alt);
+                                        color:var(--color-txt-muted);"
                                     onmouseover="this.style.borderColor='var(--color-accent)'"
                                     onmouseout="this.style.borderColor='var(--color-border)'">
                                 <span class="material-symbols-outlined text-[14px]">add</span>
@@ -132,28 +131,25 @@
                         {# Delta indicator #}
                         <template x-if="item.new_qty !== item.stock">
                             <span class="text-xs font-semibold tabular-nums"
-                                  :style="item.new_qty > item.stock
-                                      ? 'color:var(--color-success)'
-                                      : 'color:var(--color-error)'"
-                                  x-text="(item.new_qty > item.stock ? '+' : '') + (item.new_qty - item.stock)">
+                                :style="item.new_qty > item.stock
+                                    ? 'color:var(--color-success)'
+                                    : 'color:var(--color-error)'"
+                                x-text="(item.new_qty > item.stock ? '+' : '') + (item.new_qty - item.stock)">
                             </span>
                         </template>
                     </div>
 
-                    {# Note input #}
+                    {# Note input — always optional #}
                     <div>
                         <input type="text"
-                               x-model="item.note"
-                               :placeholder="requireNote ? 'Reason required…' : 'Reason (optional)…'"
-                               class="w-full px-3 py-1.5 rounded-lg text-xs focus:outline-none transition"
-                               :style="requireNote && !item.note.trim()
-                                   ? 'border:1px solid color-mix(in srgb,var(--color-error) 40%,transparent);background:var(--color-surface-alt);color:var(--color-txt-primary)'
-                                   : 'border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary)'"
-                               onfocus="this.style.borderColor='var(--color-accent)'"
-                               onblur="this.style.borderColor='var(--color-border)'">
-                        <template x-if="requireNote && !item.note.trim()">
-                            <p class="text-[10px] mt-1" style="color:var(--color-error);">Required</p>
-                        </template>
+                            x-model="item.note"
+                            placeholder="Reason (optional)…"
+                            class="w-full px-3 py-1.5 rounded-lg text-xs focus:outline-none transition"
+                            style="border:1px solid var(--color-border);
+                                    background:var(--color-surface-alt);
+                                    color:var(--color-txt-primary);"
+                            onfocus="this.style.borderColor='var(--color-accent)'"
+                            onblur="this.style.borderColor='var(--color-border)'">
                     </div>
                 </div>
             </div>
@@ -184,7 +180,7 @@
                 Cancel
             </button>
             <button @click="submit()"
-                    :disabled="submitting || !canSubmit"
+                    :disabled="submitting"
                     class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition
                            disabled:opacity-40 disabled:cursor-not-allowed active:scale-[.98]"
                     style="background-color:var(--color-primary); color:var(--color-bg);"
@@ -228,8 +224,8 @@
                        x-text="isPrivileged ? 'Adjustment Applied' : 'Request Submitted'"></p>
                     <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
                        x-text="isPrivileged
-                           ? 'Stock has been updated immediately.'
-                           : 'Awaiting admin approval before stock changes.'">
+                           ? 'Stock and thresholds have been updated immediately.'
+                           : 'Stock changes await admin approval. Thresholds updated immediately.'">
                     </p>
                 </div>
             </div>
@@ -254,37 +250,37 @@ const IS_PRIVILEGED   = {{ can_manage | tojson }};
 function adjustData() {
     return {
         isPrivileged:    IS_PRIVILEGED,
-        requireNote:     !IS_PRIVILEGED,
         submitting:      false,
         globalError:     '',
         showSuccess:     false,
         successRedirect: '{{ url_for("inventory.index") }}',
 
         items: ADJUST_PRODUCTS.map(p => ({
-            product_id:   p.product_id,
-            product_name: p.product_name,
-            stock:        p.stock,
-            new_qty:      p.stock,           // default: no change
-            note:         '',
-            is_low_stock: p.stock > 0 && p.stock <= p.low_reorder_threshold,
+            product_id:            p.product_id,
+            product_name:          p.product_name,
+            stock:                 p.stock,
+            new_qty:               p.stock,                   // default: no change
+            low_reorder_threshold: p.low_reorder_threshold,
+            new_threshold:         p.low_reorder_threshold,   // default: no change
+            note:                  '',
+            is_low_stock:          p.stock > 0 && p.stock <= p.low_reorder_threshold,
         })),
 
+        // Notes are always optional — no blocking validation needed
         get canSubmit() {
-            if (this.requireNote) {
-                return this.items.every(i => i.note.trim() !== '')
-            }
             return true
         },
 
         async submit() {
-            if (this.submitting || !this.canSubmit) return
+            if (this.submitting) return
             this.submitting  = true
             this.globalError = ''
 
             const payload = this.items.map(i => ({
-                product_id: i.product_id,
-                new_qty:    parseInt(i.new_qty) || 0,
-                note:       i.note.trim(),
+                product_id:    i.product_id,
+                new_qty:       parseInt(i.new_qty)       || 0,
+                new_threshold: parseInt(i.new_threshold) || 0,
+                note:          i.note.trim(),
             }))
 
             try {
