@@ -279,20 +279,62 @@ def refresh_token():
 @login_required
 @role_required("stocking")
 def my_requests():
+    # ── Stock requests ────────────────────────────────────────────
     pending = StockAdjustmentRequest.query.filter_by(
         requested_by=current_user.user_id,
         status="pending"
     ).order_by(StockAdjustmentRequest.submitted_at.desc()).all()
-
     history = StockAdjustmentRequest.query.filter(
         StockAdjustmentRequest.requested_by == current_user.user_id,
         StockAdjustmentRequest.status != "pending"
     ).order_by(StockAdjustmentRequest.reviewed_at.desc()).limit(30).all()
-
-    return render_template("stocking/requests.html",
-                           pending_data=[r.to_dict() for r in pending],
-                           history_data=[r.to_dict() for r in history])
-
+ 
+    # ── This user's defect submissions ────────────────────────────
+    def _serialize(detail, defect, product):
+        return {
+            "detail_id":    detail.defect_detail_id,
+            "product_name": product.product_name.capitalize(),
+            "product_id":   product.product_id,
+            "quantity":     detail.quantity,
+            "origin_label": "Customer" if detail.origin == "customer" else "In-Store",
+            "reason_label": detail.reason.replace("_", " ").title(),
+            "customer_compensation": detail.customer_compensation.replace("_", " ").title(),
+            "status":          detail.status,
+            "rejection_note":  detail.rejection_note or "",
+            "transaction_id":  f"TXN-{detail.transaction_id:05d}" if detail.transaction_id else None,
+            "datetime":        to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
+        }
+ 
+    defect_pending = (
+        db.session.query(DefectDetail, Defect, Product)
+        .join(Defect,  Defect.defect_id     == DefectDetail.defect_id)
+        .join(Product, Product.product_id   == DefectDetail.product_id)
+        .filter(Defect.user_id          == current_user.user_id)
+        .filter(DefectDetail.status     == "submitted")
+        .filter(DefectDetail.is_deleted == False)
+        .order_by(Defect.defect_datetime.desc())
+        .all()
+    )
+ 
+    defect_history = (
+        db.session.query(DefectDetail, Defect, Product)
+        .join(Defect,  Defect.defect_id     == DefectDetail.defect_id)
+        .join(Product, Product.product_id   == DefectDetail.product_id)
+        .filter(Defect.user_id              == current_user.user_id)
+        .filter(DefectDetail.status.in_(["active", "rejected"]))
+        .filter(DefectDetail.is_deleted     == False)
+        .order_by(Defect.defect_datetime.desc())
+        .limit(30)
+        .all()
+    )
+ 
+    return render_template(
+        "stocking/requests.html",
+        pending_data    = [r.to_dict() for r in pending],
+        history_data    = [r.to_dict() for r in history],
+        defect_pending  = [_serialize(d, def_, p) for d, def_, p in defect_pending],
+        defect_history  = [_serialize(d, def_, p) for d, def_, p in defect_history],
+    )
 
 # ── Stocking: edit a pending request item ─────────────────────────────────────
 @stocking_bp.route("/requests/<int:request_id>/edit", methods=["POST"])

@@ -1,10 +1,15 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, url_for
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
 from app.utils.index_helpers import *
 from app.models.stock_adjustment_request import StockAdjustmentRequest
 from app.models.stock_adjustment_detail  import StockAdjustmentDetail
+from app.models.defect_detail import DefectDetail
+from app.models.defect import Defect
+from app.models.product import Product
+from app.models.user import User
+from app.utils.helpers import to_pht
 from app.models.inventory import Inventory
 from app.models.stock_in  import StockIn
 from app.extensions import db
@@ -37,20 +42,56 @@ def dashboard():
 @login_required
 @role_required("superadmin", "admin")
 def requests_page():
+    # ── Stock requests ────────────────────────────────────────────
     pending = StockAdjustmentRequest.query\
-                .filter_by(status="pending")\
-                .order_by(StockAdjustmentRequest.submitted_at.asc())\
-                .all()
+        .filter_by(status="pending")\
+        .order_by(StockAdjustmentRequest.submitted_at.asc())\
+        .all()
     history = StockAdjustmentRequest.query\
-                .filter(StockAdjustmentRequest.status != "pending")\
-                .order_by(StockAdjustmentRequest.reviewed_at.desc())\
-                .limit(30).all()
+        .filter(StockAdjustmentRequest.status != "pending")\
+        .order_by(StockAdjustmentRequest.reviewed_at.desc())\
+        .limit(30).all()
+ 
+    # ── Defect submitted items awaiting approval ───────────────────
+    defect_rows = (
+        db.session.query(DefectDetail, Defect, Product, User)
+        .join(Defect,   Defect.defect_id     == DefectDetail.defect_id)
+        .join(Product,  Product.product_id   == DefectDetail.product_id)
+        .join(User,     User.user_id         == Defect.user_id)
+        .filter(DefectDetail.status     == "submitted")
+        .filter(DefectDetail.is_deleted == False)
+        .order_by(Defect.defect_datetime.asc())
+        .all()
+    )
+ 
+    defect_data = [
+        {
+            "detail_id":    detail.defect_detail_id,
+            "product_id":   product.product_id,
+            "product_name": product.product_name.capitalize(),
+            "quantity":     detail.quantity,
+            "origin":       detail.origin,
+            "origin_label": "Customer" if detail.origin == "customer" else "In-Store",
+            "reason":       detail.reason,
+            "reason_label": detail.reason.replace("_", " ").title(),
+            "customer_compensation": detail.customer_compensation.replace("_", " ").title(),
+            "transaction_id": f"TXN-{detail.transaction_id:05d}" if detail.transaction_id else None,
+            "logged_by":    f"{user.first_name} {user.last_name}".strip().title(),
+            "logged_role":  user.role,
+            "datetime":     to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
+            "approve_url":  url_for("defects.approve",     detail_id=detail.defect_detail_id),
+            "reject_url":   url_for("defects.reject",      detail_id=detail.defect_detail_id),
+            "delete_url":   url_for("defects.soft_delete", detail_id=detail.defect_detail_id),
+        }
+        for detail, defect, product, user in defect_rows
+    ]
+ 
     return render_template(
         "admin/requests.html",
         pending_data = [r.to_dict() for r in pending],
         history_data = [r.to_dict() for r in history],
+        defect_data  = defect_data,
     )
-
 
 # ── Review API ────────────────────────────────────────────────────────────────
 # Accepts per-item decisions: approve (with optional partial qty) or reject

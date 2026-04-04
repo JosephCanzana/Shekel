@@ -3,11 +3,18 @@ from flask_login import current_user, LoginManager
 from dotenv import load_dotenv
 from config import DevelopmentConfig
 from app.extensions import db, login_manager, migrate, csrf, mail
+from app.utils.helpers import to_pht
 
 def create_app(test_config=None):
     load_dotenv()
 
     app = Flask(__name__)
+    @app.template_filter("pht")
+    def pht_filter(dt, fmt="%b %d, %Y %I:%M %p"):
+        if dt is None:
+            return ""
+        return to_pht(dt).strftime(fmt)
+    
     app.config.from_object(DevelopmentConfig)
     # For pytesting
     if test_config:
