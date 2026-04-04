@@ -60,16 +60,24 @@
             <option value="{{ r }}" {% if filter_reason == r %}selected{% endif %}>{{ REASON_LABELS[r] }}</option>
             {% endfor %}
         </select>
-        <select name="compensation"
+        <select name="supplier_compensation"
                 class="flex-1 sm:flex-none px-3 py-2 rounded-xl text-sm font-medium focus:outline-none"
                 style="border:1px solid var(--color-border); background-color:var(--color-surface); color:var(--color-txt-primary);"
                 onchange="this.form.submit()">
-            <option value="">All Status</option>
-            {% for c, label in COMPENSATION_LABELS.items() %}
-            <option value="{{ c }}" {% if filter_comp == c %}selected{% endif %}>{{ label }}</option>
+            <option value="">All Supplier Status</option>
+            {% for c, label in SUPPLIER_COMP_LABELS.items() %}
+            <option value="{{ c }}" {% if filter_sup_comp == c %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
-        {% if filter_reason or filter_comp %}
+        <select name="origin"
+                class="flex-1 sm:flex-none px-3 py-2 rounded-xl text-sm font-medium focus:outline-none"
+                style="border:1px solid var(--color-border); background-color:var(--color-surface); color:var(--color-txt-primary);"
+                onchange="this.form.submit()">
+            <option value="">All Origins</option>
+            <option value="in_store"  {% if filter_origin == 'in_store'  %}selected{% endif %}>In-Store</option>
+            <option value="customer"  {% if filter_origin == 'customer'  %}selected{% endif %}>Customer</option>
+        </select>
+        {% if filter_reason or filter_sup_comp or filter_origin %}
         <a href="{{ url_for('defects.product_history', product_id=product.product_id) }}"
            class="px-4 py-2 rounded-xl text-sm font-medium transition"
            style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
@@ -83,14 +91,16 @@
          style="background-color:var(--color-surface); border:1px solid var(--color-border);">
         <div class="overflow-x-auto">
             <div class="grid px-5 py-2.5 text-xs font-semibold uppercase tracking-wider"
-                 style="grid-template-columns: 2fr 0.5fr 1.2fr 1.2fr 1.2fr 1.5fr {% if can_review %}160px{% endif %};
+                 style="grid-template-columns: 2fr 0.5fr 0.7fr 1fr 1fr 1.2fr 1.2fr 1.5fr {% if can_review %}160px{% endif %};
                         color:var(--color-txt-muted);
                         border-bottom:1px solid var(--color-border);
                         background-color:var(--color-surface-alt);">
                 <span>Date</span>
                 <span class="text-center">Qty</span>
+                <span>Origin</span>
                 <span>Reason</span>
-                <span>Status</span>
+                <span>Customer Comp</span>
+                <span>Supplier Comp</span>
                 <span>Logged By</span>
                 <span>Reviewed By</span>
                 {% if can_review %}<span class="text-center">Action</span>{% endif %}
@@ -99,58 +109,92 @@
             {% if details %}
                 {% for detail, defect, user in details %}
                 <div class="grid px-5 py-3.5 items-center transition"
-                     style="grid-template-columns: 2fr 0.5fr 1.2fr 1.2fr 1.2fr 1.5fr {% if can_review %}160px{% endif %};
+                     style="grid-template-columns: 2fr 0.5fr 0.7fr 1fr 1fr 1.2fr 1.2fr 1.5fr {% if can_review %}160px{% endif %};
                             border-top:1px solid var(--color-border);"
                      onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                      onmouseout="this.style.backgroundColor='transparent'">
 
+                    {# Date #}
                     <div>
                         <p class="text-sm" style="color:var(--color-txt-primary);">{{ defect.defect_datetime.strftime('%b %d, %Y') }}</p>
                         <p class="text-xs" style="color:var(--color-txt-muted);">{{ defect.defect_datetime.strftime('%I:%M %p') }}</p>
+                        {% if detail.transaction_id %}
+                        <p class="text-[10px] font-mono mt-0.5" style="color:var(--color-txt-muted);">
+                            TXN-{{ '%05d' | format(detail.transaction_id) }}
+                        </p>
+                        {% endif %}
                     </div>
 
+                    {# Qty #}
                     <p class="text-sm text-center font-semibold tabular-nums" style="color:var(--color-txt-primary);">{{ detail.quantity }}</p>
 
-                    <div>
-                        <span class="text-xs px-2.5 py-1 rounded-full font-medium"
-                              style="{% if detail.reason == 'expired' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
-                                     {% elif detail.reason == 'change_of_mind' %}background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)
-                                     {% else %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error){% endif %}">
-                            {{ REASON_LABELS[detail.reason] }}
-                        </span>
-                    </div>
+                    {# Origin #}
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                          style="{% if detail.origin == 'customer' %}
+                                     background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)
+                                 {% else %}
+                                     background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)
+                                 {% endif %}">
+                        {{ 'Customer' if detail.origin == 'customer' else 'In-Store' }}
+                    </span>
 
-                    <div>
-                        <span class="text-xs px-2.5 py-1 rounded-full font-medium"
-                              style="{% if detail.compensation == 'pending' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
-                                     {% elif detail.compensation == 'loss' %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
-                                     {% else %}background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success){% endif %}">
-                            {{ COMPENSATION_LABELS[detail.compensation] }}
-                        </span>
-                    </div>
+                    {# Reason #}
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                          style="{% if detail.reason == 'expired' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
+                                 {% elif detail.reason == 'change_of_mind' %}background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)
+                                 {% else %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error){% endif %}">
+                        {{ REASON_LABELS[detail.reason] }}
+                    </span>
 
+                    {# Customer compensation #}
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                          style="{% if detail.customer_compensation == 'none' %}
+                                     background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
+                                 {% elif detail.customer_compensation in ('exchange_same','exchange_different') %}
+                                     background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)
+                                 {% else %}
+                                     background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)
+                                 {% endif %}">
+                        {{ CUSTOMER_COMP_LABELS[detail.customer_compensation] }}
+                    </span>
+
+                    {# Supplier compensation #}
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                          style="{% if detail.supplier_compensation == 'pending' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
+                                 {% elif detail.supplier_compensation == 'loss' %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                                 {% elif detail.supplier_compensation == 'none' %}background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
+                                 {% else %}background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success){% endif %}">
+                        {{ SUPPLIER_COMP_LABELS[detail.supplier_compensation] }}
+                    </span>
+
+                    {# Logged By — fixed: was incorrectly showing detail.reviewer #}
                     <div>
-                        <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title }}</p>
+                        <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (user.first_name ~ ' ' ~ user.last_name) | title }}</p>
                         <p class="text-xs capitalize" style="color:var(--color-txt-muted);">{{ user.role }}</p>
                     </div>
 
+                    {# Reviewed By #}
                     <div>
                         {% if detail.reviewed_by and detail.reviewer %}
-                        <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title }}</p>
+                        <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (detail.reviewer.first_name ~ ' ' ~ detail.reviewer.last_name) | title }}</p>
                         <p class="text-xs" style="color:var(--color-txt-muted);">{{ detail.reviewed_at.strftime('%b %d, %Y') if detail.reviewed_at else '' }}</p>
                         {% else %}
                         <p class="text-xs" style="color:var(--color-txt-muted);">—</p>
                         {% endif %}
+                        {% if detail.rejection_note %}
+                        <p class="text-[10px] italic mt-0.5" style="color:var(--color-error);">"{{ detail.rejection_note }}"</p>
+                        {% endif %}
                     </div>
 
+                    {# Action #}
                     {% if can_review %}
                     <div class="flex items-center gap-1.5">
-                        {% if detail.compensation == 'pending' %}
+                        {% if detail.supplier_compensation == 'pending' %}
                         <button @click="$dispatch('confirm', {
                                     title:   'Return to Shelf',
                                     message: 'Mark ×{{ detail.quantity }} as returned? Stock will be restored.',
                                     action:  '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
-                                    fields:  [{ name: 'compensation', value: 'returned' }]
+                                    fields:  [{ name: 'supplier_compensation', value: 'returned' }]
                                 })"
                                 class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
                                 style="background:color-mix(in srgb,var(--color-success) 12%,transparent); color:var(--color-success);"
@@ -162,7 +206,7 @@
                                     title:   'Mark as Loss',
                                     message: 'Mark ×{{ detail.quantity }} as loss? This removes it permanently.',
                                     action:  '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
-                                    fields:  [{ name: 'compensation', value: 'loss' }]
+                                    fields:  [{ name: 'supplier_compensation', value: 'loss' }]
                                 })"
                                 class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
                                 style="background:color-mix(in srgb,var(--color-error) 12%,transparent); color:var(--color-error);"
@@ -171,9 +215,8 @@
                             <span class="material-symbols-outlined text-[13px]">delete_forever</span> Loss
                         </button>
                         {% else %}
-                        {# admin only — can update already-resolved items #}
                         {% if current_user.role == 'superadmin' %}
-                        <button @click="openEditModal('{{ url_for('defects.update_review', detail_id=detail.defect_detail_id) }}', '{{ detail.compensation }}')"
+                        <button @click="openEditModal('{{ url_for('defects.update_review', detail_id=detail.defect_detail_id) }}', '{{ detail.supplier_compensation }}')"
                                 class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
                                 style="background:color-mix(in srgb,var(--color-accent) 12%,transparent); color:var(--color-accent);"
                                 onmouseover="this.style.background='color-mix(in srgb,var(--color-accent) 22%,transparent)'"
@@ -193,7 +236,7 @@
                 <div class="flex flex-col items-center justify-center gap-3 py-16">
                     <span class="material-symbols-outlined text-[52px]" style="color:var(--color-border-strong);">inventory_2</span>
                     <p class="text-sm" style="color:var(--color-txt-muted);">
-                        {% if filter_reason or filter_comp %}No matching records.{% else %}No defect records yet.{% endif %}
+                        {% if filter_reason or filter_sup_comp or filter_origin %}No matching records.{% else %}No defect records yet.{% endif %}
                     </p>
                 </div>
             {% endif %}
@@ -205,21 +248,24 @@
         {% if details %}
             {% for detail, defect, user in details %}
             <button @click="openDetail({
-                        qty:              {{ detail.quantity }},
-                        reason:           '{{ detail.reason }}',
-                        reason_label:     '{{ REASON_LABELS[detail.reason] }}',
-                        compensation:     '{{ detail.compensation }}',
-                        compensation_label:'{{ COMPENSATION_LABELS[detail.compensation] }}',
-                        date:             '{{ defect.defect_datetime.strftime("%b %d, %Y") }}',
-                        time:             '{{ defect.defect_datetime.strftime("%I:%M %p") }}',
-                        logged_by:        '{{ (user.first_name ~ " " ~ user.last_name) | title }}',
-                        logged_role:      '{{ user.role }}',
-                        reviewed_by:      '{{ ((detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title) if detail.reviewed_by and detail.reviewer else "" }}',
-                        reviewed_at:      '{{ detail.reviewed_at.strftime("%b %d, %Y") if detail.reviewed_at else "" }}',
-                        is_pending:       {{ 'true' if detail.compensation == 'pending' else 'false' }},
-                        review_url:       '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
-                        update_url:       '{{ url_for("defects.update_review", detail_id=detail.defect_detail_id) }}',
-                        current_comp:     '{{ detail.compensation }}'
+                        qty:                  {{ detail.quantity }},
+                        reason:               '{{ detail.reason }}',
+                        reason_label:         '{{ REASON_LABELS[detail.reason] }}',
+                        origin:               '{{ detail.origin }}',
+                        cust_comp_label:      '{{ CUSTOMER_COMP_LABELS[detail.customer_compensation] }}',
+                        sup_comp:             '{{ detail.supplier_compensation }}',
+                        sup_comp_label:       '{{ SUPPLIER_COMP_LABELS[detail.supplier_compensation] }}',
+                        date:                 '{{ defect.defect_datetime.strftime("%b %d, %Y") }}',
+                        time:                 '{{ defect.defect_datetime.strftime("%I:%M %p") }}',
+                        logged_by:            '{{ (user.first_name ~ " " ~ user.last_name) | title }}',
+                        logged_role:          '{{ user.role }}',
+                        reviewed_by:          '{{ ((detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title) if detail.reviewed_by and detail.reviewer else "" }}',
+                        reviewed_at:          '{{ detail.reviewed_at.strftime("%b %d, %Y") if detail.reviewed_at else "" }}',
+                        rejection_note:       '{{ detail.rejection_note | replace("\'", "\\'") if detail.rejection_note else "" }}',
+                        is_pending:           {{ 'true' if detail.supplier_compensation == 'pending' else 'false' }},
+                        review_url:           '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
+                        update_url:           '{{ url_for("defects.update_review", detail_id=detail.defect_detail_id) }}',
+                        current_sup_comp:     '{{ detail.supplier_compensation }}'
                     })"
                     class="w-full text-left rounded-xl px-4 py-3 transition"
                     style="border:1px solid var(--color-border); background-color:var(--color-surface);"
@@ -239,16 +285,25 @@
                                 ×{{ detail.quantity }}
                             </span>
                             <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                  style="{% if detail.origin == 'customer' %}
+                                             background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)
+                                         {% else %}
+                                             background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)
+                                         {% endif %}">
+                                {{ 'Customer' if detail.origin == 'customer' else 'In-Store' }}
+                            </span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
                                   style="{% if detail.reason == 'expired' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
                                          {% elif detail.reason == 'change_of_mind' %}background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)
                                          {% else %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error){% endif %}">
                                 {{ REASON_LABELS[detail.reason] }}
                             </span>
                             <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                  style="{% if detail.compensation == 'pending' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
-                                         {% elif detail.compensation == 'loss' %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                                  style="{% if detail.supplier_compensation == 'pending' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
+                                         {% elif detail.supplier_compensation == 'loss' %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                                         {% elif detail.supplier_compensation == 'none' %}background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
                                          {% else %}background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success){% endif %}">
-                                {{ COMPENSATION_LABELS[detail.compensation] }}
+                                {{ SUPPLIER_COMP_LABELS[detail.supplier_compensation] }}
                             </span>
                         </div>
                     </div>
@@ -264,7 +319,7 @@
                  style="border:1px solid var(--color-border); background-color:var(--color-surface);">
                 <span class="material-symbols-outlined text-[40px] block mb-2" style="color:var(--color-border-strong);">inventory_2</span>
                 <p class="text-sm" style="color:var(--color-txt-muted);">
-                    {% if filter_reason or filter_comp %}No matching records.{% else %}No defect records yet.{% endif %}
+                    {% if filter_reason or filter_sup_comp or filter_origin %}No matching records.{% else %}No defect records yet.{% endif %}
                 </p>
             </div>
         {% endif %}
@@ -278,7 +333,7 @@
         </p>
         <div class="flex items-center gap-1">
             {% if page > 1 %}
-            <a href="{{ url_for('defects.product_history', product_id=product.product_id, page=page-1, reason=filter_reason, compensation=filter_comp) }}"
+            <a href="{{ url_for('defects.product_history', product_id=product.product_id, page=page-1, reason=filter_reason, supplier_compensation=filter_sup_comp, origin=filter_origin) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center transition"
                style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -287,14 +342,14 @@
             </a>
             {% endif %}
             {% for p in range(1, pages+1) %}
-            <a href="{{ url_for('defects.product_history', product_id=product.product_id, page=p, reason=filter_reason, compensation=filter_comp) }}"
+            <a href="{{ url_for('defects.product_history', product_id=product.product_id, page=p, reason=filter_reason, supplier_compensation=filter_sup_comp, origin=filter_origin) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition"
                style="{% if p == page %}background:var(--color-primary);color:var(--color-bg){% else %}border:1px solid var(--color-border);color:var(--color-txt-muted){% endif %}">
                 {{ p }}
             </a>
             {% endfor %}
             {% if page < pages %}
-            <a href="{{ url_for('defects.product_history', product_id=product.product_id, page=page+1, reason=filter_reason, compensation=filter_comp) }}"
+            <a href="{{ url_for('defects.product_history', product_id=product.product_id, page=page+1, reason=filter_reason, supplier_compensation=filter_sup_comp, origin=filter_origin) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center transition"
                style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -356,12 +411,14 @@
                                             : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
                                   x-text="selectedRow.reason_label"></span>
                             <span class="text-xs px-2.5 py-1 rounded-full font-medium"
-                                  :style="selectedRow.compensation === 'pending'
+                                  :style="selectedRow.sup_comp === 'pending'
                                           ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
-                                          : selectedRow.compensation === 'loss'
+                                          : selectedRow.sup_comp === 'loss'
                                             ? 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'
-                                            : 'background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)'"
-                                  x-text="selectedRow.compensation_label"></span>
+                                            : selectedRow.sup_comp === 'none'
+                                              ? 'background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)'
+                                              : 'background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)'"
+                                  x-text="selectedRow.sup_comp_label"></span>
                         </div>
                     </div>
                     <button @click="closeDetail()"
@@ -377,8 +434,16 @@
                 <div class="px-5 py-3 flex flex-col gap-1.5 text-xs"
                      style="color:var(--color-txt-muted); border-bottom:1px solid var(--color-border);">
                     <span class="flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px]">storefront</span>
+                        Origin: <span x-text="selectedRow.origin === 'customer' ? 'Customer' : 'In-Store'" style="color:var(--color-txt-secondary);"></span>
+                    </span>
+                    <span class="flex items-center gap-1">
                         <span class="material-symbols-outlined text-[13px]">person</span>
                         Logged by: <span x-text="selectedRow.logged_by + ' (' + selectedRow.logged_role + ')'" style="color:var(--color-txt-secondary);"></span>
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px]">storefront</span>
+                        Customer comp: <span x-text="selectedRow.cust_comp_label" style="color:var(--color-txt-secondary);"></span>
                     </span>
                     <template x-if="selectedRow.reviewed_by">
                         <span class="flex items-center gap-1">
@@ -386,9 +451,15 @@
                             Reviewed by: <span x-text="selectedRow.reviewed_by + ' on ' + selectedRow.reviewed_at" style="color:var(--color-txt-secondary);"></span>
                         </span>
                     </template>
+                    <template x-if="selectedRow.rejection_note">
+                        <span class="flex items-start gap-1 italic" style="color:var(--color-error);">
+                            <span class="material-symbols-outlined text-[13px] shrink-0 mt-0.5">cancel</span>
+                            <span x-text="'Rejected: ' + selectedRow.rejection_note"></span>
+                        </span>
+                    </template>
                 </div>
 
-                {# review actions — only for admin/co-admin on pending items #}
+                {# review actions #}
                 <div class="px-4 py-4 space-y-2 pb-8">
                     {% if can_review %}
                     <template x-if="selectedRow.is_pending">
@@ -397,7 +468,7 @@
                                         title:   'Return to Shelf',
                                         message: 'Mark ×' + selectedRow.qty + ' as returned? Stock will be restored.',
                                         action:  selectedRow.review_url,
-                                        fields:  [{ name: 'compensation', value: 'returned' }]
+                                        fields:  [{ name: 'supplier_compensation', value: 'returned' }]
                                     })"
                                     class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition"
                                     style="border:1px solid var(--color-border); color:var(--color-success);
@@ -409,7 +480,7 @@
                                         title:   'Mark as Loss',
                                         message: 'Mark ×' + selectedRow.qty + ' as loss? This removes it permanently.',
                                         action:  selectedRow.review_url,
-                                        fields:  [{ name: 'compensation', value: 'loss' }]
+                                        fields:  [{ name: 'supplier_compensation', value: 'loss' }]
                                     })"
                                     class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition"
                                     style="border:1px solid var(--color-border); color:var(--color-error);
@@ -423,7 +494,7 @@
                     <template x-if="!selectedRow.is_pending">
                         <div>
                             <template x-if="isAdmin">
-                                <button @click="closeDetail(); openEditModal(selectedRow.update_url, selectedRow.current_comp)"
+                                <button @click="closeDetail(); openEditModal(selectedRow.update_url, selectedRow.current_sup_comp)"
                                         class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition mb-2"
                                         style="border:1px solid var(--color-border); color:var(--color-accent);
                                                background:color-mix(in srgb,var(--color-accent) 8%,transparent);">
@@ -431,11 +502,11 @@
                                     Edit Compensation
                                 </button>
                             </template>
-                            <p class="text-xs text-center py-2" style="color:var(--color-txt-muted);">
-                                <template x-if="!isAdmin">
-                                    <span>This record has already been resolved.</span>
-                                </template>
-                            </p>
+                            <template x-if="!isAdmin">
+                                <p class="text-xs text-center py-2" style="color:var(--color-txt-muted);">
+                                    This record has already been resolved.
+                                </p>
+                            </template>
                         </div>
                     </template>
                 </div>
@@ -449,20 +520,20 @@
          style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);">
         <div class="w-full max-w-sm rounded-2xl p-7"
              style="background-color:var(--color-surface); border:1px solid var(--color-border);">
-            <h2 class="text-base font-bold mb-1" style="color:var(--color-txt-primary);">Update Compensation</h2>
+            <h2 class="text-base font-bold mb-1" style="color:var(--color-txt-primary);">Update Supplier Compensation</h2>
             <p class="text-xs mb-5" style="color:var(--color-txt-muted);">Admin override — changes inventory immediately.</p>
             <form id="editCompForm" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <label class="text-xs font-semibold uppercase tracking-wide block mb-1.5"
-                       style="color:var(--color-txt-muted);">Compensation</label>
-                <select name="compensation" id="editCompSelect"
+                       style="color:var(--color-txt-muted);">Supplier Compensation</label>
+                <select name="supplier_compensation" id="editCompSelect"
                         class="w-full px-3 py-2.5 rounded-xl text-sm font-semibold focus:outline-none transition mb-6"
                         style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
                         onfocus="this.style.borderColor='var(--color-accent)'"
                         onblur="this.style.borderColor='var(--color-border)'">
-                    <option value="pending">Pending</option>
-                    <option value="loss">Loss</option>
-                    <option value="returned">Returned</option>
+                    {% for c, label in SUPPLIER_COMP_LABELS.items() %}
+                    <option value="{{ c }}">{{ label }}</option>
+                    {% endfor %}
                 </select>
                 <div class="flex gap-3">
                     <button type="button" onclick="closeEditModal()"
