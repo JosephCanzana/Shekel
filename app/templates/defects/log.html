@@ -32,8 +32,9 @@
     product:         null,
     bundleQty:       0,
     unitQty:         1,
-    itemReason:      'defect',
+    itemReason:      '{{ "damaged" if current_user.role != "cashier" else "change_of_mind" }}',
     itemCompensation:'pending',
+    itemCustomerComp:'exchange_same',
     txnRef:          '',
     sessionTxn:      null,    // { txn_ref, txn_id, cashier, datetime, items: [{product_id, product_name, qty_sold, already_returned, remaining}] }
     sessionTxnInput: '',
@@ -51,8 +52,8 @@
     canSetCompensation: {{ 'true' if can_set_compensation else 'false' }},
 
     {# ── Reason lists by log type ── #}
-    instoreReasons:  ['defect', 'damage', 'expired'],
-    customerReasons: ['change_of_mind', 'defect', 'damage'],
+    instoreReasons:  ['damaged', 'expired'],
+    customerReasons: ['change_of_mind', 'damaged', 'expired'],
 
     get reasons() {
         return this.logType === 'instore' ? this.instoreReasons : this.customerReasons
@@ -62,13 +63,22 @@
 
     reasonLabel(r) {
         const m = {
-            defect:           'Defect',
-            damage:           'Damage',
+            damaged:          'Damaged',
             expired:          'Expired',
             change_of_mind:   'Change of Mind',
-            defective_return: 'Defective / Damaged',
         }
         return m[r] || r
+    },
+ 
+    customerCompLabel(c) {
+        const m = {
+            full_refund:        'Full Refund',
+            partial_refund:     'Partial Refund',
+            exchange_same:      'Exchange – Same Item',
+            exchange_different: 'Exchange – Different Item',
+            none:               'None',
+        }
+        return m[c] || c
     },
     compensationLabel(c) {
         const m = { pending:'Pending', loss:'Loss', returned:'Returned' }
@@ -85,8 +95,9 @@
         this.txnRef = ''
         this.panelError = ''
         this.editingId = null
-        this.itemReason = type === 'instore' ? 'defect' : 'change_of_mind'
+        this.itemReason = type === 'instore' ? 'damaged' : 'change_of_mind'
         this.itemCompensation = 'pending'
+        this.itemCustomerComp = type === 'customer' ? 'exchange_same' : 'none'
         // clear session TXN when switching away from customer
         if (type === 'instore') {
             this.sessionTxn = null; this.sessionTxnInput = ''; this.sessionTxnError = ''
@@ -98,9 +109,10 @@
     onReasonChange() {
         if (this.itemReason === 'change_of_mind') {
             this.itemCompensation = 'returned'
+            this.itemCustomerComp = 'exchange_same'
         } else {
-            // defect/damage/expired from customer or in-store — default pending
             if (this.itemCompensation === 'returned') this.itemCompensation = 'pending'
+            this.itemCustomerComp = this.logType === 'customer' ? 'full_refund' : 'none'
         }
     },
 
@@ -289,29 +301,31 @@
                 existing.compensation = compensation
                 if (this.txnRef.trim()) existing.txn_ref = this.txnRef.trim()
             } else {
-                this.items.push({
-                    _key: rowKey,
-                    log_type:      this.logType,
-                    product_id:    this.product.product_id,
-                    product_name:  this.product.product_name,
-                    total_price: this.product.total_price,
-                    cost_price:    this.product.cost_price,
-                    revenue_price: this.product.revenue_price,
-                    stock:         this.product.stock,
-                    bundle:        this.product.bundle || null,
-                    qty:           this.totalUnits,
-                    bundleQty:     parseInt(this.bundleQty) || 0,
-                    unitQty:       parseInt(this.unitQty)   || 0,
-                    reason:        this.itemReason,
-                    compensation,
-                    txn_ref:       this.txnRef.trim(),
-                })
+                    this.items.push({
+                        _key: rowKey,
+                        log_type:             this.logType,
+                        product_id:           this.product.product_id,
+                        product_name:         this.product.product_name,
+                        total_price:          this.product.total_price,
+                        cost_price:           this.product.cost_price,
+                        revenue_price:        this.product.revenue_price,
+                        stock:                this.product.stock,
+                        bundle:               this.product.bundle || null,
+                        qty:                  this.totalUnits,
+                        bundleQty:            parseInt(this.bundleQty) || 0,
+                        unitQty:              parseInt(this.unitQty)   || 0,
+                        reason:               this.itemReason,
+                        compensation,
+                        customer_compensation: this.itemCustomerComp,
+                        txn_ref:              this.txnRef.trim(),
+                    })
             }
         }
         this.product = null; this.searchQuery = ''; this.bundleQty = 0; this.unitQty = 1
         this.txnRef = ''
-        this.itemReason = this.logType === 'instore' ? 'defect' : 'change_of_mind'
+        this.itemReason = this.logType === 'instore' ? 'damaged' : 'change_of_mind'
         this.itemCompensation = 'pending'
+        this.itemCustomerComp = this.logType === 'customer' ? 'exchange_same' : 'none'
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
 
@@ -366,12 +380,13 @@
                         'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
                 body: JSON.stringify({
                     items: this.items.map(i => ({
-                        product_id:   i.product_id,
-                        qty:          i.qty,
-                        reason:       i.reason,
-                        compensation: i.compensation,
-                        log_type:     i.log_type,
-                        txn_ref:      i.txn_ref || null,
+                        product_id:            i.product_id,
+                        qty:                   i.qty,
+                        reason:                i.reason,
+                        compensation:          i.compensation,
+                        customer_compensation: i.customer_compensation || 'none',
+                        log_type:              i.log_type,
+                        txn_ref:               i.txn_ref || null,
                     })),
                     defect_token: document.getElementById('defect_token').value
                 })
@@ -861,7 +876,7 @@
                                 </select>
                             </div>
                             {# Compensation — stocking/admin only, hidden for change_of_mind #}
-                            <template x-if="canSetCompensation && itemReason !== 'change_of_mind'">
+                            <template x-if="canSetCompensation && !isCashier && itemReason !== 'change_of_mind'">
                                 <div>
                                     <label class="text-xs font-semibold mb-1.5 block" style="color:var(--color-txt-primary);">Compensation</label>
                                     <select x-model="itemCompensation"
@@ -877,6 +892,31 @@
                             </template>
                         </div>
 
+                        {# Customer compensation — customer log type only #}
+                        <template x-if="logType === 'customer'">
+                            <div class="mt-3">
+                                <label class="text-xs font-semibold mb-1.5 block" style="color:var(--color-txt-primary);">
+                                    Customer Compensation
+                                </label>
+                                <select x-model="itemCustomerComp"
+                                        class="w-full px-3 py-2 rounded-xl text-sm font-semibold focus:outline-none transition"
+                                        style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                        onfocus="this.style.borderColor='var(--color-accent)'"
+                                        onblur="this.style.borderColor='var(--color-border)'">
+                                    <template x-if="itemReason === 'change_of_mind'">
+                                        <template x-for="c in ['exchange_same','exchange_different']" :key="c">
+                                            <option :value="c" x-text="customerCompLabel(c)"></option>
+                                        </template>
+                                    </template>
+                                    <template x-if="itemReason !== 'change_of_mind'">
+                                        <template x-for="c in ['full_refund','partial_refund','exchange_same','exchange_different']" :key="c">
+                                            <option :value="c" x-text="customerCompLabel(c)"></option>
+                                        </template>
+                                    </template>
+                                </select>
+                            </div>
+                        </template>
+               
                         {# change_of_mind info pill #}
                         <template x-if="itemReason === 'change_of_mind'">
                             <div class="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
@@ -1204,7 +1244,7 @@
                                     <template x-for="r in reasons" :key="r"><option :value="r" x-text="reasonLabel(r)"></option></template>
                                 </select>
                             </div>
-                            <template x-if="canSetCompensation && itemReason !== 'change_of_mind'">
+                            <template x-if="canSetCompensation && !isCashier && itemReason !== 'change_of_mind'">
                                 <div>
                                     <p class="text-[10px] uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);">Compensation</p>
                                     <select x-model="itemCompensation"
@@ -1217,6 +1257,27 @@
                                 </div>
                             </template>
                         </div>
+
+                        {# Customer compensation — mobile #}
+                        <template x-if="logType === 'customer'">
+                            <div class="px-3 pb-2">
+                                <p class="text-[10px] uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);">Customer Compensation</p>
+                                <select x-model="itemCustomerComp"
+                                        class="w-full px-2 py-1.5 rounded-xl text-xs font-semibold focus:outline-none"
+                                        style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                                    <template x-if="itemReason === 'change_of_mind'">
+                                        <template x-for="c in ['exchange_same','exchange_different']" :key="c">
+                                            <option :value="c" x-text="customerCompLabel(c)"></option>
+                                        </template>
+                                    </template>
+                                    <template x-if="itemReason !== 'change_of_mind'">
+                                        <template x-for="c in ['full_refund','partial_refund','exchange_same','exchange_different']" :key="c">
+                                            <option :value="c" x-text="customerCompLabel(c)"></option>
+                                        </template>
+                                    </template>
+                                </select>
+                            </div>
+                        </template>
 
                         {# add / update buttons #}
                         <div class="flex gap-2 px-3 pb-3">
@@ -1401,7 +1462,14 @@
                                 <div class="flex-1 min-w-0">
                                     <p class="text-sm font-medium truncate" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
                                     <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
-                                       x-text="item.log_type + ' · ' + item.reason + ' · ' + item.compensation"></p>
+                                       x-text="item.log_type + ' · ' + item.reason"></p>
+                                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                                       x-text="'Customer: ' + item.cust_comp + ' · Supplier: ' + item.sup_comp"></p>
+                                    <p class="text-xs mt-0.5 font-semibold"
+                                       :style="item.status === 'submitted'
+                                               ? 'color:var(--color-info)'
+                                               : 'color:var(--color-success)'"
+                                       x-text="item.status === 'submitted' ? 'Submitted — awaiting admin approval' : 'Active'"></p>
                                     <template x-if="item.txn_ref">
                                         <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="'Ref: ' + item.txn_ref"></p>
                                     </template>

@@ -79,7 +79,7 @@ def get_defects(limit=5):
             "date":        to_pht(defect.defect_datetime).strftime("%b %d"),
             "qty":         detail.quantity,
             "reason":      detail.reason.replace("_", " ").title(),
-            "compensation": detail.compensation.title(),
+            "compensation": "detail.compensation.title()",
         }
         for detail, defect, product, user in rows
     ]
@@ -88,7 +88,11 @@ def _defects_on_watch():
     
     return (
         db.session.query(DefectDetail)
-        .filter(DefectDetail.compensation == "pending")
+        .filter(
+            DefectDetail.status == "active",
+            DefectDetail.supplier_compensation == "pending",
+            DefectDetail.is_deleted == False,
+        )
         .count()
     )
 
@@ -139,7 +143,9 @@ def get_admin_stats():
         Sale.sale_datetime >= start_utc,   # original sale was today
         Sale.sale_datetime <  end_utc,
         DefectDetail.transaction_id.isnot(None),
-        DefectDetail.compensation == "returned",
+        DefectDetail.status == "active",
+        DefectDetail.customer_compensation.in_(["full_refund", "partial_refund", "exchange_same", "exchange_different"]),
+        DefectDetail.is_deleted == False
     )
     .all()
 )

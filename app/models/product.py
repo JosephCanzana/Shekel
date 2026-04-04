@@ -21,7 +21,11 @@ class Product(BaseModel):
     bundle         = db.relationship("ProductBundle", back_populates="product", uselist=False)
     stock_ins      = db.relationship("StockIn",       back_populates="product")
     sale_details   = db.relationship("SaleDetail",    back_populates="product", passive_deletes=True)
-    defect_details = db.relationship("DefectDetail",  back_populates="product", passive_deletes=True)
+    defect_details = db.relationship(
+        "DefectDetail",
+        foreign_keys="[DefectDetail.product_id]",
+        back_populates="product",
+        passive_deletes=True,)
     adjustment_details = db.relationship("StockAdjustmentDetail", back_populates="product")
 
     def to_dict(self):

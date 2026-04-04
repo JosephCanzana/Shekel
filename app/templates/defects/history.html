@@ -61,14 +61,22 @@
                 <option value="{{ r }}" {% if filter_reason == r %}selected{% endif %}>{{ REASON_LABELS[r] }}</option>
                 {% endfor %}
             </select>
-            <select name="compensation"
+            <select name="status"
                     class="flex-1 sm:flex-none px-3 py-2 rounded-xl text-sm font-medium focus:outline-none"
                     style="border:1px solid var(--color-border); background-color:var(--color-surface); color:var(--color-txt-primary);"
                     onchange="this.form.submit()">
-                <option value="">All Status</option>
-                {% for c, label in COMPENSATION_LABELS.items() %}
-                <option value="{{ c }}" {% if filter_comp == c %}selected{% endif %}>{{ label }}</option>
+                <option value="">All Statuses</option>
+                {% for s, label in STATUS_LABELS.items() %}
+                <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
+            </select>
+            <select name="origin"
+                    class="flex-1 sm:flex-none px-3 py-2 rounded-xl text-sm font-medium focus:outline-none"
+                    style="border:1px solid var(--color-border); background-color:var(--color-surface); color:var(--color-txt-primary);"
+                    onchange="this.form.submit()">
+                <option value="">All Origins</option>
+                <option value="in_store"  {% if filter_origin == 'in_store'  %}selected{% endif %}>In-Store</option>
+                <option value="customer"  {% if filter_origin == 'customer'  %}selected{% endif %}>Customer</option>
             </select>
             <button type="submit"
                     class="px-4 py-2 rounded-xl text-sm font-semibold transition"
@@ -76,7 +84,7 @@
                     onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
                 Search
             </button>
-            {% if search or filter_reason or filter_comp %}
+            {% if search or filter_reason or filter_status or filter_origin %}
             <a href="{{ url_for('defects.history') }}"
                class="px-4 py-2 rounded-xl text-sm font-medium transition"
                style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
@@ -99,24 +107,25 @@
         </div>
 
         <div class="grid px-5 py-2.5 text-xs font-semibold uppercase tracking-wider"
-             style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 1fr 1.5fr 50px;
+             style="grid-template-columns:2fr 1.2fr 0.6fr 0.8fr 0.8fr 1.2fr 1.2fr 1.5fr 50px;
                     color:var(--color-txt-muted);
                     border-bottom:1px solid var(--color-border);
                     background-color:var(--color-surface-alt);">
             <span>Product</span>
             <span>Date</span>
             <span class="text-center">Qty</span>
+            <span>Origin</span>
             <span>Reason</span>
-            <span>Status</span>
+            <span>Customer Comp</span>
+            <span>Supplier Comp</span>
             <span>Logged By</span>
-            <span>Reviewed By</span>
             <span></span>
         </div>
 
         {% if all_details %}
             {% for detail, defect, product, user in all_details %}
             <div class="grid px-5 py-3.5 items-center transition"
-                 style="grid-template-columns:2fr 1.5fr 1fr 1fr 1fr 1fr 1.5fr 50px;
+                 style="grid-template-columns:2fr 1.2fr 0.6fr 0.8fr 0.8fr 1.2fr 1.2fr 1.5fr 50px;
                         border-top:1px solid var(--color-border);"
                  onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                  onmouseout="this.style.backgroundColor='transparent'">
@@ -127,6 +136,11 @@
                         {{ product.product_name.capitalize() }}
                     </a>
                     <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);">{{ product.product_id }}</p>
+                    {% if detail.transaction_id %}
+                    <p class="text-[10px] font-mono mt-0.5" style="color:var(--color-txt-muted);">
+                        TXN-{{ '%05d' | format(detail.transaction_id) }}
+                    </p>
+                    {% endif %}
                 </div>
 
                 <div>
@@ -136,39 +150,66 @@
 
                 <p class="text-sm text-center font-semibold tabular-nums" style="color:var(--color-txt-primary);">{{ detail.quantity }}</p>
 
-                <div>
-                    <span class="text-xs px-2.5 py-1 rounded-full font-medium"
-                          style="{% if detail.reason == 'expired' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
-                                 {% elif detail.reason == 'change_of_mind' %}background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)
-                                 {% else %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error){% endif %}">
-                        {{ REASON_LABELS[detail.reason] }}
-                    </span>
-                </div>
+                {# Origin #}
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                      style="{% if detail.origin == 'customer' %}
+                                 background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)
+                             {% else %}
+                                 background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)
+                             {% endif %}">
+                    {{ 'Customer' if detail.origin == 'customer' else 'In-Store' }}
+                </span>
 
-                <div>
-                    <span class="text-xs px-2.5 py-1 rounded-full font-medium"
-                          style="{% if detail.compensation == 'pending' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
-                                 {% elif detail.compensation == 'loss' %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
-                                 {% else %}background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success){% endif %}">
-                        {{ COMPENSATION_LABELS[detail.compensation] }}
-                    </span>
-                </div>
+                {# Reason #}
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                      style="{% if detail.reason == 'expired' %}
+                                 background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
+                             {% elif detail.reason == 'change_of_mind' %}
+                                 background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)
+                             {% else %}
+                                 background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                             {% endif %}">
+                    {{ REASON_LABELS[detail.reason] }}
+                </span>
+
+                {# Customer compensation #}
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                      style="{% if detail.customer_compensation == 'none' %}
+                                 background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
+                             {% elif detail.customer_compensation in ('exchange_same','exchange_different') %}
+                                 background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)
+                             {% else %}
+                                 background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)
+                             {% endif %}">
+                    {{ CUSTOMER_COMP_LABELS[detail.customer_compensation] }}
+                </span>
+
+                {# Supplier compensation #}
+                <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                      style="{% if detail.supplier_compensation == 'pending' %}
+                                 background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
+                             {% elif detail.supplier_compensation == 'loss' %}
+                                 background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                             {% elif detail.supplier_compensation == 'none' %}
+                                 background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
+                             {% else %}
+                                 background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)
+                             {% endif %}">
+                    {{ SUPPLIER_COMP_LABELS[detail.supplier_compensation] }}
+                </span>
 
                 <div>
                     <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (user.first_name ~ ' ' ~ user.last_name) | title }}</p>
                     <p class="text-xs capitalize" style="color:var(--color-txt-muted);">{{ user.role }}</p>
-                </div>
-
-                <div>
                     {% if detail.reviewed_by and detail.reviewer %}
-                    <p class="text-sm" style="color:var(--color-txt-secondary);">
-                        {{ (detail.reviewer.first_name ~ ' ' ~ detail.reviewer.last_name) | title }}
+                    <p class="text-[10px] mt-0.5" style="color:var(--color-txt-muted);">
+                        Reviewed: {{ (detail.reviewer.first_name ~ ' ' ~ detail.reviewer.last_name) | title }}
                     </p>
-                    <p class="text-xs" style="color:var(--color-txt-muted);">
-                        {{ detail.reviewed_at.strftime('%b %d, %Y') if detail.reviewed_at else '' }}
+                    {% endif %}
+                    {% if detail.rejection_note %}
+                    <p class="text-[10px] mt-0.5 italic" style="color:var(--color-error);">
+                        "{{ detail.rejection_note }}"
                     </p>
-                    {% else %}
-                    <p class="text-xs" style="color:var(--color-txt-muted);">—</p>
                     {% endif %}
                 </div>
 
@@ -189,7 +230,7 @@
             <div class="flex flex-col items-center justify-center gap-3 py-16">
                 <span class="material-symbols-outlined text-[52px]" style="color:var(--color-border-strong);">report_problem</span>
                 <p class="text-sm" style="color:var(--color-txt-muted);">
-                    {% if search or filter_reason or filter_comp %}No matching records{% else %}No records yet{% endif %}
+                    {% if search or filter_reason or filter_status %}No matching records{% else %}No records yet{% endif %}
                 </p>
             </div>
         {% endif %}
@@ -200,20 +241,24 @@
         {% if all_details %}
             {% for detail, defect, product, user in all_details %}
             <button @click="openDetail({
-                        product_name:     '{{ product.product_name.capitalize() | replace("'", "\\'") }}',
-                        product_id:       '{{ product.product_id }}',
-                        qty:              {{ detail.quantity }},
-                        reason:           '{{ detail.reason }}',
-                        reason_label:     '{{ REASON_LABELS[detail.reason] }}',
-                        compensation:     '{{ detail.compensation }}',
-                        compensation_label:'{{ COMPENSATION_LABELS[detail.compensation] }}',
-                        date:             '{{ defect.defect_datetime.strftime("%b %d, %Y") }}',
-                        time:             '{{ defect.defect_datetime.strftime("%I:%M %p") }}',
-                        logged_by:        '{{ (user.first_name ~ " " ~ user.last_name) | title }}',
-                        logged_role:      '{{ user.role }}',
-                        reviewed_by:      '{{ ((detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title) if detail.reviewed_by and detail.reviewer else "" }}',
-                        reviewed_at:      '{{ detail.reviewed_at.strftime("%b %d, %Y") if detail.reviewed_at else "" }}',
-                        history_url:      '{{ url_for("defects.product_history", product_id=product.product_id) }}'
+                        product_name:      '{{ product.product_name.capitalize() | replace("'", "\\'") }}',
+                        product_id:        '{{ product.product_id }}',
+                        qty:               {{ detail.quantity }},
+                        reason:            '{{ detail.reason }}',
+                        reason_label:      '{{ REASON_LABELS[detail.reason] }}',
+                        origin:            '{{ detail.origin }}',
+                        status:            '{{ detail.status }}',
+                        cust_comp_label:   '{{ CUSTOMER_COMP_LABELS[detail.customer_compensation] }}',
+                        sup_comp:          '{{ detail.supplier_compensation }}',
+                        sup_comp_label:    '{{ SUPPLIER_COMP_LABELS[detail.supplier_compensation] }}',
+                        date:              '{{ defect.defect_datetime.strftime("%b %d, %Y") }}',
+                        time:              '{{ defect.defect_datetime.strftime("%I:%M %p") }}',
+                        logged_by:         '{{ (user.first_name ~ " " ~ user.last_name) | title }}',
+                        logged_role:       '{{ user.role }}',
+                        reviewed_by:       '{{ ((detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title) if detail.reviewed_by and detail.reviewer else "" }}',
+                        reviewed_at:       '{{ detail.reviewed_at.strftime("%b %d, %Y") if detail.reviewed_at else "" }}',
+                        rejection_note:    '{{ detail.rejection_note | replace("'", "\\'") if detail.rejection_note else "" }}',
+                        history_url:       '{{ url_for("defects.product_history", product_id=product.product_id) }}'
                     })"
                     class="w-full text-left rounded-xl px-4 py-3 transition"
                     style="border:1px solid var(--color-border); background-color:var(--color-surface);"
@@ -231,16 +276,25 @@
                                 ×{{ detail.quantity }}
                             </span>
                             <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                  style="{% if detail.origin == 'customer' %}
+                                             background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)
+                                         {% else %}
+                                             background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)
+                                         {% endif %}">
+                                {{ 'Customer' if detail.origin == 'customer' else 'In-Store' }}
+                            </span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
                                   style="{% if detail.reason == 'expired' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
                                          {% elif detail.reason == 'change_of_mind' %}background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)
                                          {% else %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error){% endif %}">
                                 {{ REASON_LABELS[detail.reason] }}
                             </span>
                             <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                  style="{% if detail.compensation == 'pending' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
-                                         {% elif detail.compensation == 'loss' %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                                  style="{% if detail.supplier_compensation == 'pending' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
+                                         {% elif detail.supplier_compensation == 'loss' %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                                         {% elif detail.supplier_compensation == 'none' %}background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
                                          {% else %}background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success){% endif %}">
-                                {{ COMPENSATION_LABELS[detail.compensation] }}
+                                {{ SUPPLIER_COMP_LABELS[detail.supplier_compensation] }}
                             </span>
                         </div>
                     </div>
@@ -257,7 +311,7 @@
                  style="border:1px solid var(--color-border); background-color:var(--color-surface);">
                 <span class="material-symbols-outlined text-[40px] block mb-2" style="color:var(--color-border-strong);">report_problem</span>
                 <p class="text-sm" style="color:var(--color-txt-muted);">
-                    {% if search or filter_reason or filter_comp %}No matching records{% else %}No records yet{% endif %}
+                    {% if search or filter_reason or filter_status %}No matching records{% else %}No records yet{% endif %}
                 </p>
             </div>
         {% endif %}
@@ -271,7 +325,7 @@
         </p>
         <div class="flex items-center gap-1">
             {% if page > 1 %}
-            <a href="{{ url_for('defects.history', page=page-1, search=search, reason=filter_reason, compensation=filter_comp) }}"
+            <a href="{{ url_for('defects.history', page=page-1, search=search, reason=filter_reason, status=filter_status, origin=filter_origin) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center transition"
                style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -280,14 +334,14 @@
             </a>
             {% endif %}
             {% for p in range(1, pages+1) %}
-            <a href="{{ url_for('defects.history', page=p, search=search, reason=filter_reason, compensation=filter_comp) }}"
+            <a href="{{ url_for('defects.history', page=p, search=search, reason=filter_reason, status=filter_status, origin=filter_origin) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition"
                style="{% if p == page %}background:var(--color-primary);color:var(--color-bg){% else %}border:1px solid var(--color-border);color:var(--color-txt-muted){% endif %}">
                 {{ p }}
             </a>
             {% endfor %}
             {% if page < pages %}
-            <a href="{{ url_for('defects.history', page=page+1, search=search, reason=filter_reason, compensation=filter_comp) }}"
+            <a href="{{ url_for('defects.history', page=page+1, search=search, reason=filter_reason, status=filter_status, origin=filter_origin) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center transition"
                style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -298,7 +352,6 @@
         </div>
     </div>
     {% endif %}
-
 
     {# ── MOBILE BOTTOM SHEET ── #}
     <div x-show="mobileDetailOpen"
@@ -329,7 +382,6 @@
                     <div class="w-10 h-1 rounded-full" style="background-color:var(--color-border-strong);"></div>
                 </div>
 
-                {# header #}
                 <div class="flex items-start justify-between gap-3 px-5 py-4"
                      style="border-bottom:1px solid var(--color-border);">
                     <div class="flex-1 min-w-0">
@@ -348,26 +400,16 @@
                                             ? 'background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)'
                                             : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
                                   x-text="selectedRow.reason_label"></span>
-                            <span class="text-xs px-2.5 py-1 rounded-full font-medium"
-                                  :style="selectedRow.compensation === 'pending'
-                                          ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
-                                          : selectedRow.compensation === 'loss'
-                                            ? 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'
-                                            : 'background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)'"
-                                  x-text="selectedRow.compensation_label"></span>
                         </div>
                     </div>
                     <button @click="closeDetail()"
-                            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition"
-                            style="color:var(--color-txt-muted);"
-                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                            onmouseout="this.style.backgroundColor='transparent'">
+                            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style="color:var(--color-txt-muted);">
                         <span class="material-symbols-outlined text-[20px]">close</span>
                     </button>
                 </div>
 
-                {# meta #}
-                <div class="px-5 py-3 flex flex-col gap-1.5 text-xs"
+                <div class="px-5 py-3 flex flex-col gap-2 text-xs"
                      style="color:var(--color-txt-muted); border-bottom:1px solid var(--color-border);">
                     <span class="flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-[13px]">calendar_today</span>
@@ -381,20 +423,41 @@
                               style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);"
                               x-text="selectedRow.logged_role"></span>
                     </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[13px]">storefront</span>
+                        Customer comp: <span x-text="selectedRow.cust_comp_label" style="color:var(--color-txt-secondary);"></span>
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[13px]">local_shipping</span>
+                        Supplier comp:
+                        <span x-text="selectedRow.sup_comp_label"
+                              :style="selectedRow.sup_comp === 'pending'
+                                      ? 'color:var(--color-warning)'
+                                      : selectedRow.sup_comp === 'loss'
+                                        ? 'color:var(--color-error)'
+                                        : selectedRow.sup_comp === 'none'
+                                          ? 'color:var(--color-txt-muted)'
+                                          : 'color:var(--color-success)'"></span>
+                    </span>
                     <template x-if="selectedRow.reviewed_by">
                         <span class="flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-[13px]">fact_check</span>
                             Reviewed by:
                             <span x-text="selectedRow.reviewed_by" style="color:var(--color-txt-secondary);"></span>
-                            <span x-text="'· ' + selectedRow.reviewed_at" style="color:var(--color-txt-muted);"></span>
+                            <span x-text="'· ' + selectedRow.reviewed_at"></span>
+                        </span>
+                    </template>
+                    <template x-if="selectedRow.rejection_note">
+                        <span class="flex items-start gap-1.5 italic" style="color:var(--color-error);">
+                            <span class="material-symbols-outlined text-[13px] shrink-0 mt-0.5">cancel</span>
+                            <span x-text="'Rejected: ' + selectedRow.rejection_note"></span>
                         </span>
                     </template>
                 </div>
 
-                {# actions #}
                 <div class="px-4 py-4 pb-8">
                     <a :href="selectedRow.history_url"
-                       class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition"
+                       class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
                        style="border:1px solid var(--color-border); color:var(--color-primary);
                               background:color-mix(in srgb,var(--color-primary) 8%,transparent);">
                         <span class="material-symbols-outlined text-[20px]">history</span>
