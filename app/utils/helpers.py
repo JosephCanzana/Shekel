@@ -30,6 +30,18 @@ def generate_verification_token():
     return secrets.token_urlsafe(32)
 
 # Convert utc to ph time
+
+def _pht_fix(d):
+    """Re-format any datetime strings in a to_dict() result to PHT."""
+    for key in ("submitted_at", "reviewed_at"):
+        if d.get(key) and hasattr(d[key], "replace"):
+            # already a string from to_dict — skip
+            pass
+        elif d.get(key):
+            # it's a datetime object — convert
+            d[key] = to_pht(d[key]).strftime("%b %d, %Y %I:%M %p")
+    return d
+
 def to_pht(utc_dt):
     """Convert a naive UTC datetime to PHT."""
     return utc_dt.replace(tzinfo=pytz.utc).astimezone(PHT)

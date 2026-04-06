@@ -10,7 +10,7 @@ from app.models.stock_adjustment_request import StockAdjustmentRequest
 from app.models.stock_adjustment_detail  import StockAdjustmentDetail
 from app.extensions import db
 from app.utils.index_helpers import *
-from app.utils.helpers import generate_charge_token
+from app.utils.helpers import generate_charge_token, _pht_fix
 
 stocking_bp = Blueprint("stocking", __name__, url_prefix="/stocking")
 
@@ -330,8 +330,8 @@ def my_requests():
  
     return render_template(
         "stocking/requests.html",
-        pending_data    = [r.to_dict() for r in pending],
-        history_data    = [r.to_dict() for r in history],
+        pending_data = [_pht_fix(r.to_dict()) for r in pending],
+        history_data = [_pht_fix(r.to_dict()) for r in history],
         defect_pending  = [_serialize(d, def_, p) for d, def_, p in defect_pending],
         defect_history  = [_serialize(d, def_, p) for d, def_, p in defect_history],
     )

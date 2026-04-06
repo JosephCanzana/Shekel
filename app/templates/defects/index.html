@@ -110,7 +110,7 @@
 
         {# Desktop header #}
         <div class="hidden sm:grid px-5 py-2.5 text-xs font-semibold uppercase tracking-wider"
-             style="grid-template-columns: 2fr 1.5fr 0.6fr 0.8fr 0.8fr 1.2fr {% if can_review %}100px{% endif %} {% if can_delete %}40px{% endif %};
+             style="grid-template-columns: 2fr 1.5fr 0.6fr 0.8fr 0.8fr 1.2fr {% if can_review or can_propose %}100px{% endif %} {% if can_delete %}40px{% endif %};
                     color:var(--color-txt-muted);
                     border-bottom:1px solid var(--color-border);
                     background:var(--color-surface-alt);">
@@ -120,14 +120,14 @@
             <span>Origin</span>
             <span>Reason</span>
             <span>Logged By</span>
-            {% if can_review %}<span class="text-center">Resolve</span>{% endif %}
+            {% if can_review %}<span class="text-center">Resolve</span>{% elif can_propose %}<span class="text-center">Report</span>{% endif %}
             {% if can_delete %}<span></span>{% endif %}
         </div>
 
         {% if pending %}
         {% for detail, defect, product, user in pending %}
         <div class="hidden sm:grid px-5 py-3.5 items-center transition"
-             style="grid-template-columns: 2fr 1.5fr 0.6fr 0.8fr 0.8fr 1.2fr {% if can_review %}100px{% endif %} {% if can_delete %}40px{% endif %};
+             style="grid-template-columns: 2fr 1.5fr 0.6fr 0.8fr 0.8fr 1.2fr {% if can_review or can_propose %}100px{% endif %} {% if can_delete %}40px{% endif %};
                     border-top:1px solid var(--color-border);"
              onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
              onmouseout="this.style.backgroundColor='transparent'">
@@ -446,14 +446,26 @@
                 </div>
 
                 <div class="px-4 py-3 space-y-2 pb-6">
-                    {% if can_review %}
-                    <button @click="closeDetail(); openResolve(selectedRow)"
-                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
-                            style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);border:1px solid color-mix(in srgb,var(--color-warning) 25%,transparent);">
-                        <span class="material-symbols-outlined text-[18px]">task_alt</span>
-                        Resolve Supplier Comp
-                    </button>
-                    {% endif %}
+                {% if can_review %}
+                <button @click="closeDetail(); openResolve(selectedRow)"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+                        style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);border:1px solid color-mix(in srgb,var(--color-warning) 25%,transparent);">
+                    <span class="material-symbols-outlined text-[18px]">task_alt</span>
+                    Resolve Supplier Comp
+                </button>
+                {% elif can_propose %}
+                <button @click="closeDetail(); openResolve({
+                            product_name: selectedRow.product_name,
+                            qty:          selectedRow.qty,
+                            review_url:   selectedRow.review_url.replace('/review', '/propose'),
+                            is_proposal:  true
+                        })"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+                        style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);border:1px solid color-mix(in srgb,var(--color-info) 25%,transparent);">
+                    <span class="material-symbols-outlined text-[18px]">send</span>
+                    Report
+                </button>
+                {% endif %}
 
                     {% if can_delete %}
                     <button @click="closeDetail(); $dispatch('confirm', {

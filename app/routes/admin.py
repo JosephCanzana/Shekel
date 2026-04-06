@@ -9,7 +9,7 @@ from app.models.defect_detail import DefectDetail
 from app.models.defect import Defect
 from app.models.product import Product
 from app.models.user import User
-from app.utils.helpers import to_pht
+from app.utils.helpers import to_pht, _pht_fix
 from app.models.inventory import Inventory
 from app.models.stock_in  import StockIn
 from app.extensions import db
@@ -146,8 +146,8 @@ def requests_page():
  
     return render_template(
         "admin/requests.html",
-        pending_data = [r.to_dict() for r in pending],
-        history_data = [r.to_dict() for r in history],
+        pending_data = [_pht_fix(r.to_dict()) for r in pending],
+        history_data = [_pht_fix(r.to_dict()) for r in history],
         defect_data  = defect_data,
         proposal_data=proposal_data,
         defect_history=defect_history

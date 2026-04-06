@@ -1,7 +1,6 @@
 from app.models.base import BaseModel
 from app.extensions import db
 
-
 class StockAdjustmentRequest(BaseModel):
     __tablename__ = "Stock_Adjustment_Requests"
 
@@ -75,16 +74,18 @@ class StockAdjustmentRequest(BaseModel):
         # else: still has pending items — leave as pending
 
     def to_dict(self):
+        from app.utils.helpers import to_pht  # lazy import — avoids circular dependency
+
         return {
-            "request_id":      self.request_id,
-            "request_type":    self.request_type,
-            "status":          self.status,
-            "requested_by":    self.requester.full_name if self.requester else "—",
-            "reviewed_by":     self.reviewer.full_name  if self.reviewer  else "—",
-            "submitted_at":    self.submitted_at.strftime("%b %d, %Y %I:%M %p") if self.submitted_at else "—",
-            "reviewed_at":     self.reviewed_at.strftime("%b %d, %Y %I:%M %p")  if self.reviewed_at  else "—",
-            "pending_count":   self.pending_count,
-            "approved_count":  self.approved_count,
-            "rejected_count":  self.rejected_count,
-            "details":         [d.to_dict() for d in self.details],
+            "request_id":     self.request_id,
+            "request_type":   self.request_type,
+            "status":         self.status,
+            "requested_by":   self.requester.full_name if self.requester else "—",
+            "reviewed_by":    self.reviewer.full_name  if self.reviewer  else "—",
+            "submitted_at":   to_pht(self.submitted_at).strftime("%b %d, %Y %I:%M %p") if self.submitted_at else "—",
+            "reviewed_at":    to_pht(self.reviewed_at).strftime("%b %d, %Y %I:%M %p")  if self.reviewed_at  else "—",
+            "pending_count":  self.pending_count,
+            "approved_count": self.approved_count,
+            "rejected_count": self.rejected_count,
+            "details":        [d.to_dict() for d in self.details],
         }

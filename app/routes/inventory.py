@@ -13,7 +13,7 @@ from app.models.role_column_setting import RoleColumnSetting
 from app.models.stock_adjustment_request import StockAdjustmentRequest
 from app.models.stock_adjustment_detail import StockAdjustmentDetail
 from app.models.stock_in import StockIn
-from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use, get_category_thresholds
+from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use, get_category_thresholds, to_pht
 from app.utils.decorator import role_required
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
