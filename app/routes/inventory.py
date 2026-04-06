@@ -195,7 +195,6 @@ def edit(product_id):
                     flash("No change detected — stock is already at that value.", "info")
                     return redirect(url_for("inventory.index"))
 
-                # create a pending adjustment request instead of direct update
                 from app.models.stock_adjustment_request import StockAdjustmentRequest
                 from app.models.stock_adjustment_detail  import StockAdjustmentDetail
 
@@ -211,7 +210,7 @@ def edit(product_id):
                 db.session.add(StockAdjustmentDetail(
                     request_id         = req.request_id,
                     product_id         = product_id,
-                    quantity_requested = new_stock_val,  # ← the target count, not a delta
+                    quantity_requested = new_stock_val,
                     quantity_approved  = None,
                     status             = "pending",
                     note               = item_notes or None,
@@ -250,7 +249,6 @@ def edit(product_id):
             if not all([product_id_new, product_name, cost_price, revenue_price, low_reorder]):
                 flash("Name, prices, and low stock threshold are required.", "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
- 
 
             ok, err = validate_product_name(product_name)
             if not ok:
@@ -275,7 +273,6 @@ def edit(product_id):
                 flash("Low stock threshold must be a positive whole number.", "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
 
-            # ── check if product_id is being changed ──────────────────────────────
             id_changing = product_id_new != product_id
             if id_changing:
                 err = barcode_in_use(
@@ -314,11 +311,6 @@ def edit(product_id):
             revenue_price = float(revenue_price)
             total_price = round(cost_price + revenue_price, 2)
 
-            # ── apply product_id rename ───────────────────────────────────────────
-            # MySQL has no ON UPDATE CASCADE on Inventory/ProductBundles FKs, so
-            # letting the ORM rename the PK causes an IntegrityError on autoflush.
-            # Fix: disable FK checks, update PK + every child table via raw SQL,
-            # re-enable checks, then expire + re-fetch the ORM object under new PK.
             if id_changing:
                 with db.session.no_autoflush:
                     db.session.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
@@ -335,7 +327,6 @@ def edit(product_id):
                         {"new": product_id_new, "old": product_id}
                     )
                     db.session.execute(text("SET FOREIGN_KEY_CHECKS = 1"))
-                # Expire the stale ORM object and re-fetch under the new PK
                 db.session.expire(product)
                 product = db.session.get(Product, product_id_new)
 
@@ -347,7 +338,6 @@ def edit(product_id):
             product.low_reorder_threshold = low_reorder
             product.status                = status
 
-            # stock adjustment (admin can also adjust)
             if product.inventory and new_stock != "":
                 try:
                     new_stock_val = int(new_stock)
@@ -359,7 +349,6 @@ def edit(product_id):
                     flash("Stock must be a non-negative whole number.", "danger")
                     return redirect(url_for("inventory.edit", product_id=product_id))
 
-            # handle bundle
             has_bundle = any([bundle_id, bundle_name, bundle_count])
             if has_bundle:
                 if not all([bundle_id, bundle_name, bundle_count]):
@@ -440,8 +429,6 @@ def delete(product_id):
         flash("Only archived products can be deleted.", "danger")
         return redirect(url_for("inventory.index"))
 
-    # Block deletion if the product appears in any sales or defect records.
-    # This preserves historical transaction integrity — standard POS practice.
     from app.models.sale_detail    import SaleDetail
     from app.models.defect_detail  import DefectDetail
     has_sales   = SaleDetail.query.filter_by(product_id=product_id).first()
@@ -504,28 +491,23 @@ def get_column_preferences():
     page = request.args.get("page", "inventory")
     role = current_user.role
 
-    # get user's personal preference
     pref = UserColumnPreference.query.filter_by(
         user_id=current_user.user_id, page=page
     ).first()
 
-    # get role setting (superadmin-defined whitelist + defaults)
     role_setting = RoleColumnSetting.query.filter_by(role=role, page=page).first()
 
     if role_setting:
         available = json.loads(role_setting.available)
         defaults  = json.loads(role_setting.defaults)
     else:
-        # fallback to hardcoded defaults
         available = ROLE_COLUMN_DEFAULTS.get(role, {}).get("available", [])
         defaults  = ROLE_COLUMN_DEFAULTS.get(role, {}).get("defaults",  [])
 
-    # superadmin always gets full access regardless of role_setting
     if role == "superadmin":
         available = ROLE_COLUMN_DEFAULTS["superadmin"]["available"]
 
     if pref:
-        # filter saved columns to only those still in available whitelist
         columns = [c for c in json.loads(pref.columns) if c in available]
     else:
         columns = defaults
@@ -547,7 +529,6 @@ def save_column_preferences():
     columns = data.get("columns", [])
     role    = current_user.role
 
-    # validate against whitelist
     role_setting = RoleColumnSetting.query.filter_by(role=role, page=page).first()
     if role_setting:
         available = json.loads(role_setting.available)
@@ -557,7 +538,6 @@ def save_column_preferences():
     if role == "superadmin":
         available = ROLE_COLUMN_DEFAULTS["superadmin"]["available"]
 
-    # strip any columns not in whitelist
     columns = [c for c in columns if c in available]
 
     pref = UserColumnPreference.query.filter_by(
@@ -664,10 +644,6 @@ def bulk_delete():
 @login_required
 @role_required("superadmin", "admin")
 def bulk_threshold_update():
-    """
-    Updates the low-reorder threshold for multiple products at once.
-    Expects: { "product_ids": [...], "threshold": <int> }
-    """
     data        = request.json or {}
     product_ids = data.get("product_ids", [])
     threshold   = data.get("threshold")
@@ -690,14 +666,53 @@ def bulk_threshold_update():
     return jsonify({"ok": True, "updated": len(products), "threshold": threshold})
 
 
+# ── POST bulk category update ─────────────────────────────────────────────────
+@inventory_bp.route("/bulk/category-update", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def bulk_category_update():
+    """
+    Assigns a single category to multiple products at once.
+    Expects: { "product_ids": [...], "category_id": <int> }
+    """
+    from app.models.category import Category
+
+    data        = request.json or {}
+    product_ids = data.get("product_ids", [])
+    category_id = data.get("category_id")
+
+    if not product_ids:
+        return jsonify({"error": "No products selected."}), 400
+
+    if category_id is None:
+        return jsonify({"error": "No category selected."}), 400
+
+    try:
+        category_id = int(category_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid category ID."}), 400
+
+    category = Category.query.get(category_id)
+    if not category:
+        return jsonify({"error": "Category not found."}), 404
+
+    products = Product.query.filter(Product.product_id.in_(product_ids)).all()
+    for p in products:
+        p.category_id = category_id
+
+    db.session.commit()
+    return jsonify({
+        "ok":            True,
+        "updated":       len(products),
+        "category_id":   category_id,
+        "category_name": category.category_name,
+    })
+
+
 @inventory_bp.route("/adjust", methods=["GET"])
 @login_required
 @role_required("superadmin", "admin", "stocking")
 def adjust():
-    """
-    Renders the adjustment form for a selection of products.
-    Expects ?ids=id1,id2,id3 in the query string (passed from the inventory page).
-    """
     raw_ids = request.args.get("ids", "").strip()
     if not raw_ids:
         flash("No products selected.", "warning")
@@ -723,16 +738,6 @@ def adjust():
 @login_required
 @role_required("superadmin", "admin", "stocking")
 def adjust_submit():
-    """
-    Processes the adjustment form submission.
-
-    Threshold changes apply immediately for ALL roles (non-sensitive metadata).
-
-    admin / superadmin → direct inventory update + StockIn log written.
-    stocking           → creates a pending StockAdjustmentRequest for stock qty;
-                         threshold still applied immediately.
-    Notes are optional for all roles.
-    """
     data  = request.json or {}
     items = data.get("items", [])
 
@@ -759,7 +764,6 @@ def adjust_submit():
             if not product or product.status == "archived":
                 return jsonify({"error": f'Product "{product_id}" not found or archived.'}), 400
 
-            # apply stock
             if product.inventory:
                 old_qty = product.inventory.quantity_available
                 product.inventory.quantity_available = new_qty
@@ -773,25 +777,23 @@ def adjust_submit():
                     last_updated       = datetime.utcnow(),
                 ))
 
-            # log as a StockIn record (qty = delta; can be negative for reductions)
             delta = new_qty - old_qty
             if delta != 0:
                 db.session.add(StockIn(
                     product_id        = product_id,
                     user_id           = current_user.user_id,
-                    quantity_received = delta,        # negative = reduction
+                    quantity_received = delta,
                     stockin_datetime  = datetime.utcnow(),
                     notes             = note,
                 ))
 
-            # apply threshold update (always immediate)
             if new_threshold is not None:
                 try:
                     threshold_val = int(new_threshold)
                     if 0 <= threshold_val <= 2_147_483_647:
                         product.low_reorder_threshold = threshold_val
                 except (ValueError, TypeError):
-                    pass  # silently skip invalid threshold values
+                    pass
 
         try:
             db.session.commit()
@@ -802,7 +804,6 @@ def adjust_submit():
         return jsonify({"success": True, "mode": "direct"})
 
     # ── PATH B: stocking — create pending request for stock qty ───────────────
-    # Threshold changes still apply immediately (non-sensitive metadata).
     req = StockAdjustmentRequest(
         requested_by = current_user.user_id,
         request_type = "adjustment",
@@ -814,7 +815,7 @@ def adjust_submit():
 
     for item in items:
         product_id    = item.get("product_id")
-        note          = item.get("note", "").strip() or None   # always optional
+        note          = item.get("note", "").strip() or None
         new_threshold = item.get("new_threshold")
 
         try:
@@ -833,20 +834,19 @@ def adjust_submit():
         db.session.add(StockAdjustmentDetail(
             request_id         = req.request_id,
             product_id         = product_id,
-            quantity_requested = new_qty,    # the absolute target qty
+            quantity_requested = new_qty,
             quantity_approved  = None,
             status             = "pending",
             note               = note,
         ))
 
-        # apply threshold update immediately even for stocking role
         if new_threshold is not None:
             try:
                 threshold_val = int(new_threshold)
                 if 0 <= threshold_val <= 2_147_483_647:
                     product.low_reorder_threshold = threshold_val
             except (ValueError, TypeError):
-                pass  # silently skip invalid threshold values
+                pass
 
     try:
         db.session.commit()

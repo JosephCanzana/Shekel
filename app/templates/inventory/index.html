@@ -7,7 +7,9 @@
 <script>
     const PRODUCTS_DATA = {{ products_data | tojson }};
     const CAN_MANAGE    = {{ can_manage | tojson }};
-    const USER_ROLE     = {{ current_user.role | tojson }};  
+    const USER_ROLE     = {{ current_user.role | tojson }};
+    const CATEGORIES_DATA = {{ categories_data | tojson if categories_data is defined else '[]' }};
+
     function inventoryData() {
     return {
         // ── existing state ────────────────────────────────
@@ -35,6 +37,15 @@
         thresholdInput:      '',
         thresholdSubmitting: false,
         thresholdError:      '',
+
+        // ── bulk category modal ───────────────────────────
+        categoryModalOpen:   false,
+        categorySelectedId:  '',
+        categorySubmitting:  false,
+        categoryError:       '',
+
+        // ── mobile bulk action sheet ──────────────────────
+        bulkActionSheetOpen: false,
 
         // ── column picker state ───────────────────────────
         columnPickerOpen: false,
@@ -128,6 +139,7 @@
             this.thresholdError      = ''
             this.thresholdSubmitting = false
             this.thresholdModalOpen  = true
+            this.bulkActionSheetOpen = false
         },
 
         async submitBulkThreshold() {
@@ -153,7 +165,6 @@
                     this.thresholdSubmitting = false
                     return
                 }
-                // reflect change in the local rows array
                 this.selectedIds.forEach(id => {
                     const row = this.rows.find(r => r.product_id === id)
                     if (row) row.low_reorder_threshold = val
@@ -164,6 +175,55 @@
             } catch(e) {
                 this.thresholdError      = 'Network error. Please try again.'
                 this.thresholdSubmitting = false
+            }
+        },
+
+        // ── bulk category ─────────────────────────────────
+        openCategoryModal() {
+            this.categorySelectedId = ''
+            this.categoryError      = ''
+            this.categorySubmitting = false
+            this.categoryModalOpen  = true
+            this.bulkActionSheetOpen = false
+        },
+
+        async submitBulkCategory() {
+            if (!this.categorySelectedId) {
+                this.categoryError = 'Please select a category.'
+                return
+            }
+            this.categorySubmitting = true
+            this.categoryError      = ''
+            try {
+                const res = await fetch('/inventory/bulk/category-update', {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken':  document.querySelector('[name=csrf_token]').value,
+                    },
+                    body: JSON.stringify({
+                        product_ids: this.selectedIds,
+                        category_id: parseInt(this.categorySelectedId)
+                    }),
+                })
+                const data = await res.json()
+                if (!res.ok) {
+                    this.categoryError      = data.error || 'Failed to update.'
+                    this.categorySubmitting = false
+                    return
+                }
+                const catId   = parseInt(this.categorySelectedId)
+                const catName = this.categories.find(c => c.id === catId)?.name || data.category_name || ''
+                this.selectedIds.forEach(id => {
+                    const row = this.rows.find(r => r.product_id === id)
+                    if (row) { row.category_id = catId; row.category_name = catName }
+                })
+                this.categoryModalOpen = false
+                this.selectedIds       = []
+                this.selectMode        = false
+            } catch(e) {
+                this.categoryError      = 'Network error. Please try again.'
+                this.categorySubmitting = false
             }
         },
 
@@ -740,7 +800,6 @@ class="space-y-5">
        BULK THRESHOLD MODAL
     ══════════════════════════════════════════════ #}
 
-    {# Backdrop #}
     <div x-show="thresholdModalOpen"
          x-transition:enter="transition-opacity duration-200"
          x-transition:enter-start="opacity-0"
@@ -752,7 +811,6 @@ class="space-y-5">
          class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
          style="display:none;"></div>
 
-    {# Modal panel #}
     <div x-show="thresholdModalOpen"
          x-transition:enter="transition-all duration-200 ease-out"
          x-transition:enter-start="opacity-0 scale-95"
@@ -762,13 +820,13 @@ class="space-y-5">
          x-transition:leave-end="opacity-0 scale-95"
          @click.outside="thresholdModalOpen = false"
          @keydown.escape.window="thresholdModalOpen = false"
-         class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
-         style="top:50%;left:50%;transform:translate(-50%,-50%);
-                background-color:var(--color-surface);
-                border:1px solid var(--color-border);
-                display:none;">
+         class="fixed z-50 w-full max-w-sm shadow-2xl overflow-visible"
+        style="top:50%;left:50%;transform:translate(-50%,-50%);
+            border-radius:1rem;
+            background-color:var(--color-surface);
+            border:1px solid var(--color-border);
+            display:none;">
 
-        {# Header #}
         <div class="flex items-center justify-between px-5 py-4"
             style="border-bottom:1px solid var(--color-border);">
             <div class="flex items-center gap-2.5">
@@ -790,10 +848,7 @@ class="space-y-5">
             </button>
         </div>
 
-        {# Body #}
         <div class="px-5 py-5 space-y-4">
-
-            {# Explainer #}
             <p class="text-sm" style="color:var(--color-txt-muted);">
                 Apply a single low-stock threshold to
                 <span class="font-semibold" style="color:var(--color-txt-primary);"
@@ -801,16 +856,13 @@ class="space-y-5">
                 A warning badge will appear whenever stock falls at or below this value.
             </p>
 
-            {# Input #}
             <div class="space-y-1.5">
                 <label class="text-xs font-semibold uppercase tracking-wider"
                        style="color:var(--color-txt-muted);">New Threshold (units)</label>
                 <div class="flex items-center gap-2">
                     <button @click="if(parseInt(thresholdInput) > 0) thresholdInput = String(parseInt(thresholdInput) - 1)"
                             class="w-10 h-10 rounded-lg flex items-center justify-center transition shrink-0"
-                            style="border:1px solid var(--color-border);
-                                   background:var(--color-surface-alt);
-                                   color:var(--color-txt-muted);"
+                            style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-muted);"
                             onmouseover="this.style.borderColor='var(--color-accent)'"
                             onmouseout="this.style.borderColor='var(--color-border)'">
                         <span class="material-symbols-outlined text-[16px]">remove</span>
@@ -822,16 +874,12 @@ class="space-y-5">
                            @keydown.enter="submitBulkThreshold()"
                            @focus="$event.target.select()"
                            class="flex-1 px-4 py-2.5 rounded-lg text-sm text-center font-bold focus:outline-none transition"
-                           style="border:1px solid var(--color-border);
-                                  background:var(--color-surface-alt);
-                                  color:var(--color-txt-primary);"
+                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);"
                            onfocus="this.style.borderColor='var(--color-accent)';this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                            onblur="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
                     <button @click="thresholdInput = String((parseInt(thresholdInput) || 0) + 1)"
                             class="w-10 h-10 rounded-lg flex items-center justify-center transition shrink-0"
-                            style="border:1px solid var(--color-border);
-                                   background:var(--color-surface-alt);
-                                   color:var(--color-txt-muted);"
+                            style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-muted);"
                             onmouseover="this.style.borderColor='var(--color-accent)'"
                             onmouseout="this.style.borderColor='var(--color-border)'">
                         <span class="material-symbols-outlined text-[16px]">add</span>
@@ -839,17 +887,14 @@ class="space-y-5">
                 </div>
             </div>
 
-            {# Inline error #}
             <div x-show="thresholdError"
                  class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
-                 style="background:color-mix(in srgb,var(--color-error) 10%,transparent);
-                        color:var(--color-error);">
+                 style="background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error);">
                 <span class="material-symbols-outlined text-[15px]">error</span>
                 <span x-text="thresholdError"></span>
             </div>
         </div>
 
-        {# Footer #}
         <div class="flex items-center gap-3 px-5 py-4"
              style="border-top:1px solid var(--color-border);">
             <button @click="thresholdModalOpen = false"
@@ -861,17 +906,217 @@ class="space-y-5">
             </button>
             <button @click="submitBulkThreshold()"
                     :disabled="thresholdSubmitting || thresholdInput === ''"
-                    class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition
-                           disabled:opacity-40 disabled:cursor-not-allowed"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
                     style="background-color:var(--color-info);color:#fff;"
                     onmouseover="if(!this.disabled) this.style.opacity='0.85'"
                     onmouseout="this.style.opacity='1'">
-                <span x-show="thresholdSubmitting"
-                      class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-                <span x-show="!thresholdSubmitting"
-                      class="material-symbols-outlined text-[16px]">check</span>
+                <span x-show="thresholdSubmitting" class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                <span x-show="!thresholdSubmitting" class="material-symbols-outlined text-[16px]">check</span>
                 <span x-text="thresholdSubmitting ? 'Applying…' : 'Apply to All'"></span>
             </button>
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════════
+       BULK CATEGORY MODAL
+    ══════════════════════════════════════════════ #}
+
+    <div x-show="categoryModalOpen"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="categoryModalOpen = false"
+         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+         style="display:none;"></div>
+
+    <div x-show="categoryModalOpen"
+         x-transition:enter="transition-all duration-200 ease-out"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition-all duration-150 ease-in"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         @click.outside="categoryModalOpen = false"
+         @keydown.escape.window="categoryModalOpen = false"
+class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-visible"
+
+         style="top:50%;left:50%;transform:translate(-50%,-50%);
+                background-color:var(--color-surface);
+                border:1px solid var(--color-border);
+                display:none;">
+
+        {# Header #}
+        <div class="flex items-center justify-between px-5 py-4"
+             style="border-bottom:1px solid var(--color-border);">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                     style="background:color-mix(in srgb,var(--color-accent) 12%,transparent);">
+                    <span class="material-symbols-outlined text-[17px]"
+                          style="color:var(--color-accent);">category</span>
+                </div>
+                <h2 class="text-base font-semibold" style="color:var(--color-txt-primary);">
+                    Assign Category
+                </h2>
+            </div>
+            <button @click="categoryModalOpen = false"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                    style="color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+
+        {# Body #}
+        <div class="px-5 py-5 space-y-4">
+            <p class="text-sm" style="color:var(--color-txt-muted);">
+                Move
+                <span class="font-semibold" style="color:var(--color-txt-primary);"
+                    x-text="selectedIds.length + ' selected product' + (selectedIds.length === 1 ? '' : 's')"></span>
+                to a new category. This will overwrite their current category.
+            </p>
+
+            {# Category searchable select #}
+            <div class="space-y-1.5"
+                x-data="{
+                    catQuery: '',
+                    catOpen: false,
+                    get filtered() {
+                        const q = this.catQuery.trim().toLowerCase();
+                        return q ? categories.filter(c => c.name.toLowerCase().includes(q)) : categories;
+                    },
+                    get selectedLabel() {
+                        if (!categorySelectedId) return '';
+                        const found = categories.find(c => String(c.id) === categorySelectedId);
+                        return found ? titleCase(found.name) : '';
+                    },
+                    selectCat(cat) {
+                        categorySelectedId = String(cat.id);
+                        this.catQuery = titleCase(cat.name);
+                        this.catOpen = false;
+                    },
+                    clear() {
+                        categorySelectedId = '';
+                        this.catQuery = '';
+                        this.$refs.catInput.focus();
+                    }
+                }"
+                @click.outside="catOpen = false">
+
+                <label class="text-xs font-semibold uppercase tracking-wider"
+                    style="color:var(--color-txt-muted);">Select Category</label>
+
+                {# Input wrapper #}
+                <div class="relative">
+                    <div class="flex items-center gap-2 px-3 py-2.5 rounded-xl transition"
+                        style="border:1px solid var(--color-border); background:var(--color-surface);"
+                        :style="catOpen ? 'border-color:var(--color-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--color-accent) 15%,transparent)' : ''">
+
+                        <span class="material-symbols-outlined text-[16px] shrink-0"
+                            style="color:var(--color-txt-muted);">search</span>
+
+                        <input x-ref="catInput"
+                            type="text"
+                            x-model="catQuery"
+                            @focus="catOpen = true"
+                            @input="catOpen = true; categorySelectedId = ''"
+                            @keydown.escape="catOpen = false; $el.blur()"
+                            @keydown.arrow-down.prevent="catOpen = true"
+                            placeholder="Search category…"
+                            autocomplete="off"
+                            class="flex-1 bg-transparent text-sm outline-none"
+                            style="color:var(--color-txt-primary);">
+
+                        {# Clear button — shown when something is typed or selected #}
+                        <button x-show="catQuery"
+                                @click.stop="clear()"
+                                class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition"
+                                style="color:var(--color-txt-muted);"
+                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                onmouseout="this.style.backgroundColor='transparent'">
+                            <span class="material-symbols-outlined text-[14px]">close</span>
+                        </button>
+
+                        <button @click.stop="catOpen = !catOpen; $refs.catInput.focus()"
+                                class="w-5 h-5 flex items-center justify-center shrink-0 transition"
+                                style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[16px]"
+                                :style="catOpen ? 'transform:rotate(180deg)' : ''"
+                                style="transition:transform 150ms ease;">expand_more</span>
+                        </button>
+                    </div>
+
+                    {# Dropdown #}
+                    <div x-show="catOpen"
+                        x-transition:enter="transition-all duration-150 ease-out"
+                        x-transition:enter-start="opacity-0 -translate-y-1"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        x-transition:leave="transition-all duration-100 ease-in"
+                        x-transition:leave-start="opacity-100 translate-y-0"
+                        x-transition:leave-end="opacity-0 -translate-y-1"
+                        class="absolute z-10 w-full mt-1.5 rounded-xl shadow-lg"
+                        style="border:1px solid var(--color-border); background:var(--color-surface); max-height:280px; overflow-y:auto; border-radius:0.75rem;">
+
+                        {# Empty state #}
+                        <template x-if="filtered.length === 0">
+                            <div class="px-4 py-6 text-center text-sm"
+                                style="color:var(--color-txt-muted);">
+                                <span class="material-symbols-outlined text-[28px] block mb-1" style="opacity:.4;">search_off</span>
+                                No categories match "<span x-text="catQuery"></span>"
+                            </div>
+                        </template>
+
+                        {# Options #}
+                        <template x-for="cat in filtered" :key="cat.id">
+                            <button @click.stop="selectCat(cat)"
+                                    class="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition"
+                                    :style="categorySelectedId === String(cat.id)
+                                        ? 'background:color-mix(in srgb,var(--color-accent) 10%,transparent);'
+                                        : ''"
+                                    onmouseover="if(this.dataset.sel!=='true') this.style.backgroundColor='var(--color-surface-alt)'"
+                                    onmouseout="if(this.dataset.sel!=='true') this.style.backgroundColor=''"
+                                    :data-sel="categorySelectedId === String(cat.id)">
+
+                                <div class="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+                                    :style="categorySelectedId === String(cat.id)
+                                        ? 'background:var(--color-accent);color:var(--color-bg)'
+                                        : 'background:var(--color-surface-alt);color:var(--color-txt-muted)'">
+                                    <span class="material-symbols-outlined text-[13px]">category</span>
+                                </div>
+
+                                <span class="flex-1 font-medium"
+                                    :style="categorySelectedId === String(cat.id)
+                                        ? 'color:var(--color-accent)'
+                                        : 'color:var(--color-txt-primary)'"
+                                    x-text="titleCase(cat.name)"></span>
+
+                                <span x-show="categorySelectedId === String(cat.id)"
+                                    class="material-symbols-outlined text-[16px]"
+                                    style="color:var(--color-accent);">check</span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                {# Selected badge #}
+                <div x-show="categorySelectedId && selectedLabel"
+                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium"
+                    style="background:color-mix(in srgb,var(--color-accent) 10%,transparent); color:var(--color-accent);">
+                    <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                    Selected: <span x-text="selectedLabel" class="font-semibold"></span>
+                </div>
+            </div>
+
+            {# Inline error #}
+            <div x-show="categoryError"
+                class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
+                style="background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error);">
+                <span class="material-symbols-outlined text-[15px]">error</span>
+                <span x-text="categoryError"></span>
+            </div>
         </div>
     </div>
 
@@ -936,7 +1181,6 @@ class="space-y-5">
                             </button>
                         </td>
 
-
                         <td class="px-4 py-3 font-medium"
                             style="color:var(--color-txt-primary);">
                             <span x-text="titleCase(p.product_name)"></span>
@@ -964,7 +1208,7 @@ class="space-y-5">
                                 <template x-if="p.status !== 'archived'">
                                     <div class="flex items-center gap-1">
                                         <a :href="`/inventory/${p.product_id}/edit`"
-                                           title="Submit Adjustment Request"
+                                           title="Edit"
                                            class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
                                            style="color:var(--color-txt-muted);"
                                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-accent)'"
@@ -1046,13 +1290,13 @@ class="space-y-5">
         </template>
 
         <template x-for="(p, index) in paginated" :key="p.product_id">
-            <button @click="selectMode ? toggleItem(p.product_id) : openDetail(p)"
-                    class="w-full text-left rounded-xl px-4 py-3 transition-colors"
-                    :style="selectMode && isSelected(p.product_id)
-                        ? 'border:1.5px solid var(--color-accent);background-color:color-mix(in srgb,var(--color-accent) 6%,transparent)'
-                        : 'border:1px solid var(--color-border);background-color:var(--color-surface)'"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='var(--color-surface)'">
+           <button @click="selectMode ? toggleItem(p.product_id) : openDetail(p)"
+                class="w-full text-left rounded-xl px-4 py-3 transition-colors flex items-center justify-between"
+                :style="selectMode && isSelected(p.product_id)
+                    ? 'border:1.5px solid var(--color-accent);background-color:color-mix(in srgb,var(--color-accent) 6%,transparent)'
+                    : 'border:1px solid var(--color-border);background-color:var(--color-surface)'"
+                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                onmouseout="this.style.backgroundColor='var(--color-surface)'">
 
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -1085,13 +1329,7 @@ class="space-y-5">
                 </div>
 
                 <div class="flex items-center gap-2 shrink-0">
-                    <div class="text-right">
-                        <p class="text-sm font-semibold tabular-nums"
-                           style="color: var(--color-txt-primary);"
-                           x-text="formatPeso(p.total_price)"></p>
-                        <p class="text-xs" style="color: var(--color-txt-muted);">total price</p>
-                    </div>
-                    <span class="material-symbols-outlined text-[18px]"
+                    <span class="material-symbols-outlined text-[18px] shrink-0"
                           style="color: var(--color-txt-muted);">chevron_right</span>
                 </div>
             </button>
@@ -1312,7 +1550,10 @@ class="space-y-5">
         </template>
     </div>
 
-    {# ── Floating action bar ── #}
+    {# ══════════════════════════════════════════════
+       DESKTOP FLOATING ACTION BAR (sm+)
+       Shown when items are selected on desktop
+    ══════════════════════════════════════════════ #}
     <div x-show="selectMode && selectedIds.length > 0"
          x-transition:enter="transition-all duration-200 ease-out"
          x-transition:enter-start="opacity-0 translate-y-4"
@@ -1320,8 +1561,8 @@ class="space-y-5">
          x-transition:leave="transition-all duration-150 ease-in"
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 translate-y-4"
-         class="fixed bottom-16 md:bottom-6 left-1/2 z-40 -translate-x-1/2
-                flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl"
+         class="hidden sm:flex fixed bottom-6 left-1/2 z-40 -translate-x-1/2
+                items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl"
          style="background-color:var(--color-surface);
                 border:1px solid var(--color-border);
                 backdrop-filter:blur(12px);
@@ -1329,62 +1570,70 @@ class="space-y-5">
 
         {# count badge #}
         <span class="flex items-center gap-1.5 text-sm font-semibold pr-3"
-              style="color:var(--color-txt-primary);
-                     border-right:1px solid var(--color-border);">
+              style="color:var(--color-txt-primary);border-right:1px solid var(--color-border);">
             <span class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold"
-                  style="background:color-mix(in srgb,var(--color-accent) 15%,transparent);
-                         color:var(--color-accent);"
+                  style="background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent);"
                   x-text="selectedIds.length"></span>
             <span x-text="selectedIds.length === 1 ? 'item selected' : 'items selected'"></span>
         </span>
 
-        {# Adjust Selected — all roles #}
+        {# Adjust #}
         <button @click="goToAdjust()"
                 class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
-                style="background-color:var(--color-primary); color:var(--color-bg);"
+                style="background-color:var(--color-primary);color:var(--color-bg);"
                 onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
                 onmouseout="this.style.backgroundColor='var(--color-primary)'">
             <span class="material-symbols-outlined text-[16px]">tune</span>
-            <span class="hidden sm:inline">Adjust Selected</span>
-            <span class="sm:hidden">Adjust</span>
+            Adjust
         </button>
+
+        {# Assign Category — admin / superadmin only #}
+        <template x-if="canManage">
+            <button @click="openCategoryModal()"
+                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
+                    style="border:1px solid color-mix(in srgb,var(--color-accent) 50%,transparent);
+                           background:color-mix(in srgb,var(--color-accent) 10%,transparent);
+                           color:var(--color-accent);"
+                    onmouseover="this.style.background='color-mix(in srgb,var(--color-accent) 18%,transparent)'"
+                    onmouseout="this.style.background='color-mix(in srgb,var(--color-accent) 10%,transparent)'">
+                <span class="material-symbols-outlined text-[16px]">category</span>
+                Category
+            </button>
+        </template>
 
         {# Set Threshold — admin / superadmin only #}
         <template x-if="canManage">
             <button @click="openThresholdModal()"
                     class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
                     style="border:1px solid color-mix(in srgb,var(--color-info) 50%,transparent);
-                        background:color-mix(in srgb,var(--color-info) 10%,transparent);
-                        color:var(--color-info);"
+                           background:color-mix(in srgb,var(--color-info) 10%,transparent);
+                           color:var(--color-info);"
                     onmouseover="this.style.background='color-mix(in srgb,var(--color-info) 18%,transparent)'"
                     onmouseout="this.style.background='color-mix(in srgb,var(--color-info) 10%,transparent)'">
                 <span class="material-symbols-outlined text-[16px]">info</span>
-                <span class="hidden sm:inline">Set Threshold</span>
-                <span class="sm:hidden">Threshold</span>
+                Threshold
             </button>
         </template>
 
-        {# Archive Selected — admin / superadmin only #}
+        {# Archive — admin / superadmin only #}
         <template x-if="canManage && anySelectedActive">
             <button @click="confirmArchiveOpen = true"
                     class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
-                    style="background-color:var(--color-error); color:#fff;"
+                    style="background-color:var(--color-error);color:#fff;"
                     onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
                 <span class="material-symbols-outlined text-[16px]">archive</span>
-                <span class="hidden sm:inline">Archive Selected</span>
-                <span class="sm:hidden">Archive</span>
+                Archive
             </button>
         </template>
 
-        {# Unarchive Selected — admin / superadmin only #}
+        {# Unarchive — admin / superadmin only #}
         <template x-if="canManage && anySelectedArchived">
             <button @click="unarchiveSelected()"
                     class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
-                    style="background-color:var(--color-success); color:#fff;"
+                    style="background-color:var(--color-success);color:#fff;"
                     onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
                 <span class="material-symbols-outlined text-[16px]">unarchive</span>
-                <span class="hidden sm:inline">Unarchive Selected</span>
-                <span class="sm:hidden">Unarchive</span>
+                Unarchive
             </button>
         </template>
 
@@ -1397,6 +1646,204 @@ class="space-y-5">
                 title="Clear selection">
             <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
+    </div>
+
+    {# ══════════════════════════════════════════════
+       MOBILE SELECTION BAR + ACTION SHEET
+       Replaces the cropped pill on small screens
+    ══════════════════════════════════════════════ #}
+
+    {# Compact sticky bar (mobile only) #}
+    <div x-show="selectMode && selectedIds.length > 0"
+         x-transition:enter="transition-all duration-200 ease-out"
+         x-transition:enter-start="opacity-0 translate-y-full"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition-all duration-150 ease-in"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-full"
+         class="sm:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center gap-3 px-4 py-3"
+         style="background-color:var(--color-surface);
+                border-top:1px solid var(--color-border);
+                backdrop-filter:blur(12px);">
+
+        {# Count pill #}
+        <div class="flex items-center gap-2 min-w-0">
+            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
+                  style="background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent);"
+                  x-text="selectedIds.length"></span>
+            <span class="text-sm font-semibold truncate"
+                  style="color:var(--color-txt-primary);"
+                  x-text="selectedIds.length === 1 ? '1 item selected' : selectedIds.length + ' items selected'"></span>
+        </div>
+
+        <div class="flex items-center gap-2 ml-auto shrink-0">
+            {# Clear selection #}
+            <button @click="selectedIds = []"
+                    class="w-9 h-9 rounded-xl flex items-center justify-center transition"
+                    style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+
+            {# Actions button → opens sheet #}
+            <button @click="bulkActionSheetOpen = true"
+                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition"
+                    style="background-color:var(--color-primary);color:var(--color-bg);">
+                <span class="material-symbols-outlined text-[17px]">bolt</span>
+                Actions
+            </button>
+        </div>
+    </div>
+
+    {# Mobile bulk action sheet backdrop #}
+    <div x-show="bulkActionSheetOpen"
+         x-transition:enter="transition-opacity duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         @click="bulkActionSheetOpen = false"
+         class="sm:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+         style="display:none;"></div>
+
+    {# Mobile bulk action sheet panel #}
+    <div x-show="bulkActionSheetOpen"
+         x-transition:enter="transition-transform duration-300 ease-out"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition-transform duration-200 ease-in"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full"
+         class="sm:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl shadow-2xl"
+         style="background-color:var(--color-surface);
+                border-top:1px solid var(--color-border);">
+
+        {# Drag handle #}
+        <div class="flex justify-center pt-3 pb-1">
+            <div class="w-10 h-1 rounded-full" style="background-color:var(--color-border-strong);"></div>
+        </div>
+
+        {# Sheet header #}
+        <div class="flex items-center justify-between px-5 py-3"
+             style="border-bottom:1px solid var(--color-border);">
+            <div>
+                <p class="text-sm font-bold" style="color:var(--color-txt-primary);">Bulk Actions</p>
+                <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                   x-text="selectedIds.length + ' product' + (selectedIds.length === 1 ? '' : 's') + ' selected'"></p>
+            </div>
+            <button @click="bulkActionSheetOpen = false"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                    style="color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+
+        {# Action list #}
+        <div class="px-4 py-3 space-y-2 pb-10">
+
+            {# Adjust Stock — all roles #}
+            <button @click="bulkActionSheetOpen = false; goToAdjust()"
+                    class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
+                    style="background:color-mix(in srgb,var(--color-primary) 8%,transparent);
+                           border:1px solid color-mix(in srgb,var(--color-primary) 25%,transparent);"
+                    onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                     style="background:var(--color-primary);color:var(--color-bg);">
+                    <span class="material-symbols-outlined text-[18px]">tune</span>
+                </div>
+                <div class="text-left">
+                    <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Adjust Stock</p>
+                    <p class="text-xs" style="color:var(--color-txt-muted);">Update quantities for selected items</p>
+                </div>
+                <span class="material-symbols-outlined text-[18px] ml-auto"
+                      style="color:var(--color-txt-muted);">chevron_right</span>
+            </button>
+
+            {# Assign Category — admin / superadmin only #}
+            <template x-if="canManage">
+                <button @click="openCategoryModal()"
+                        class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
+                        style="background:color-mix(in srgb,var(--color-accent) 8%,transparent);
+                               border:1px solid color-mix(in srgb,var(--color-accent) 25%,transparent);"
+                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                         style="background:var(--color-accent);color:var(--color-bg);">
+                        <span class="material-symbols-outlined text-[18px]">category</span>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Assign Category</p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);">Move items to a different category</p>
+                    </div>
+                    <span class="material-symbols-outlined text-[18px] ml-auto"
+                          style="color:var(--color-txt-muted);">chevron_right</span>
+                </button>
+            </template>
+
+            {# Set Threshold — admin / superadmin only #}
+            <template x-if="canManage">
+                <button @click="openThresholdModal()"
+                        class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
+                        style="background:color-mix(in srgb,var(--color-info) 8%,transparent);
+                               border:1px solid color-mix(in srgb,var(--color-info) 25%,transparent);"
+                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                         style="background:var(--color-info);color:#fff;">
+                        <span class="material-symbols-outlined text-[18px]">info</span>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Set Low Stock Threshold</p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);">Apply a threshold to selected items</p>
+                    </div>
+                    <span class="material-symbols-outlined text-[18px] ml-auto"
+                          style="color:var(--color-txt-muted);">chevron_right</span>
+                </button>
+            </template>
+
+            {# Archive — admin / superadmin, active items only #}
+            <template x-if="canManage && anySelectedActive">
+                <button @click="bulkActionSheetOpen = false; confirmArchiveOpen = true"
+                        class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
+                        style="background:color-mix(in srgb,var(--color-error) 8%,transparent);
+                               border:1px solid color-mix(in srgb,var(--color-error) 25%,transparent);"
+                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                         style="background:var(--color-error);color:#fff;">
+                        <span class="material-symbols-outlined text-[18px]">archive</span>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Archive Selected</p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);">Hide items from the POS</p>
+                    </div>
+                    <span class="material-symbols-outlined text-[18px] ml-auto"
+                          style="color:var(--color-txt-muted);">chevron_right</span>
+                </button>
+            </template>
+
+            {# Unarchive — admin / superadmin, archived items only #}
+            <template x-if="canManage && anySelectedArchived">
+                <button @click="bulkActionSheetOpen = false; unarchiveSelected()"
+                        class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
+                        style="background:color-mix(in srgb,var(--color-success) 8%,transparent);
+                               border:1px solid color-mix(in srgb,var(--color-success) 25%,transparent);"
+                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                         style="background:var(--color-success);color:#fff;">
+                        <span class="material-symbols-outlined text-[18px]">unarchive</span>
+                    </div>
+                    <div class="text-left">
+                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Restore Selected</p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);">Make items active again</p>
+                    </div>
+                    <span class="material-symbols-outlined text-[18px] ml-auto"
+                          style="color:var(--color-txt-muted);">chevron_right</span>
+                </button>
+            </template>
+
+        </div>
     </div>
 
     {# ── Archive confirm modal ── #}
