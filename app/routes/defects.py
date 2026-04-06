@@ -63,7 +63,10 @@ def can_delete():
     return current_user.role in ("superadmin", "admin")
 
 def can_review():
-    return current_user.role in ("superadmin", "admin", "stocking")
+    return current_user.role in ("superadmin", "admin")
+
+def can_propose():
+    return current_user.role == "stocking"
 
 def can_set_compensation():
     return current_user.role in ("superadmin", "admin", "stocking")
@@ -259,6 +262,7 @@ def index():
         can_approve=can_approve(),
         can_review=can_review(),
         can_delete=can_delete(),
+        can_propose=can_propose(),
         REASONS=REASONS,
         REASON_LABELS=REASON_LABELS,
         SUPPLIER_COMP_LABELS=SUPPLIER_COMP_LABELS,
@@ -369,6 +373,7 @@ def product_history(product_id):
         filter_status=filter_status,
         can_delete=can_delete(),
         can_review=can_review(),
+        can_propose=can_propose(),
         REASONS=REASONS,
         REASON_LABELS=REASON_LABELS,
         CUSTOMER_COMP_LABELS=CUSTOMER_COMP_LABELS,
@@ -460,6 +465,7 @@ def review(detail_id):
 
     _apply_supplier_decision(detail, new_sup_comp)
     detail.supplier_compensation = new_sup_comp
+    detail.proposed_supplier_compensation = None
     detail.reviewed_by           = current_user.user_id
     detail.reviewed_at           = datetime.utcnow()
     db.session.commit()
@@ -887,3 +893,41 @@ def complete():
 def refresh_token():
     session["defect_token"] = generate_charge_token()
     return jsonify({"defect_token": session["defect_token"]})
+
+@defects_bp.route("/detail/<int:detail_id>/propose", methods=["POST"])
+@login_required
+@role_required("stocking")
+def propose(detail_id):
+    detail = DefectDetail.query.get_or_404(detail_id)
+
+    if detail.is_deleted:
+        flash("Record has been deleted.", "warning")
+        return redirect(url_for("defects.index"))
+
+    if detail.status != "active" or detail.supplier_compensation != "pending":
+        flash("Only active items with pending supplier compensation can be proposed.", "warning")
+        return redirect(url_for("defects.index"))
+
+    proposed = request.form.get("supplier_compensation", "").strip()
+    if proposed not in RESOLVABLE_SUP_COMPS:
+        flash("Invalid supplier compensation.", "danger")
+        return redirect(url_for("defects.index"))
+
+    detail.proposed_supplier_compensation = proposed
+    db.session.commit()
+
+    name = detail.product.product_name.capitalize()
+    flash(f'"{name}" supplier comp proposal submitted — awaiting admin approval.', "success")
+    return redirect(request.referrer or url_for("defects.index"))
+
+@defects_bp.route("/detail/<int:detail_id>/clear-proposal", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def clear_proposal(detail_id):
+    detail = DefectDetail.query.get_or_404(detail_id)
+    detail.proposed_supplier_compensation = None
+    db.session.commit()
+
+    name = detail.product.product_name.capitalize()
+    flash(f'Proposal for "{name}" rejected — back to pending.', "warning")
+    return redirect(request.referrer or url_for("defects.index"))

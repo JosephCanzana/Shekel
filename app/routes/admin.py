@@ -85,13 +85,73 @@ def requests_page():
         }
         for detail, defect, product, user in defect_rows
     ]
+    # ── Supplier comp proposals from stocking ─────────────────────────
+    proposal_rows = (
+        db.session.query(DefectDetail, Defect, Product, User)
+        .join(Defect,   Defect.defect_id     == DefectDetail.defect_id)
+        .join(Product,  Product.product_id   == DefectDetail.product_id)
+        .join(User,     User.user_id         == Defect.user_id)
+        .filter(DefectDetail.status                        == "active")
+        .filter(DefectDetail.supplier_compensation         == "pending")
+        .filter(DefectDetail.proposed_supplier_compensation != None)
+        .filter(DefectDetail.is_deleted                   == False)
+        .order_by(Defect.defect_datetime.asc())
+        .all()
+    )
+
+    proposal_data = [
+        {
+            "detail_id":    detail.defect_detail_id,
+            "product_name": product.product_name.capitalize(),
+            "product_id":   product.product_id,
+            "quantity":     detail.quantity,
+            "origin_label": "Customer" if detail.origin == "customer" else "In-Store",
+            "reason_label": detail.reason.replace("_", " ").title(),
+            "proposed":     detail.proposed_supplier_compensation.replace("_", " ").title(),
+            "proposed_raw": detail.proposed_supplier_compensation,
+            "logged_by":    f"{user.first_name} {user.last_name}".strip().title(),
+            "datetime":     to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
+            "approve_url":  url_for("defects.review",      detail_id=detail.defect_detail_id),
+            "reject_url":   url_for("defects.clear_proposal", detail_id=detail.defect_detail_id),
+        }
+        for detail, defect, product, user in proposal_rows
+    ]
+
+    defect_history_rows = (
+        db.session.query(DefectDetail, Defect, Product, User)
+        .join(Defect,   Defect.defect_id     == DefectDetail.defect_id)
+        .join(Product,  Product.product_id   == DefectDetail.product_id)
+        .join(User,     User.user_id         == Defect.user_id)
+        .filter(DefectDetail.status.in_(["active", "rejected"]))
+        .filter(DefectDetail.is_deleted == False)
+        .order_by(Defect.defect_datetime.desc())
+        .limit(30).all()
+    )
+
+    defect_history = [
+        {
+            "product_name":          product.product_name.capitalize(),
+            "quantity":              detail.quantity,
+            "origin_label":          "Customer" if detail.origin == "customer" else "In-Store",
+            "reason_label":          detail.reason.replace("_", " ").title(),
+            "customer_compensation": detail.customer_compensation.replace("_", " ").title(),
+            "supplier_compensation": detail.supplier_compensation.replace("_", " ").title(),
+            "status":                detail.status,
+            "logged_by":             f"{user.first_name} {user.last_name}".strip().title(),
+            "rejection_note":        detail.rejection_note or "",
+            "datetime":              to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
+        }
+        for detail, defect, product, user in defect_history_rows
+    ]
  
     return render_template(
         "admin/requests.html",
         pending_data = [r.to_dict() for r in pending],
         history_data = [r.to_dict() for r in history],
         defect_data  = defect_data,
-    )
+        proposal_data=proposal_data,
+        defect_history=defect_history
+        )
 
 # ── Review API ────────────────────────────────────────────────────────────────
 # Accepts per-item decisions: approve (with optional partial qty) or reject
@@ -198,3 +258,5 @@ def reports():
 @role_required("superadmin")
 def audit_logs():
     return "logs"
+
+

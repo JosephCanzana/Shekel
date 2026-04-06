@@ -1,0 +1,21 @@
+from alembic import op
+from sqlalchemy.dialects import mysql
+
+revision      = "add_proposed_supplier_comp"
+down_revision = "redesign_defect_detail"
+branch_labels = None
+depends_on    = None
+
+
+def upgrade():
+    op.add_column("Defect_Details",
+        sa.Column(
+            "proposed_supplier_compensation",
+            mysql.ENUM("loss", "same_item", "different_item", "money"),
+            nullable=True,
+        )
+    )
+
+
+def downgrade():
+    op.drop_column("Defect_Details", "proposed_supplier_compensation")

@@ -92,6 +92,11 @@ class DefectDetail(BaseModel):
     # Null/zero → equal value
     price_difference = db.Column(db.Numeric(10, 2), nullable=True)
 
+    proposed_supplier_compensation = db.Column(
+    db.Enum("loss", "same_item", "different_item", "money", validate_strings=True),
+    nullable=True,
+)
+
     # ── Price snapshot ────────────────────────────────────────────────────────
     cost_price_at_defect    = db.Column(db.Numeric(10, 2), nullable=False)
     revenue_price_at_defect = db.Column(db.Numeric(10, 2), nullable=False)
