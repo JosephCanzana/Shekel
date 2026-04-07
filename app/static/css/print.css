@@ -1,0 +1,55 @@
+@media print {
+
+    /* ── Force page size to 58mm receipt ── */
+    @page {
+        size: 58mm auto;
+        margin: 0;
+    }
+
+    /* ── Hide the ENTIRE document ── */
+    html, body {
+        visibility: hidden;
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 58mm !important;
+    }
+
+    /* ── Hide common layout elements explicitly ── */
+    nav, header, footer, aside,
+    .navbar, .sidebar, .desktop-layout,
+    .mobile-layout, [x-cloak] {
+        display: none !important;
+    }
+
+    /* ── Show ONLY the print receipt ── */
+    #print-receipt,
+    #print-receipt * {
+        visibility: visible !important;
+    }
+
+    #print-receipt {
+        display: block !important;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 58mm !important;
+        font-family: 'Courier New', Courier, monospace !important;
+        font-size: 11px !important;
+        line-height: 1.5 !important;
+        color: #000 !important;
+        background: #fff !important;
+        padding: 3mm !important;
+        margin: 0 !important;
+        z-index: 99999 !important;
+    }
+
+    /* ── Reset all child elements ── */
+    #print-receipt * {
+        color: #000 !important;
+        background: transparent !important;
+        border-color: #000 !important;
+        font-family: 'Courier New', Courier, monospace !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+}

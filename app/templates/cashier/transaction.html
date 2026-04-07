@@ -252,20 +252,18 @@
                 window.location.reload()
             }
         },
-    async printReceipt() {
-        try {
-            const commands = buildReceipt(this.receipt, 'Duday', 'Your Store Address')
-            await this.$store.printer.print(commands)
-        } catch (err) {
-            console.error('[Print]', err)
-            alert('Print failed: ' + err.message)
-        }
+        printReceipt() {
+    const el = document.getElementById('print-receipt')
+    el.style.display = 'block'
+    this.$nextTick(() => {
+        window.print()
+        el.style.display = 'none'
         this.closeReceipt()
-    },
+    })
+},
 
 }" x-init="
     $nextTick(() => $refs.searchField && $refs.searchField.focus());
-    $store.printer.connect();
 ">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -1112,11 +1110,6 @@
                             onmouseout="this.style.backgroundColor='transparent'">
                         <span class="material-symbols-outlined text-[16px]">print</span>
                         Print
-                        <!-- Dot shows QZ connection state -->
-                        <span class="w-1.5 h-1.5 rounded-full shrink-0"
-                            :style="$store.printer.connected
-                                ? 'background:var(--color-success)'
-                                : 'background:var(--color-error)'"></span>
                     </button>
                     <button @click="closeReceipt()"
                             class="flex-1 py-3 rounded-xl text-sm font-semibold transition active:scale-[.98]"
@@ -1204,5 +1197,83 @@
         </div>
     </template>
 
+    {# ══════ HIDDEN PRINT RECEIPT ══════ #}
+<div id="print-receipt" style="display:none;" aria-hidden="true">
+    <template x-if="receipt">
+        <div style="width:52mm; font-family:'Courier New',monospace; font-size:11px; color:#000;">
+
+            <div style="text-align:center; margin-bottom:6px;">
+                <div style="font-size:15px; font-weight:bold; letter-spacing:1px;">DUDAY</div>
+                <div>Your Store Address</div>
+                <div>Tel: 09XX-XXX-XXXX</div>
+            </div>
+
+            <div style="border-top:1px dashed #000; margin:4px 0;"></div>
+
+            {# Transaction Meta — use table for reliable alignment #}
+            <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                <tr>
+                    <td style="width:14mm;">TXN#</td>
+                    <td style="text-align:right;" x-text="receipt.transaction_id"></td>
+                </tr>
+                <tr>
+                    <td>Date</td>
+                    <td style="text-align:right;" x-text="receipt.datetime"></td>
+                </tr>
+                <tr>
+                    <td>Cashier</td>
+                    <td style="text-align:right;" x-text="receipt.cashier"></td>
+                </tr>
+            </table>
+
+            <div style="border-top:1px dashed #000; margin:4px 0;"></div>
+
+            {# Items #}
+            <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                <template x-for="item in receipt.items" :key="item.product_name">
+                    <tbody>
+                        <tr>
+                            <td colspan="2" x-text="item.product_name"
+                                style="padding-top:2px; word-break:break-word;"></td>
+                        </tr>
+                        <tr>
+                            <td style="padding-left:3mm; color:#444;"
+                                x-text="'x' + item.qty + ' @ ' + fmt(item.total_price)"></td>
+                            <td style="text-align:right; font-weight:bold;"
+                                x-text="fmt(item.subtotal)"></td>
+                        </tr>
+                    </tbody>
+                </template>
+            </table>
+
+            <div style="border-top:1px dashed #000; margin:4px 0;"></div>
+
+            {# Totals #}
+            <table style="width:100%; border-collapse:collapse; font-size:11px;">
+                <tr>
+                    <td><strong>TOTAL</strong></td>
+                    <td style="text-align:right;"><strong x-text="fmt(receipt.total)"></strong></td>
+                </tr>
+                <tr>
+                    <td>Cash</td>
+                    <td style="text-align:right;" x-text="fmt(receipt.tendered)"></td>
+                </tr>
+                <tr>
+                    <td>Change</td>
+                    <td style="text-align:right;" x-text="fmt(receipt.change)"></td>
+                </tr>
+            </table>
+
+            <div style="border-top:1px dashed #000; margin:4px 0;"></div>
+
+            {# Footer #}
+            <div style="text-align:center; margin-top:6px; font-size:11px;">
+                Thank you for your purchase!<br>
+                Please come again.<br><br>
+            </div>
+
+        </div>
+    </template>
+</div>
 </div>
 {% endblock %}
