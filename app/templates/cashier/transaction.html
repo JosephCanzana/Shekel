@@ -233,22 +233,40 @@
     },
 
     async closeReceipt() {
-        this.showReceipt = false
-        this.receipt = null
-        this.submitting = false
-        this.cancelTransaction()
+            this.showReceipt = false
+            this.receipt = null
+            this.submitting = false
+            this.cancelTransaction()
+            try {
+                const res = await fetch('/cashier/api/refresh-token', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': document.querySelector('[name=csrf_token]').value }
+                })
+                if (!res.ok) throw new Error('Token refresh failed: ' + res.status)
+                const data = await res.json()
+                document.getElementById('charge_token').value = data.charge_token
+                console.log('[Token] Refreshed OK')
+            } catch(e) {
+                console.error('[Token] Refresh failed:', e)
+                // Force page reload as fallback so token resets
+                window.location.reload()
+            }
+        },
+    async printReceipt() {
         try {
-            const res = await fetch('/cashier/api/refresh-token', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': document.querySelector('[name=csrf_token]').value }
-            })
-            const data = await res.json()
-            document.getElementById('charge_token').value = data.charge_token
-        } catch(e) { console.error('Token refresh failed') }
+            const commands = buildReceipt(this.receipt, 'Duday', 'Your Store Address')
+            await this.$store.printer.print(commands)
+        } catch (err) {
+            console.error('[Print]', err)
+            alert('Print failed: ' + err.message)
+        }
+        this.closeReceipt()
     },
-    printReceipt()  { window.print(); this.closeReceipt() }
 
-}" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">
+}" x-init="
+    $nextTick(() => $refs.searchField && $refs.searchField.focus());
+    $store.printer.connect();
+">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" id="charge_token" name="charge_token" value="{{ charge_token }}">
@@ -1090,8 +1108,15 @@
                     <button @click="printReceipt()"
                             class="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition"
                             style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
-                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
-                        <span class="material-symbols-outlined text-[16px]">print</span> Print
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">
+                        <span class="material-symbols-outlined text-[16px]">print</span>
+                        Print
+                        <!-- Dot shows QZ connection state -->
+                        <span class="w-1.5 h-1.5 rounded-full shrink-0"
+                            :style="$store.printer.connected
+                                ? 'background:var(--color-success)'
+                                : 'background:var(--color-error)'"></span>
                     </button>
                     <button @click="closeReceipt()"
                             class="flex-1 py-3 rounded-xl text-sm font-semibold transition active:scale-[.98]"
