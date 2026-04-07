@@ -68,14 +68,18 @@
     <!-- theme runs immediately — before Alpine, no defer -->
     <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 
+    <!-- Qz Tray -->
+    <script src="https://cdn.qz.io/qz-tray/2.2.6/qz-tray.js"></script>    
+    
     <!-- app.js must be before Alpine so stores are registered  -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/receipt-builder.js') }}"></script>
 
     {% include "components/modals.html" %}
     
     <!-- Alpine loads last, deferred  -->
     <script defer src="{{ url_for('static', filename='js/alpinejs.min.js') }}"></script>
-    
+
 {% block scripts %}{% endblock %}
 
 </body>
