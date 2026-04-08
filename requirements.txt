@@ -13,3 +13,5 @@ pymysql
 cryptography
 python-dotenv
 pytz
+python-escpos
+pyusb
