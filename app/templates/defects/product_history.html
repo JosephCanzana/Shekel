@@ -502,6 +502,83 @@
         </div>
     </div>
     {% endif %}
+       <template x-if="resolveModal">
+        <div class="fixed inset-0 z-50 flex items-center justify-center px-4"
+             style="background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);">
+            <div class="w-full max-w-md rounded-2xl overflow-hidden"
+                 style="background:var(--color-surface); border:1px solid var(--color-border);">
+
+                <div class="px-6 py-4 flex items-center justify-between"
+                     style="border-bottom:1px solid var(--color-border); background:var(--color-surface-alt);">
+                    <div>
+                        <h3 class="font-bold text-base" style="color:var(--color-txt-primary);">Resolve Supplier Comp</h3>
+                        <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                           x-text="resolveRow.product_name + ' · ×' + resolveRow.qty"></p>
+                    </div>
+                    <button @click="closeResolve()"
+                            class="w-8 h-8 rounded-lg flex items-center justify-center"
+                            style="color:var(--color-txt-muted);">
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                <div class="px-6 py-4 space-y-2">
+                    <template x-for="opt in resolveOptions" :key="opt.value">
+                        <button @click="resolveChoice = opt.value"
+                                class="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left transition"
+                                :style="resolveChoice === opt.value
+                                    ? 'border:2px solid var(--color-primary);background:color-mix(in srgb,var(--color-primary) 6%,transparent)'
+                                    : 'border:1px solid var(--color-border);background:transparent'"
+                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                onmouseout="this.style.backgroundColor= resolveChoice===opt.value ? 'color-mix(in srgb,var(--color-primary) 6%,transparent)' : 'transparent'">
+                            <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                                 :style="resolveChoice === opt.value
+                                     ? 'background:color-mix(in srgb,var(--color-primary) 15%,transparent)'
+                                     : 'background:var(--color-surface-alt)'">
+                                <span class="material-symbols-outlined text-[18px]"
+                                      :style="resolveChoice === opt.value ? 'color:var(--color-primary)' : 'color:var(--color-txt-muted)'"
+                                      x-text="opt.icon"></span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold"
+                                   :style="resolveChoice === opt.value ? 'color:var(--color-primary)' : 'color:var(--color-txt-primary)'"
+                                   x-text="opt.label"></p>
+                                <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="opt.desc"></p>
+                            </div>
+                            <span x-show="resolveChoice === opt.value"
+                                  class="material-symbols-outlined text-[18px] shrink-0"
+                                  style="color:var(--color-primary);">check_circle</span>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="px-6 pb-5 flex gap-3">
+                    <button @click="closeResolve()"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                            style="border:1px solid var(--color-border);color:var(--color-txt-secondary);">
+                        Cancel
+                    </button>
+                    <button @click="
+                        if (!resolveChoice) return;
+                        $dispatch('confirm', {
+                            title:   'Confirm Resolution',
+                            message: resolveRow.is_proposal
+                                ? 'Submit proposal to admin for approval.'
+                                : 'Set supplier compensation for ' + resolveRow.product_name + '?',
+                            action:  resolveRow.review_url,
+                            fields:  [{ name: 'supplier_compensation', value: resolveChoice }]
+                        });
+                        closeResolve();"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                            :class="resolveChoice ? '' : 'opacity-40 cursor-not-allowed'"
+                            :disabled="!resolveChoice"
+                            style="background:var(--color-primary);color:var(--color-bg);">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
 
 
     {# ── MOBILE BOTTOM SHEET ── #}
