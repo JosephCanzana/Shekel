@@ -4,11 +4,24 @@
 
 {% block body %}
 <div x-data="{
-    isAdmin: {{ 'true' if current_user.role == 'superadmin' else 'false' }},
+    isAdmin: {{ 'true' if current_user.role in ('superadmin', 'admin') else 'false' }},
     mobileDetailOpen: false,
     selectedRow:      null,
     openDetail(row) { this.selectedRow = row; this.mobileDetailOpen = true },
-    closeDetail() { this.mobileDetailOpen = false; setTimeout(() => this.selectedRow = null, 300) }
+    closeDetail() { this.mobileDetailOpen = false; setTimeout(() => this.selectedRow = null, 300) },
+
+    resolveModal:  false,
+    resolveRow:    null,
+    resolveChoice: '',
+    openResolve(row) { this.resolveRow = row; this.resolveChoice = ''; this.resolveModal = true },
+    closeResolve() { this.resolveModal = false; this.resolveRow = null },
+
+    resolveOptions: [
+        { value: 'loss',           label: 'Loss',               icon: 'delete_forever', desc: 'Supplier gives nothing — store absorbs cost' },
+        { value: 'same_item',      label: 'Same Item',          icon: 'undo',           desc: 'Supplier replaces with identical item' },
+        { value: 'different_item', label: 'Different Item',     icon: 'swap_horiz',     desc: 'Supplier replaces with a different item' },
+        { value: 'money',          label: 'Cash Reimbursement', icon: 'payments',       desc: 'Supplier reimburses cash to store' },
+    ],
 }" class="flex flex-col gap-4" style="margin-top:-17px;">
 
     {# ── back + product header ── #}
@@ -48,43 +61,142 @@
     </div>
 
     {# ── filters ── #}
-    <form method="GET"
-          action="{{ url_for('defects.product_history', product_id=product.product_id) }}"
-          class="flex gap-2 flex-wrap">
-        <select name="reason"
-                class="flex-1 sm:flex-none px-3 py-2 rounded-xl text-sm font-medium focus:outline-none"
-                style="border:1px solid var(--color-border); background-color:var(--color-surface); color:var(--color-txt-primary);"
-                onchange="this.form.submit()">
-            <option value="">All Reasons</option>
-            {% for r in REASONS %}
-            <option value="{{ r }}" {% if filter_reason == r %}selected{% endif %}>{{ REASON_LABELS[r] }}</option>
-            {% endfor %}
-        </select>
-        <select name="supplier_compensation"
-                class="flex-1 sm:flex-none px-3 py-2 rounded-xl text-sm font-medium focus:outline-none"
-                style="border:1px solid var(--color-border); background-color:var(--color-surface); color:var(--color-txt-primary);"
-                onchange="this.form.submit()">
-            <option value="">All Supplier Status</option>
-            {% for c, label in SUPPLIER_COMP_LABELS.items() %}
-            <option value="{{ c }}" {% if filter_sup_comp == c %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
-        <select name="origin"
-                class="flex-1 sm:flex-none px-3 py-2 rounded-xl text-sm font-medium focus:outline-none"
-                style="border:1px solid var(--color-border); background-color:var(--color-surface); color:var(--color-txt-primary);"
-                onchange="this.form.submit()">
-            <option value="">All Origins</option>
-            <option value="in_store"  {% if filter_origin == 'in_store'  %}selected{% endif %}>In-Store</option>
-            <option value="customer"  {% if filter_origin == 'customer'  %}selected{% endif %}>Customer</option>
-        </select>
-        {% if filter_reason or filter_sup_comp or filter_origin %}
+    <div class="flex gap-2">
+        <div class="relative flex-1">
+            <form method="GET" action="{{ url_for('defects.product_history', product_id=product.product_id) }}"
+                id="phSearchForm">
+                <input type="hidden" name="reason"        value="{{ filter_reason }}">
+                <input type="hidden" name="status"        value="{{ filter_status }}">
+                <input type="hidden" name="date_from"     value="{{ date_from }}">
+                <input type="hidden" name="date_to"       value="{{ date_to }}">
+                <input type="hidden" name="show_archived" value="{{ '1' if show_archived else '' }}">
+                <span class="material-symbols-outlined text-[15px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style="color:var(--color-txt-muted);">search</span>
+                <input type="text" name="search" value="{{ search | default('') }}"
+                    placeholder="Search..."
+                    class="w-full pl-8 pr-3 py-2 rounded-xl text-sm focus:outline-none"
+                    style="border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-txt-primary);">
+            </form>
+        </div>
+
+        <button onclick="document.getElementById('phFilterModal').style.display='flex'"
+                class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition relative"
+                style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                onmouseout="this.style.backgroundColor='transparent'">
+            <span class="material-symbols-outlined text-[16px]">tune</span>
+            Filters
+            {% set active = [filter_reason, filter_status, date_from, date_to, '1' if show_archived else ''] | select | list | length %}
+            {% if active > 0 %}
+            <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
+                style="background:var(--color-primary); color:var(--color-bg);">{{ active }}</span>
+            {% endif %}
+        </button>
+
+        {% if filter_reason or filter_status or date_from or date_to or show_archived %}
         <a href="{{ url_for('defects.product_history', product_id=product.product_id) }}"
-           class="px-4 py-2 rounded-xl text-sm font-medium transition"
-           style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
-           onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-           onmouseout="this.style.backgroundColor='transparent'">Clear</a>
+        class="px-3 py-2 rounded-xl text-sm font-medium transition"
+        style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+        onmouseout="this.style.backgroundColor='transparent'"
+        title="Clear all filters">
+            <span class="material-symbols-outlined text-[16px]">filter_alt_off</span>
+        </a>
         {% endif %}
-    </form>
+    </div>
+
+    {# ── Product History Filter Modal ── #}
+    <div id="phFilterModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+        style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);"
+        onclick="if(event.target===this)this.style.display='none'">
+        <div class="w-full max-w-sm rounded-2xl overflow-hidden"
+            style="background:var(--color-surface); border:1px solid var(--color-border);">
+
+            <div class="px-5 py-4 flex items-center justify-between"
+                style="border-bottom:1px solid var(--color-border); background:var(--color-surface-alt);">
+                <h3 class="font-bold text-sm" style="color:var(--color-txt-primary);">Filter History</h3>
+                <button onclick="document.getElementById('phFilterModal').style.display='none'"
+                        class="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style="color:var(--color-txt-muted);">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+
+            <form method="GET" action="{{ url_for('defects.product_history', product_id=product.product_id) }}"
+                class="px-5 py-4 flex flex-col gap-4">
+                <input type="hidden" name="search" value="{{ search | default('') }}">
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Reason</label>
+                    <select name="reason"
+                            class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                        <option value="">All Reasons</option>
+                        {% for r in REASONS %}
+                        <option value="{{ r }}" {% if filter_reason == r %}selected{% endif %}>{{ REASON_LABELS[r] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Status</label>
+                    <select name="status"
+                            class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                        <option value="">All Statuses</option>
+                        {% for s, label in STATUS_LABELS.items() %}
+                        <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Date Range</label>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 flex flex-col gap-1">
+                            <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">From</span>
+                            <input type="date" name="date_from" value="{{ date_from }}"
+                                class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                onfocus="this.style.borderColor='var(--color-accent)'"
+                                onblur="this.style.borderColor='var(--color-border)'">
+                        </div>
+                        <span class="text-xs mt-4" style="color:var(--color-txt-muted);">—</span>
+                        <div class="flex-1 flex flex-col gap-1">
+                            <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">To</span>
+                            <input type="date" name="date_to" value="{{ date_to }}"
+                                class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                onfocus="this.style.borderColor='var(--color-accent)'"
+                                onblur="this.style.borderColor='var(--color-border)'">
+                        </div>
+                    </div>
+                </div>
+
+                <label class="flex items-center gap-2 cursor-pointer select-none"
+                    style="color:var(--color-txt-muted);">
+                    <input type="checkbox" name="show_archived" value="1"
+                        {% if show_archived %}checked{% endif %}
+                        class="w-4 h-4 rounded accent-orange-400">
+                    <span class="text-sm">Show archived records</span>
+                </label>
+
+                <div class="flex gap-3 pt-1">
+                    <a href="{{ url_for('defects.product_history', product_id=product.product_id) }}"
+                    class="flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition"
+                    style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">Reset</a>
+                    <button type="submit"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                            style="background:var(--color-primary); color:var(--color-bg);"
+                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                        Apply
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     {# ── DESKTOP TABLE (sm+) ── #}
     <div class="hidden sm:block rounded-2xl overflow-hidden"
@@ -109,15 +221,16 @@
             {% if details %}
                 {% for detail, defect, user in details %}
                 <div class="grid px-5 py-3.5 items-center transition"
-                     style="grid-template-columns: 2fr 0.5fr 0.7fr 1fr 1fr 1.2fr 1.2fr 1.5fr {% if can_review %}160px{% endif %};
-                            border-top:1px solid var(--color-border);"
+                     style="grid-template-columns: 2fr 0.5fr 0.7fr 1fr 1fr 1.2fr 1.2fr 1.5fr {% if can_review or can_delete %}160px{% endif %};
+                            border-top:1px solid var(--color-border);
+                            {% if detail.is_archived %}opacity:0.45;{% endif %}"
                      onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                      onmouseout="this.style.backgroundColor='transparent'">
 
                     {# Date #}
                     <div>
-                        <p class="text-sm" style="color:var(--color-txt-primary);">{{ defect.defect_datetime.strftime('%b %d, %Y') }}</p>
-                        <p class="text-xs" style="color:var(--color-txt-muted);">{{ defect.defect_datetime.strftime('%I:%M %p') }}</p>
+                        <p class="text-sm" style="color:var(--color-txt-primary);">{{ defect.defect_datetime | pht('%b %d, %Y') }}</p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);">{{ defect.defect_datetime | pht('%I:%M %p') }}</p>
                         {% if detail.transaction_id %}
                         <p class="text-[10px] font-mono mt-0.5" style="color:var(--color-txt-muted);">
                             TXN-{{ '%05d' | format(detail.transaction_id) }}
@@ -177,7 +290,7 @@
                     <div>
                         {% if detail.reviewed_by and detail.reviewer %}
                         <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (detail.reviewer.first_name ~ ' ' ~ detail.reviewer.last_name) | title }}</p>
-                        <p class="text-xs" style="color:var(--color-txt-muted);">{{ detail.reviewed_at.strftime('%b %d, %Y') if detail.reviewed_at else '' }}</p>
+                        <p class="text-xs" style="color:var(--color-txt-muted);">{{ detail.reviewed_at | pht('%b %d, %Y') if detail.reviewed_at else '' }}</p>
                         {% else %}
                         <p class="text-xs" style="color:var(--color-txt-muted);">—</p>
                         {% endif %}
@@ -187,45 +300,74 @@
                     </div>
 
                     {# Action #}
-                    {% if can_review %}
-                    <div class="flex items-center gap-1.5">
-                        {% if detail.supplier_compensation == 'pending' %}
-                        <button @click="$dispatch('confirm', {
-                                    title:   'Return to Shelf',
-                                    message: 'Mark ×{{ detail.quantity }} as returned? Stock will be restored.',
-                                    action:  '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
-                                    fields:  [{ name: 'supplier_compensation', value: 'returned' }]
-                                })"
+                    {% if can_review or can_delete %}
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        {% if not detail.is_archived %}
+                            {% if can_review and detail.status == 'active' and detail.supplier_compensation == 'pending' %}
+                            <button @click="openResolve({
+                                        product_name: '{{ detail.product.product_name.capitalize() | replace("'","\'") }}',
+                                        qty:          {{ detail.quantity }},
+                                        review_url:   '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
+                                        is_proposal:  false
+                                    })"
+                                    class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
+                                    style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);"
+                                    onmouseover="this.style.background='color-mix(in srgb,var(--color-warning) 22%,transparent)'"
+                                    onmouseout="this.style.background='color-mix(in srgb,var(--color-warning) 12%,transparent)'">
+                                <span class="material-symbols-outlined text-[13px]">task_alt</span> Resolve
+                            </button>
+                            {% elif can_propose and detail.status == 'active' and detail.supplier_compensation == 'pending' %}
+                            <button @click="openResolve({
+                                        product_name: '{{ detail.product.product_name.capitalize() | replace("'","\'") }}',
+                                        qty:          {{ detail.quantity }},
+                                        review_url:   '{{ url_for("defects.propose", detail_id=detail.defect_detail_id) }}',
+                                        is_proposal:  true
+                                    })"
+                                    class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
+                                    style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
+                                    onmouseover="this.style.background='color-mix(in srgb,var(--color-info) 22%,transparent)'"
+                                    onmouseout="this.style.background='color-mix(in srgb,var(--color-info) 12%,transparent)'">
+                                <span class="material-symbols-outlined text-[13px]">send</span> Report
+                            </button>
+                            {% elif can_review and detail.status == 'active' and detail.supplier_compensation != 'pending' %}
+                            <button onclick="openEditModal('{{ url_for('defects.update_review', detail_id=detail.defect_detail_id) }}', '{{ detail.supplier_compensation }}')"
+                                    class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
+                                    style="background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent);"
+                                    onmouseover="this.style.background='color-mix(in srgb,var(--color-accent) 22%,transparent)'"
+                                    onmouseout="this.style.background='color-mix(in srgb,var(--color-accent) 12%,transparent)'">
+                                <span class="material-symbols-outlined text-[13px]">edit</span> Edit
+                            </button>
+                            {% endif %}
+
+                            {% if can_delete %}
+                            <button @click="$dispatch('confirm', {
+                                        title:   'Archive Record',
+                                        message: 'Archive this record? Inventory will be reversed.',
+                                        action:  '{{ url_for("defects.archive_detail", detail_id=detail.defect_detail_id) }}',
+                                        fields:  []
+                                    })"
+                                    class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
+                                    style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);"
+                                    onmouseover="this.style.background='color-mix(in srgb,var(--color-warning) 22%,transparent)'"
+                                    onmouseout="this.style.background='color-mix(in srgb,var(--color-warning) 12%,transparent)'">
+                                <span class="material-symbols-outlined text-[13px]">archive</span>
+                            </button>
+                            {% endif %}
+                        {% else %}
+                            {% if can_delete %}
+                            <button @click="$dispatch('confirm', {
+                                        title:   'Restore Record',
+                                        message: 'Restore this record? Inventory will be re-applied.',
+                                        action:  '{{ url_for("defects.unarchive_detail", detail_id=detail.defect_detail_id) }}',
+                                        fields:  []
+                                    })"
                                 class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
-                                style="background:color-mix(in srgb,var(--color-success) 12%,transparent); color:var(--color-success);"
+                                style="background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success);"
                                 onmouseover="this.style.background='color-mix(in srgb,var(--color-success) 22%,transparent)'"
                                 onmouseout="this.style.background='color-mix(in srgb,var(--color-success) 12%,transparent)'">
-                            <span class="material-symbols-outlined text-[13px]">undo</span> Return
-                        </button>
-                        <button @click="$dispatch('confirm', {
-                                    title:   'Mark as Loss',
-                                    message: 'Mark ×{{ detail.quantity }} as loss? This removes it permanently.',
-                                    action:  '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
-                                    fields:  [{ name: 'supplier_compensation', value: 'loss' }]
-                                })"
-                                class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
-                                style="background:color-mix(in srgb,var(--color-error) 12%,transparent); color:var(--color-error);"
-                                onmouseover="this.style.background='color-mix(in srgb,var(--color-error) 22%,transparent)'"
-                                onmouseout="this.style.background='color-mix(in srgb,var(--color-error) 12%,transparent)'">
-                            <span class="material-symbols-outlined text-[13px]">delete_forever</span> Loss
-                        </button>
-                        {% else %}
-                        {% if current_user.role == 'superadmin' %}
-                        <button @click="openEditModal('{{ url_for('defects.update_review', detail_id=detail.defect_detail_id) }}', '{{ detail.supplier_compensation }}')"
-                                class="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold transition"
-                                style="background:color-mix(in srgb,var(--color-accent) 12%,transparent); color:var(--color-accent);"
-                                onmouseover="this.style.background='color-mix(in srgb,var(--color-accent) 22%,transparent)'"
-                                onmouseout="this.style.background='color-mix(in srgb,var(--color-accent) 12%,transparent)'">
-                            <span class="material-symbols-outlined text-[13px]">edit</span> Edit
-                        </button>
-                        {% else %}
-                        <span class="text-xs" style="color:var(--color-txt-muted);">—</span>
-                        {% endif %}
+                                <span class="material-symbols-outlined text-[13px]">unarchive</span>
+                            </button>
+                            {% endif %}
                         {% endif %}
                     </div>
                     {% endif %}
@@ -256,11 +398,11 @@
                         sup_comp:             '{{ detail.supplier_compensation }}',
                         sup_comp_label:       '{{ SUPPLIER_COMP_LABELS[detail.supplier_compensation] }}',
                         date:                 '{{ defect.defect_datetime.strftime("%b %d, %Y") }}',
-                        time:                 '{{ defect.defect_datetime.strftime("%I:%M %p") }}',
-                        logged_by:            '{{ (user.first_name ~ " " ~ user.last_name) | title }}',
+                        date:        '{{ defect.defect_datetime | pht("%b %d, %Y") }}',
+                        time:        '{{ defect.defect_datetime | pht("%I:%M %p") }}',
                         logged_role:          '{{ user.role }}',
                         reviewed_by:          '{{ ((detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title) if detail.reviewed_by and detail.reviewer else "" }}',
-                        reviewed_at:          '{{ detail.reviewed_at.strftime("%b %d, %Y") if detail.reviewed_at else "" }}',
+                        reviewed_at: '{{ detail.reviewed_at | pht("%b %d, %Y") if detail.reviewed_at else "" }}',
                         rejection_note:       '{{ detail.rejection_note | replace("\'", "\\'") if detail.rejection_note else "" }}',
                         is_pending:           {{ 'true' if detail.supplier_compensation == 'pending' else 'false' }},
                         review_url:           '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
@@ -342,7 +484,7 @@
             </a>
             {% endif %}
             {% for p in range(1, pages+1) %}
-            <a href="{{ url_for('defects.product_history', product_id=product.product_id, page=p, reason=filter_reason, supplier_compensation=filter_sup_comp, origin=filter_origin) }}"
+            <a href="{{ url_for('defects.product_history', product_id=product.product_id, page=p, reason=filter_reason, status=filter_status, date_from=date_from, date_to=date_to, show_archived='1' if show_archived else '') }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition"
                style="{% if p == page %}background:var(--color-primary);color:var(--color-bg){% else %}border:1px solid var(--color-border);color:var(--color-txt-muted){% endif %}">
                 {{ p }}

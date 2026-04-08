@@ -118,14 +118,14 @@ class DefectDetail(BaseModel):
     rejection_note = db.Column(db.Text, nullable=True)
 
     # ── Soft delete ───────────────────────────────────────────────────────────
-    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
-    deleted_by = db.Column(db.Integer, db.ForeignKey("Users.user_id"), nullable=True)
-    deleted_at = db.Column(db.DateTime, nullable=True)
+    is_archived = db.Column(db.Boolean, nullable=False, default=False)
+    archived_by = db.Column(db.Integer, db.ForeignKey("Users.user_id"), nullable=True)
+    archived_at = db.Column(db.DateTime, nullable=True)
 
     # ── Relationships ─────────────────────────────────────────────────────────
     defect           = db.relationship("Defect",  back_populates="defect_details", passive_deletes=True)
     product          = db.relationship("Product", foreign_keys=[product_id],          back_populates="defect_details", passive_deletes=True)
     exchange_product = db.relationship("Product", foreign_keys=[exchange_product_id])
     reviewer         = db.relationship("User",    foreign_keys=[reviewed_by])
-    deleter          = db.relationship("User",    foreign_keys=[deleted_by])
+    archiver = db.relationship("User", foreign_keys=[archived_by])
     sale             = db.relationship("Sale",    foreign_keys=[transaction_id])

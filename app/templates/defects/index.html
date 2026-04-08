@@ -59,36 +59,118 @@
     </div>
 
     {# ── search + filter ── #}
-    <form method="GET" action="{{ url_for('defects.index') }}"
-          class="flex flex-col sm:flex-row gap-3">
+    <div class="flex gap-2">
         <div class="relative flex-1">
-            <span class="material-symbols-outlined text-[15px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style="color:var(--color-txt-muted);">search</span>
-            <input type="text" name="search" value="{{ search }}"
-                   placeholder="Search product name or barcode..."
-                   class="w-full pl-8 pr-3 py-2 rounded-xl text-sm focus:outline-none"
-                   style="border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-txt-primary);">
+            <form method="GET" action="{{ url_for('defects.index') }}" id="watchSearchForm">
+                <input type="hidden" name="reason"    value="{{ filter_reason }}">
+                <input type="hidden" name="date_from" value="{{ date_from }}">
+                <input type="hidden" name="date_to"   value="{{ date_to }}">
+                <span class="material-symbols-outlined text-[15px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style="color:var(--color-txt-muted);">search</span>
+                <input type="text" name="search" value="{{ search }}"
+                    placeholder="Search product name or barcode..."
+                    class="w-full pl-8 pr-3 py-2 rounded-xl text-sm focus:outline-none"
+                    style="border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-txt-primary);">
+            </form>
         </div>
-        <div class="flex gap-2">
-            <select name="reason"
-                    class="flex-1 sm:flex-none px-3 py-2 rounded-xl text-sm font-medium focus:outline-none"
-                    style="border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-txt-primary);"
-                    onchange="this.form.submit()">
-                <option value="">All Reasons</option>
-                {% for r in REASONS %}
-                <option value="{{ r }}" {% if filter_reason == r %}selected{% endif %}>{{ REASON_LABELS[r] }}</option>
-                {% endfor %}
-            </select>
-            <button type="submit"
-                    class="px-4 py-2 rounded-xl text-sm font-semibold"
-                    style="background:var(--color-primary); color:var(--color-bg);">Search</button>
-            {% if search or filter_reason %}
-            <a href="{{ url_for('defects.index') }}"
-               class="px-4 py-2 rounded-xl text-sm font-medium"
-               style="border:1px solid var(--color-border); color:var(--color-txt-muted);">Clear</a>
+
+        <button onclick="document.getElementById('watchFilterModal').style.display='flex'"
+                class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition relative"
+                style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                onmouseout="this.style.backgroundColor='transparent'">
+            <span class="material-symbols-outlined text-[16px]">tune</span>
+            Filters
+            {% set active = [filter_reason, date_from, date_to] | select | list | length %}
+            {% if active > 0 %}
+            <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
+                style="background:var(--color-primary); color:var(--color-bg);">{{ active }}</span>
             {% endif %}
+        </button>
+
+        {% if search or filter_reason or date_from or date_to %}
+        <a href="{{ url_for('defects.index') }}"
+        class="px-3 py-2 rounded-xl text-sm font-medium transition"
+        style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+        onmouseout="this.style.backgroundColor='transparent'"
+        title="Clear all filters">
+            <span class="material-symbols-outlined text-[16px]">filter_alt_off</span>
+        </a>
+        {% endif %}
+    </div>
+
+    {# ── Watch List Filter Modal ── #}
+    <div id="watchFilterModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+        style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);"
+        onclick="if(event.target===this)this.style.display='none'">
+        <div class="w-full max-w-sm rounded-2xl overflow-hidden"
+            style="background:var(--color-surface); border:1px solid var(--color-border);">
+
+            <div class="px-5 py-4 flex items-center justify-between"
+                style="border-bottom:1px solid var(--color-border); background:var(--color-surface-alt);">
+                <h3 class="font-bold text-sm" style="color:var(--color-txt-primary);">Filter Watch List</h3>
+                <button onclick="document.getElementById('watchFilterModal').style.display='none'"
+                        class="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style="color:var(--color-txt-muted);">
+                    <span class="material-symbols-outlined text-[18px]">close</span>
+                </button>
+            </div>
+
+            <form method="GET" action="{{ url_for('defects.index') }}" class="px-5 py-4 flex flex-col gap-4">
+                <input type="hidden" name="search" value="{{ search }}">
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Reason</label>
+                    <select name="reason"
+                            class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                        <option value="">All Reasons</option>
+                        {% for r in REASONS %}
+                        <option value="{{ r }}" {% if filter_reason == r %}selected{% endif %}>{{ REASON_LABELS[r] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Date Range</label>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 flex flex-col gap-1">
+                            <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">From</span>
+                            <input type="date" name="date_from" value="{{ date_from }}"
+                                class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                onfocus="this.style.borderColor='var(--color-accent)'"
+                                onblur="this.style.borderColor='var(--color-border)'">
+                        </div>
+                        <span class="text-xs mt-4" style="color:var(--color-txt-muted);">—</span>
+                        <div class="flex-1 flex flex-col gap-1">
+                            <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">To</span>
+                            <input type="date" name="date_to" value="{{ date_to }}"
+                                class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                onfocus="this.style.borderColor='var(--color-accent)'"
+                                onblur="this.style.borderColor='var(--color-border)'">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-1">
+                    <a href="{{ url_for('defects.index') }}"
+                    class="flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition"
+                    style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">Reset</a>
+                    <button type="submit"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                            style="background:var(--color-primary); color:var(--color-bg);"
+                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                        Apply
+                    </button>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 
 
     {# ══════════════════════════════════════════════
@@ -215,16 +297,16 @@
             {% if can_delete %}
             <div class="flex justify-center">
                 <button @click="$dispatch('confirm', {
-                            title:   'Delete Record',
-                            message: 'Delete {{ product.product_name.capitalize() | replace("'","\'") }}? Inventory will be reversed.',
-                            action:  '{{ url_for("defects.soft_delete", detail_id=detail.defect_detail_id) }}',
-                            fields:  []
-                        })"
+                                    title:   'Archive Record',
+                                    message: 'Archive {{ product.product_name.capitalize() | replace("'","\'") }}? Inventory will be reversed and can be restored.',
+                                    action:  '{{ url_for("defects.archive_detail", detail_id=detail.defect_detail_id) }}',
+                                    fields:  []
+                                })"
                         class="w-7 h-7 rounded-lg flex items-center justify-center transition"
                         style="color:var(--color-txt-muted);"
-                        onmouseover="this.style.color='var(--color-error)'"
+                        onmouseover="this.style.color='var(--color-warning)'"
                         onmouseout="this.style.color='var(--color-txt-muted)'">
-                    <span class="material-symbols-outlined text-[15px]">delete</span>
+                    <span class="material-symbols-outlined text-[15px]">archive</span>
                 </button>
             </div>
             {% endif %}
@@ -244,7 +326,7 @@
                     logged_by:    '{{ user.first_name | title }} {{ user.last_name | title }}',
                     detail_id:    {{ detail.defect_detail_id }},
                     review_url:   '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
-                    delete_url:   '{{ url_for("defects.soft_delete", detail_id=detail.defect_detail_id) }}'
+                    delete_url:   '{{ url_for("defects.archive_detail", detail_id=detail.defect_detail_id) }}'
                 })"
                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                 onmouseout="this.style.backgroundColor='transparent'">
@@ -298,7 +380,7 @@
             </a>
             {% endif %}
             {% for p in range(1, pages+1) %}
-            <a href="{{ url_for('defects.index', page=p, search=search, reason=filter_reason) }}"
+            <a href="{{ url_for('defects.index', page=p, search=search, reason=filter_reason, date_from=date_from, date_to=date_to) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold"
                style="{% if p == page %}background:var(--color-primary);color:var(--color-bg){% else %}border:1px solid var(--color-border);color:var(--color-txt-muted){% endif %}">
                 {{ p }}
@@ -469,21 +551,96 @@
 
                     {% if can_delete %}
                     <button @click="closeDetail(); $dispatch('confirm', {
-                                title:   'Delete Record',
-                                message: 'Delete this record? Inventory will be reversed.',
-                                action:  selectedRow.delete_url,
-                                fields:  []
-                            })"
+                                        title:   'Archive Record',
+                                        message: 'Archive this record? Inventory will be reversed and can be restored.',
+                                        action:  selectedRow.delete_url,
+                                        fields:  []
+                                    })"
                             class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
-                            style="border:1px solid var(--color-border);color:var(--color-error);background:color-mix(in srgb,var(--color-error) 5%,transparent);">
-                        <span class="material-symbols-outlined text-[18px]">delete</span>
-                        Delete Record
+                            style="border:1px solid var(--color-border);color:var(--color-warning);background:color-mix(in srgb,var(--color-warning) 5%,transparent);">
+                        <span class="material-symbols-outlined text-[18px]">archive</span>
+                        Archive Record
                     </button>
                     {% endif %}
                 </div>
             </div>
         </template>
     </div>
+
+    <template x-if="resolveModal">
+    <div class="fixed inset-0 z-50 flex items-center justify-center px-4"
+         style="background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);">
+        <div class="w-full max-w-md rounded-2xl overflow-hidden"
+             style="background:var(--color-surface); border:1px solid var(--color-border);">
+
+            <div class="px-6 py-4 flex items-center justify-between"
+                 style="border-bottom:1px solid var(--color-border); background:var(--color-surface-alt);">
+                <div>
+                    <h3 class="font-bold text-base" style="color:var(--color-txt-primary);"
+                        x-text="resolveRow.is_proposal ? 'Propose Supplier Comp' : 'Resolve Supplier Comp'"></h3>
+                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                       x-text="resolveRow.product_name + ' · ×' + resolveRow.qty"></p>
+                </div>
+                <button @click="closeResolve()"
+                        class="w-8 h-8 rounded-lg flex items-center justify-center"
+                        style="color:var(--color-txt-muted);">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            <div class="px-6 py-4 space-y-2">
+                <template x-for="opt in resolveOptions" :key="opt.value">
+                    <button @click="resolveChoice = opt.value"
+                            class="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-left transition"
+                            :style="resolveChoice === opt.value
+                                ? 'border:2px solid var(--color-primary);background:color-mix(in srgb,var(--color-primary) 6%,transparent)'
+                                : 'border:1px solid var(--color-border);background:transparent'">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                             :style="resolveChoice === opt.value
+                                 ? 'background:color-mix(in srgb,var(--color-primary) 15%,transparent)'
+                                 : 'background:var(--color-surface-alt)'">
+                            <span class="material-symbols-outlined text-[18px]"
+                                  :style="resolveChoice === opt.value ? 'color:var(--color-primary)' : 'color:var(--color-txt-muted)'"
+                                  x-text="opt.icon"></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold"
+                               :style="resolveChoice === opt.value ? 'color:var(--color-primary)' : 'color:var(--color-txt-primary)'"
+                               x-text="opt.label"></p>
+                            <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="opt.desc"></p>
+                        </div>
+                        <span x-show="resolveChoice === opt.value"
+                              class="material-symbols-outlined text-[18px] shrink-0"
+                              style="color:var(--color-primary);">check_circle</span>
+                    </button>
+                </template>
+            </div>
+
+            <div class="px-6 pb-5 flex gap-3">
+                <button @click="closeResolve()"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                        style="border:1px solid var(--color-border);color:var(--color-txt-secondary);">
+                    Cancel
+                </button>
+                <button @click="
+                        if (!resolveChoice) return;
+                        $dispatch('confirm', {
+                            title:   resolveRow.is_proposal ? 'Submit Proposal' : 'Confirm Resolution',
+                            message: (resolveRow.is_proposal ? 'Submit proposal to admin for approval.' : 'Set supplier compensation for ' + resolveRow.product_name + '?'),
+                            action:  resolveRow.review_url,
+                            fields:  [{ name: 'supplier_compensation', value: resolveChoice }]
+                        });
+                        closeResolve();"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
+                        :class="resolveChoice ? '' : 'opacity-40 cursor-not-allowed'"
+                        :disabled="!resolveChoice"
+                        style="background:var(--color-primary);color:var(--color-bg);">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</template>
 
 </div>
 {% endblock %}

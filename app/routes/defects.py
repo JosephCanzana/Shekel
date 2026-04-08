@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
@@ -15,7 +15,7 @@ defects_bp = Blueprint("defects", __name__, url_prefix="/defects")
 
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-
+PHT_OFFSET = timedelta(hours=8)
 REASONS = ["damaged", "expired", "change_of_mind"]
 
 REASON_LABELS = {
@@ -209,6 +209,8 @@ def index():
     search        = request.args.get("search", "").strip()
     filter_reason = request.args.get("reason", "")
     per_page      = 15
+    date_from = request.args.get("date_from", "").strip()
+    date_to   = request.args.get("date_to",   "").strip()
 
     # Submitted queue — admin / superadmin only
     submitted_items = []
@@ -219,8 +221,19 @@ def index():
             .join(Product, Product.product_id == DefectDetail.product_id)
             .join(User,    User.user_id       == Defect.user_id)
             .filter(DefectDetail.status     == "submitted")
-            .filter(DefectDetail.is_deleted == False)
+            .filter(DefectDetail.is_archived == False)
+            .filter(Defect.is_archived       == False)
         )
+        if date_from:
+            try:
+                query = query.filter(Defect.defect_datetime >= datetime.strptime(date_from, "%Y-%m-%d") - PHT_OFFSET)
+            except ValueError:
+                pass
+        if date_to:
+            try:
+                query = query.filter(Defect.defect_datetime <= datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59) - PHT_OFFSET)
+            except ValueError:
+                pass
         if search:
             sub_q = sub_q.filter(db.or_(
                 Product.product_name.ilike(f"%{search}%"),
@@ -238,8 +251,21 @@ def index():
         .join(User,    User.user_id       == Defect.user_id)
         .filter(DefectDetail.status               == "active")
         .filter(DefectDetail.supplier_compensation == "pending")
-        .filter(DefectDetail.is_deleted           == False)
+        .filter(DefectDetail.is_archived           == False)
+        .filter(Defect.is_archived                 == False)
     )
+    if date_from:
+        try:
+            sub_q   = sub_q.filter(Defect.defect_datetime >= datetime.strptime(date_from, "%Y-%m-%d"))
+            watch_q = watch_q.filter(Defect.defect_datetime >= datetime.strptime(date_from, "%Y-%m-%d"))
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            sub_q   = sub_q.filter(Defect.defect_datetime < datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59))
+            watch_q = watch_q.filter(Defect.defect_datetime < datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59))
+        except ValueError:
+            pass
     if search:
         watch_q = watch_q.filter(db.or_(
             Product.product_name.ilike(f"%{search}%"),
@@ -259,6 +285,8 @@ def index():
         pending=pending,
         page=page, pages=pages, total=total,
         search=search, filter_reason=filter_reason,
+        date_from=date_from,
+        date_to=date_to,
         can_approve=can_approve(),
         can_review=can_review(),
         can_delete=can_delete(),
@@ -292,16 +320,34 @@ def history():
     search        = request.args.get("search", "").strip()
     filter_reason = request.args.get("reason", "")
     filter_status = request.args.get("status", "")
-    filter_origin = request.args.get("origin", "")
+    filter_origin  = request.args.get("origin", "")
+    show_archived  = request.args.get("show_archived", "0") == "1"
+    per_page       = 15
     per_page      = 15
+    date_from = request.args.get("date_from", "").strip()
+    date_to   = request.args.get("date_to",   "").strip()
 
     query = (
         db.session.query(DefectDetail, Defect, Product, User)
         .join(Defect,  Defect.defect_id   == DefectDetail.defect_id)
         .join(Product, Product.product_id == DefectDetail.product_id)
         .join(User,    User.user_id       == Defect.user_id)
-        .filter(DefectDetail.is_deleted == False)
     )
+    if not show_archived:
+        query = query.filter(DefectDetail.is_archived == False)
+        query = query.filter(Defect.is_archived       == False)
+
+    if date_from:
+        try:
+            query = query.filter(Defect.defect_datetime >= datetime.strptime(date_from, "%Y-%m-%d") - PHT_OFFSET)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            query = query.filter(Defect.defect_datetime <= datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59) - PHT_OFFSET)
+        except ValueError:
+            pass
+
     if search:
         query = query.filter(db.or_(
             Product.product_name.ilike(f"%{search}%"),
@@ -327,6 +373,9 @@ def history():
         filter_reason=filter_reason,
         filter_status=filter_status,
         filter_origin=filter_origin,
+        show_archived=show_archived, 
+        date_from=date_from,
+        date_to=date_to,
         can_delete=can_delete(),
         REASONS=REASONS,
         REASON_LABELS=REASON_LABELS,
@@ -344,16 +393,31 @@ def product_history(product_id):
     product       = Product.query.get_or_404(product_id)
     page          = request.args.get("page", 1, type=int)
     filter_reason = request.args.get("reason", "")
-    filter_status = request.args.get("status", "")
-    per_page      = 15
+    filter_status  = request.args.get("status", "")
+    date_from     = request.args.get("date_from", "").strip()
+    date_to       = request.args.get("date_to",   "").strip()
+    show_archived  = request.args.get("show_archived", "0") == "1"
+    per_page       = 15
 
     query = (
         db.session.query(DefectDetail, Defect, User)
         .join(Defect, Defect.defect_id == DefectDetail.defect_id)
         .join(User,   User.user_id     == Defect.user_id)
         .filter(DefectDetail.product_id == product_id)
-        .filter(DefectDetail.is_deleted == False)
     )
+    if not show_archived:
+        query = query.filter(DefectDetail.is_archived == False)
+        query = query.filter(Defect.is_archived       == False)
+    if date_from:
+        try:
+            query = query.filter(Defect.defect_datetime >= datetime.strptime(date_from, "%Y-%m-%d") - PHT_OFFSET)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            query = query.filter(Defect.defect_datetime <= datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59) - PHT_OFFSET)
+        except ValueError:
+            pass
     if filter_reason:
         query = query.filter(DefectDetail.reason == filter_reason)
     if filter_status:
@@ -371,6 +435,9 @@ def product_history(product_id):
         page=page, pages=pages, total=total,
         filter_reason=filter_reason,
         filter_status=filter_status,
+        date_from=date_from,
+        date_to=date_to,
+        show_archived=show_archived,
         can_delete=can_delete(),
         can_review=can_review(),
         can_propose=can_propose(),
@@ -390,7 +457,7 @@ def product_history(product_id):
 def approve(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 
-    if detail.is_deleted:
+    if detail.is_archived:
         flash("Record has been deleted.", "warning")
         return redirect(url_for("defects.index"))
 
@@ -417,7 +484,7 @@ def approve(detail_id):
 def reject(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 
-    if detail.is_deleted:
+    if detail.is_archived:
         flash("Record has been deleted.", "warning")
         return redirect(url_for("defects.index"))
 
@@ -450,7 +517,7 @@ def reject(detail_id):
 def review(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 
-    if detail.is_deleted:
+    if detail.is_archived:
         flash("Record has been deleted.", "warning")
         return redirect(url_for("defects.index"))
 
@@ -482,7 +549,7 @@ def review(detail_id):
 def update_review(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 
-    if detail.is_deleted:
+    if detail.is_archived:
         flash("Record has been deleted.", "warning")
         return redirect(request.referrer or url_for("defects.index"))
 
@@ -522,21 +589,21 @@ def update_review(detail_id):
     return redirect(request.referrer or url_for("defects.index"))
 
 
-@defects_bp.route("/detail/<int:detail_id>/delete", methods=["POST"])
+@defects_bp.route("/detail/<int:detail_id>/archive", methods=["POST"])
 @login_required
 @role_required("superadmin", "admin")
-def soft_delete(detail_id):
+def archive_detail(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 
-    if detail.is_deleted:
+    if detail.is_archived:
         flash("Record already deleted.", "warning")
         return redirect(request.referrer or url_for("defects.index"))
 
     _reverse_all_inventory(detail)
 
-    detail.is_deleted = True
-    detail.deleted_by  = current_user.user_id
-    detail.deleted_at  = datetime.utcnow()
+    detail.is_archived = True
+    detail.archived_by  = current_user.user_id
+    detail.archived_at  = datetime.utcnow()
     db.session.commit()
 
     name     = detail.product.product_name.capitalize()
@@ -544,6 +611,60 @@ def soft_delete(detail_id):
     flash(f'"{name}" record deleted by {reviewer}. Inventory reversed.', "success")
     return redirect(request.referrer or url_for("defects.index"))
 
+
+@defects_bp.route("/detail/<int:detail_id>/unarchive", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def unarchive_detail(detail_id):
+    detail = DefectDetail.query.get_or_404(detail_id)
+
+    if not detail.is_archived:
+        flash("Record is not archived.", "warning")
+        return redirect(request.referrer or url_for("defects.history"))
+
+    # Restore inventory based on the record's status and compensation
+    if detail.status == "active":
+        _apply_inventory_on_activate(detail)
+
+    detail.is_archived = False
+    detail.archived_by  = None
+    detail.archived_at  = None
+    db.session.commit()
+
+    name     = detail.product.product_name.capitalize()
+    reviewer = f"{current_user.first_name} {current_user.last_name}".strip().title()
+    flash(f'"{name}" record restored by {reviewer}. Inventory re-applied.', "success")
+    return redirect(request.referrer or url_for("defects.history"))
+
+
+@defects_bp.route("/defect/<int:defect_id>/delete", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def soft_delete_header(defect_id):
+    defect = Defect.query.get_or_404(defect_id)
+
+    if defect.is_archived:
+        flash("Record already deleted.", "warning")
+        return redirect(request.referrer or url_for("defects.index"))
+
+    now = datetime.utcnow()
+
+    for detail in defect.defect_details:
+        if detail.is_archived:
+            continue
+        _reverse_all_inventory(detail)
+        detail.is_archived = True
+        detail.archived_by  = current_user.user_id
+        detail.archived_at  = now
+
+    defect.is_archived = True
+    defect.archived_by  = current_user.user_id
+    defect.archived_at  = now
+    db.session.commit()
+
+    reviewer = f"{current_user.first_name} {current_user.last_name}".strip().title()
+    flash(f"Defect log #{defect_id} and all its items deleted by {reviewer}. Inventory reversed.", "success")
+    return redirect(request.referrer or url_for("defects.index"))
 
 # ── API: search ───────────────────────────────────────────────────────────────
 
@@ -652,7 +773,7 @@ def txn_lookup():
             .filter(
                 DefectDetail.transaction_id == txn_id,
                 DefectDetail.product_id     == sd.product_id,
-                DefectDetail.is_deleted     == False,
+                DefectDetail.is_archived     == False,
                 DefectDetail.status.in_(["submitted", "active"]),
             )
             .scalar() or 0
@@ -721,7 +842,7 @@ def complete():
                     .filter(
                         DefectDetail.transaction_id == txn_id,
                         DefectDetail.product_id     == sd.product_id,
-                        DefectDetail.is_deleted     == False,
+                        DefectDetail.is_archived     == False,
                         DefectDetail.status.in_(["submitted", "active"]),
                     )
                     .scalar() or 0
@@ -900,7 +1021,7 @@ def refresh_token():
 def propose(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 
-    if detail.is_deleted:
+    if detail.is_archived:
         flash("Record has been deleted.", "warning")
         return redirect(url_for("defects.index"))
 

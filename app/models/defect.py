@@ -18,6 +18,12 @@ class Defect(BaseModel):
     total_revenue_price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     total_amount        = db.Column(db.Numeric(10, 2), nullable=False, default=0)
 
-    user           = db.relationship("User",         back_populates="defects")
+    is_archived = db.Column(db.Boolean, nullable=False, default=False)
+    archived_by = db.Column(db.Integer, db.ForeignKey("Users.user_id"), nullable=True)
+    archived_at = db.Column(db.DateTime, nullable=True)
+
+    user     = db.relationship("User", foreign_keys="Defect.user_id",    back_populates="defects")
+    archiver = db.relationship("User", foreign_keys="Defect.archived_by")
+    deleter        = db.relationship("User",         foreign_keys="Defect.archived_by")
     defect_details = db.relationship("DefectDetail", back_populates="defect",
-                                     cascade="all, delete-orphan")
+                                 cascade="all, delete-orphan")

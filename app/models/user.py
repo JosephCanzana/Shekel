@@ -24,7 +24,7 @@ class User(BaseModel, UserMixin):
     )
     stock_ins = db.relationship("StockIn", back_populates="user")
     sales = db.relationship("Sale", back_populates="user")
-    defects = db.relationship("Defect", back_populates="user")
+    defects = db.relationship("Defect", foreign_keys="Defect.user_id", back_populates="user")
     audit_logs = db.relationship("AuditLog", back_populates="user")
     column_preferences = db.relationship("UserColumnPreference", back_populates="user")
     adjustment_requests_made     = db.relationship("StockAdjustmentRequest", foreign_keys="StockAdjustmentRequest.requested_by", back_populates="requester")

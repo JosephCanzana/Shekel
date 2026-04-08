@@ -91,7 +91,7 @@ def _defects_on_watch():
         .filter(
             DefectDetail.status == "active",
             DefectDetail.supplier_compensation == "pending",
-            DefectDetail.is_deleted == False,
+            DefectDetail.is_archived == False,
         )
         .count()
     )
@@ -145,7 +145,7 @@ def get_admin_stats():
         DefectDetail.transaction_id.isnot(None),
         DefectDetail.status == "active",
         DefectDetail.customer_compensation.in_(["full_refund", "partial_refund", "exchange_same", "exchange_different"]),
-        DefectDetail.is_deleted == False
+        DefectDetail.is_archived == False
     )
     .all()
 )
