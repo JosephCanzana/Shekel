@@ -10,6 +10,7 @@ from app.models.defect_detail import DefectDetail
 from app.models.sale import Sale
 from app.extensions import db
 from app.utils.helpers import generate_charge_token
+from app.utils.audit import audit
 
 defects_bp = Blueprint("defects", __name__, url_prefix="/defects")
 
@@ -470,6 +471,14 @@ def approve(detail_id):
     detail.reviewed_at = datetime.utcnow()
 
     _apply_inventory_on_activate(detail)
+    audit(
+        "UPDATE",
+        "Defects",
+        f"Approved defect for '{detail.product.product_name.capitalize()}'",
+        reference_id=detail.defect_detail_id,
+        reference_table="DefectDetail",
+        user_id=current_user.user_id
+    )
     db.session.commit()
 
     name     = detail.product.product_name.capitalize()
@@ -503,6 +512,14 @@ def reject(detail_id):
     detail.reviewed_at    = datetime.utcnow()
     # No inventory change — submitted records never touched inventory
 
+    audit(
+        "UPDATE",
+        "Defects",
+        f"Rejected defect for '{detail.product.product_name.capitalize()}'",
+        reference_id=detail.defect_detail_id,
+        reference_table="DefectDetail",
+        user_id=current_user.user_id
+    )
     db.session.commit()
 
     name     = detail.product.product_name.capitalize()
@@ -535,6 +552,14 @@ def review(detail_id):
     detail.proposed_supplier_compensation = None
     detail.reviewed_by           = current_user.user_id
     detail.reviewed_at           = datetime.utcnow()
+    audit(
+        "UPDATE",
+        "Defects",
+        f"Reviewed supplier compensation for '{detail.product.product_name.capitalize()}' → {new_sup_comp}",
+        reference_id=detail.defect_detail_id,
+        reference_table="DefectDetail",
+        user_id=current_user.user_id
+    )
     db.session.commit()
 
     name     = detail.product.product_name.capitalize()
@@ -577,6 +602,15 @@ def update_review(detail_id):
     detail.supplier_compensation = new_sup_comp
     detail.reviewed_by           = current_user.user_id
     detail.reviewed_at           = datetime.utcnow()
+    audit(
+        "UPDATE",
+        "Defects",
+        f"Updated supplier compensation for '{detail.product.product_name.capitalize()}' "
+        f"{old_sup_comp} → {new_sup_comp}",
+        reference_id=detail.defect_detail_id,
+        reference_table="DefectDetail",
+        user_id=current_user.user_id
+    )
     db.session.commit()
 
     name     = detail.product.product_name.capitalize()
@@ -604,6 +638,14 @@ def archive_detail(detail_id):
     detail.is_archived = True
     detail.archived_by  = current_user.user_id
     detail.archived_at  = datetime.utcnow()
+    audit(
+        "DELETE",
+        "Defects",
+        f"Archived defect record for '{detail.product.product_name.capitalize()}'",
+        reference_id=detail.defect_detail_id,
+        reference_table="DefectDetail",
+        user_id=current_user.user_id
+    )
     db.session.commit()
 
     name     = detail.product.product_name.capitalize()
@@ -629,6 +671,14 @@ def unarchive_detail(detail_id):
     detail.is_archived = False
     detail.archived_by  = None
     detail.archived_at  = None
+    audit(
+        "UPDATE",
+        "Defects",
+        f"Restored archived defect record for '{detail.product.product_name.capitalize()}'",
+        reference_id=detail.defect_detail_id,
+        reference_table="DefectDetail",
+        user_id=current_user.user_id
+    )
     db.session.commit()
 
     name     = detail.product.product_name.capitalize()
@@ -660,6 +710,14 @@ def soft_delete_header(defect_id):
     defect.is_archived = True
     defect.archived_by  = current_user.user_id
     defect.archived_at  = now
+    audit(
+        "DELETE",
+        "Defects",
+        f"Archived defect log #{defect.defect_id} and all its items",
+        reference_id=defect.defect_id,
+        reference_table="Defect",
+        user_id=current_user.user_id
+    )
     db.session.commit()
 
     reviewer = f"{current_user.first_name} {current_user.last_name}".strip().title()
@@ -992,6 +1050,14 @@ def complete():
         })
 
     try:
+        audit(
+            "INSERT",
+            "Defects",
+            f"Created defect log #{defect.defect_id} with {len(items)} item(s)",
+            reference_id=defect.defect_id,
+            reference_table="Defect",
+            user_id=current_user.user_id
+        )
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -1035,6 +1101,14 @@ def propose(detail_id):
         return redirect(url_for("defects.index"))
 
     detail.proposed_supplier_compensation = proposed
+    audit(
+        "UPDATE",
+        "Defects",
+        f"Proposed supplier compensation '{proposed}' for '{detail.product.product_name.capitalize()}'",
+        reference_id=detail.defect_detail_id,
+        reference_table="DefectDetail",
+        user_id=current_user.user_id
+    )
     db.session.commit()
 
     name = detail.product.product_name.capitalize()
@@ -1047,6 +1121,14 @@ def propose(detail_id):
 def clear_proposal(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
     detail.proposed_supplier_compensation = None
+    audit(
+        "UPDATE",
+        "Defects",
+        f"Cleared supplier compensation proposal for '{detail.product.product_name.capitalize()}'",
+        reference_id=detail.defect_detail_id,
+        reference_table="DefectDetail",
+        user_id=current_user.user_id
+    )
     db.session.commit()
 
     name = detail.product.product_name.capitalize()

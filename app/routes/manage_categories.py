@@ -4,6 +4,7 @@ from app.utils.decorator import role_required
 from app.models.category import Category
 from app.models.product import Product
 from app.utils.helpers import validate_category_name
+from app.utils.audit import audit
 
 manage_categories_bp = Blueprint("manage_categories", __name__, url_prefix="/admin/categories")
 
@@ -59,6 +60,9 @@ def add():
             status                      = "active",
             default_low_stock_threshold = threshold,
         )
+        audit("INSERT", "Products",
+            f"Category '{category_name}' created",
+            reference_id=category.category_id, reference_table="Categories")
         category.save()
 
         flash(f'Category "{category_name}" has been created.', "success")
@@ -115,6 +119,9 @@ def edit(category_id):
         category.description                 = description or None
         category.status                      = status
         category.default_low_stock_threshold = threshold
+        audit("UPDATE", "Products",
+            f"Category '{category_name}' updated",
+            reference_id=category_id, reference_table="Categories")
         category.save()
 
         flash(f'Category "{category_name}" has been updated.', "success")
@@ -144,6 +151,9 @@ def status_update(category_id):
         return redirect(request.referrer or url_for("manage_categories.index"))
 
     category.status = new_status
+    audit("UPDATE", "Products",
+      f"Category '{category.category_name}' status changed to '{new_status}'",
+      reference_id=category_id, reference_table="Categories")
     category.save()
     flash(f'"{category.category_name}" is now {new_status}.', "success")
     return redirect(request.referrer or url_for("manage_categories.index"))
@@ -163,6 +173,9 @@ def delete(category_id):
         return redirect(url_for("manage_categories.index"))
 
     name = category.category_name
+    audit("DELETE", "Products",
+      f"Category '{name}' permanently deleted",
+      reference_id=category_id, reference_table="Categories")
     category.delete()
     flash(f'Category "{name}" has been permanently deleted.', "success")
     return redirect(url_for("manage_categories.index"))
@@ -236,6 +249,10 @@ def sync_threshold(category_id):
         p.low_reorder_threshold = category.default_low_stock_threshold
 
     try:
+        audit("UPDATE", "Products",
+            f"Synced low stock threshold to {category.default_low_stock_threshold} "
+            f"for {len(products)} product(s) in '{category.category_name}'",
+            reference_id=category_id, reference_table="Categories")
         db.session.commit()
     except Exception:
         db.session.rollback()

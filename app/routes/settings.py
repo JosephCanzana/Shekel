@@ -6,6 +6,7 @@ from app.models.role_column_setting import RoleColumnSetting
 from app.models.app_settings import AppSettings
 from app.extensions import db
 from app.utils.helpers import validate_password
+from app.utils.audit import audit
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -98,6 +99,8 @@ def update_default_password():
         return jsonify({"error": err}), 400
 
     AppSettings.set_default_password(password)
+    audit("UPDATE", "Settings", f"{current_user.first_name} updated the password", user_id=current_user.user_id)
+    db.session.commit()
     return jsonify({"ok": True})
 
 
@@ -131,11 +134,17 @@ def save_role_columns(role):
     if setting:
         setting.available = json.dumps(available)
         setting.defaults  = json.dumps(defaults)
+        action = "UPDATE"
     else:
         db.session.add(RoleColumnSetting(
             role=role, page=page,
             available=json.dumps(available),
             defaults=json.dumps(defaults)
         ))
+        action = "INSERT"
+
+    audit(action, "Settings",
+          f"Role column settings {action.lower()}d for '{role}' on '{page}' page")
+
     db.session.commit()
     return jsonify({"ok": True})

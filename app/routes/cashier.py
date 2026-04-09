@@ -9,6 +9,7 @@ from app.models.sale import Sale
 from app.models.sale_detail import SaleDetail
 from app.extensions import db
 from app.utils.helpers import generate_charge_token
+from app.utils.audit import audit
 
 cashier_bp = Blueprint("cashier", __name__, url_prefix="/cashier")
 
@@ -201,6 +202,16 @@ def charge():
                 0, product.inventory.quantity_available - qty
             )
             product.inventory.last_updated = datetime.utcnow()
+
+    audit(
+        "INSERT",
+        "Sales",
+        f"Sale #{sale.transaction_id} — ₱{sale.total_amount:.2f} processed by {current_user.full_name}",
+        reference_id=sale.transaction_id,
+        reference_table="Sale",
+        user_id=current_user.user_id
+    )
+
 
     db.session.commit()
 

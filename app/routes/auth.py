@@ -9,6 +9,7 @@ from app.extensions import mail, db
 from app.models.user import User
 from app.models.recovery_detail import RecoveryDetail
 from app.utils.helpers import generate_reset_token, get_token_expiry, validate_password, message
+from app.utils.audit import audit
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -69,6 +70,8 @@ def login():
             return redirect(url_for("auth.account_activation", user_id=user.user_id))
 
         login_user(user)
+        audit("LOGIN", "Auth", f"{user.first_name} logged in", user_id=user.user_id)
+        db.session.commit()
         try:
             if user.role == "superadmin":
                 return redirect(url_for("admin.dashboard"))
@@ -138,6 +141,9 @@ def account_activation(user_id):
         login_user(user)
         flash("Welcome! Your account has been activated.", "success")
 
+        audit("ACCOUNT ACTIVATION", "Auth", f"{user.first_name} activated the account", user_id=user.user_id)
+        db.session.commit()
+
         if user.role == "superadmin":
             return redirect(url_for("admin.dashboard"))
         elif user.role == "admin":
@@ -153,6 +159,8 @@ def account_activation(user_id):
 @auth_bp.route("/logout", methods=["GET", "POST"])
 @login_required
 def logout():
+    audit("LOGOUT", "Auth", f"{current_user.first_name} logged out", user_id=current_user.user_id)
+    db.session.commit()
     logout_user()
     flash("You have been signed out.", "info")
     return redirect(url_for("auth.login"))

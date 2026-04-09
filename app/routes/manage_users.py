@@ -5,6 +5,7 @@ from app.extensions import db
 from app.models.user import User
 from app.utils.helpers import validate_name, validate_password
 from sqlalchemy.exc import IntegrityError
+from app.utils.audit import audit
 
 manage_users_bp = Blueprint("manage_users", __name__, url_prefix="/admin/users")
 VALID_ROLES = {"superadmin", "admin", "cashier", "stocking"}
@@ -80,6 +81,9 @@ def add():
             status     = "not_activated"
         )
         user.set_password(password)
+        audit("INSERT", "Users",
+      f"User '{first_name} {last_name}' ({role}) created",
+      reference_id=user.user_id, reference_table="Users")
         user.save()
 
         flash(f"{first_name} {last_name} has been created.", "success")
@@ -149,6 +153,9 @@ def edit(user_id):
         user.last_name  = last_name
         user.role       = role
         user.status     = status
+        audit("UPDATE", "Users",
+      f"User '{user.first_name} {user.last_name}' updated",
+      reference_id=user_id, reference_table="Users")
         user.save()
 
         flash(f"{user.first_name} {user.last_name} has been updated.", "success")
@@ -178,6 +185,9 @@ def status(user_id):
         return redirect(request.referrer or url_for("manage_users.index"))
 
     user.status = new_status
+    audit("UPDATE", "Users",
+      f"User '{user.first_name} {user.last_name}' status changed to '{new_status}'",
+      reference_id=user_id, reference_table="Users")
     user.save()
     flash(f"{user.first_name} {user.last_name} is now {new_status.replace('_', ' ')}.", "success")
     return redirect(request.referrer or url_for("manage_users.index"))
@@ -195,6 +205,9 @@ def reset_password(user_id):
     default = User.get_default_password()
     user.set_password(default)
     user.status = "not_activated"
+    audit("UPDATE", "Users",
+      f"Password reset for '{user.first_name} {user.last_name}'",
+      reference_id=user_id, reference_table="Users")
     user.save()
     flash(f"Password for {user.first_name} {user.last_name} has been reset to default.", "success")
     return redirect(request.referrer or url_for("manage_users.index"))
@@ -215,6 +228,9 @@ def delete(user_id):
 
     name = f"{user.first_name} {user.last_name}"
     try:
+        audit("DELETE", "Users",
+      f"User '{name}' permanently deleted",
+      reference_id=user_id, reference_table="Users")
         user.delete()
         flash(f"{name} has been permanently deleted.", "success")
     except IntegrityError:

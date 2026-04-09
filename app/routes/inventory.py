@@ -15,6 +15,7 @@ from app.models.stock_adjustment_detail import StockAdjustmentDetail
 from app.models.stock_in import StockIn
 from app.utils.helpers import validate_product_name, validate_price, get_active_categories, get_product, is_admin_or_coadmin, barcode_in_use, get_category_thresholds, to_pht
 from app.utils.decorator import role_required
+from app.utils.audit import audit
 
 inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 
@@ -141,6 +142,14 @@ def add():
                     bundle_count = bundle_count
                 ))
 
+            audit(
+                "INSERT",
+                "Products",
+                f'Created product "{product_name}" (ID: {product_id})',
+                reference_id=product.product_id,
+                reference_table="Products",
+                user_id=current_user.user_id
+            )
             db.session.commit()
         except DataError:
             db.session.rollback()
@@ -377,6 +386,14 @@ def edit(product_id):
                 if product.bundle:
                     db.session.delete(product.bundle)
 
+            audit(
+                "UPDATE",
+                "Products",
+                f'Updated product "{product_name}" (ID: {product.product_id})',
+                reference_id=product.product_id,
+                reference_table="Products",
+                user_id=current_user.user_id
+            )
             db.session.commit()
 
         except DataError:
@@ -408,6 +425,13 @@ def status_update(product_id):
         return redirect(request.referrer or url_for("inventory.index"))
 
     product.status = new_status
+    audit(
+        "UPDATE",
+        "Products",
+        f'Status of "{product.product_name}" (ID: {product.product_id}) changed to {new_status}',
+        reference_table="Products",
+        user_id=current_user.user_id
+    )
     product.save()
     flash(f'"{product.product_name}" is now {new_status}.', "success")
     return redirect(request.referrer or url_for("inventory.index"))
@@ -446,6 +470,14 @@ def delete(product_id):
         db.session.delete(product.bundle)
     if product.inventory:
         db.session.delete(product.inventory)
+    audit(
+        action_type="DELETE",
+        module="Products",
+        description=f'Product "{name}" (ID: {product.product_id}) permanently deleted',
+        reference_id=None,  # cannot use string barcode for INT column
+        reference_table="Products",
+        user_id=current_user.user_id
+        )
     db.session.delete(product)
     db.session.commit()
 
@@ -574,11 +606,17 @@ def update_threshold(product_id):
         return jsonify({"error": "Threshold must be a positive whole number."}), 400
 
     product.low_reorder_threshold = threshold
+    audit(
+        action_type="UPDATE",
+        module="Products",
+        description=f'Threshold for "{product.product_name}" (ID: {product.product_id}) changed to {threshold}',
+        reference_id=None,  # cannot use string barcode
+        reference_table="Products",
+        user_id=current_user.user_id
+        )
     db.session.commit()
     return jsonify({"ok": True, "threshold": threshold})
 
-
-# ── POST bulk actions ─────────────────────────────────────────────────────────
 @inventory_bp.route("/bulk/status-update", methods=["POST"])
 @login_required
 @role_required("superadmin", "admin")
@@ -595,6 +633,10 @@ def bulk_status_update():
     products = Product.query.filter(Product.product_id.in_(product_ids)).all()
     for p in products:
         p.status = new_status
+
+    audit("UPDATE", "Inventory",
+          f"Bulk status update to '{new_status}' for {len(products)} product(s): "
+          f"IDs {product_ids}")
 
     db.session.commit()
     return jsonify({"ok": True, "updated": len(products)})
@@ -623,17 +665,24 @@ def bulk_delete():
         if product.status != "archived":
             skipped.append(pid)
             continue
+
         has_sales   = SaleDetail.query.filter_by(product_id=pid).first()
         has_defects = DefectDetail.query.filter_by(product_id=pid).first()
         if has_sales or has_defects:
             skipped.append(pid)
             continue
+
         if product.bundle:
             db.session.delete(product.bundle)
         if product.inventory:
             db.session.delete(product.inventory)
         db.session.delete(product)
         deleted.append(pid)
+
+    if deleted:
+        audit("DELETE", "Inventory",
+              f"Bulk deleted {len(deleted)} product(s): IDs {deleted}"
+              + (f" — skipped {len(skipped)}: IDs {skipped}" if skipped else ""))
 
     db.session.commit()
     return jsonify({"ok": True, "deleted": len(deleted), "skipped": len(skipped)})
@@ -661,6 +710,16 @@ def bulk_threshold_update():
     products = Product.query.filter(Product.product_id.in_(product_ids)).all()
     for p in products:
         p.low_reorder_threshold = threshold
+    
+    if products:
+        audit(
+            action_type="UPDATE",
+            module="Inventory",
+            description=f"Bulk updated low stock threshold to {threshold} for {len(products)} product(s): IDs {[p.product_id for p in products]}",
+            reference_id=None,
+            reference_table="Products",
+            user_id=current_user.user_id
+        )
 
     db.session.commit()
     return jsonify({"ok": True, "updated": len(products), "threshold": threshold})
@@ -699,6 +758,19 @@ def bulk_category_update():
     products = Product.query.filter(Product.product_id.in_(product_ids)).all()
     for p in products:
         p.category_id = category_id
+
+    if products:
+        audit(
+            action_type="UPDATE",
+            module="Inventory",
+            description=(
+                f"Bulk updated category to '{category.category_name}' (ID: {category_id}) "
+                f"for {len(products)} product(s): IDs {[p.product_id for p in products]}"
+            ),
+            reference_id=None,
+            reference_table="Products",
+            user_id=current_user.user_id
+        )
 
     db.session.commit()
     return jsonify({
@@ -796,6 +868,9 @@ def adjust_submit():
                     pass
 
         try:
+            audit("UPDATE", "Inventory",
+                f"Direct stock adjustment for {len(items)} product(s) by {current_user.first_name}",
+                reference_table="Inventory")
             db.session.commit()
         except Exception:
             db.session.rollback()
@@ -811,6 +886,9 @@ def adjust_submit():
         submitted_at = datetime.utcnow(),
     )
     db.session.add(req)
+    audit("INSERT", "Stock_In",
+      f"Stock adjustment request #{req.request_id} submitted for {len(items)} product(s)",
+      reference_id=req.request_id, reference_table="Stock_Adjustment_Requests")
     db.session.flush()
 
     for item in items:

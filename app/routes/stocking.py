@@ -11,6 +11,7 @@ from app.models.stock_adjustment_detail  import StockAdjustmentDetail
 from app.extensions import db
 from app.utils.index_helpers import *
 from app.utils.helpers import generate_charge_token, _pht_fix
+from app.utils.audit import audit
 
 stocking_bp = Blueprint("stocking", __name__, url_prefix="/stocking")
 
@@ -187,6 +188,14 @@ def complete():
             })
 
         try:
+            audit(
+                "INSERT",
+                "Stock_In",
+                f"Direct stock-in: {qty} units of '{product.product_name.capitalize()}' by {current_user.full_name}",
+                reference_id=product.product_id,
+                reference_table="StockIn",
+                user_id=current_user.user_id
+            )
             db.session.commit()
         except Exception:
             db.session.rollback()
@@ -249,6 +258,14 @@ def complete():
         })
 
     try:
+        audit(
+            "INSERT",
+            "Stock_In",
+            f"Stock-in request #{req.request_id} submitted by {current_user.full_name} with {len(items)} items",
+            reference_id=req.request_id,
+            reference_table="StockAdjustmentRequest",
+            user_id=current_user.user_id
+        )
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -367,6 +384,14 @@ def edit_request(request_id):
         detail.note = (item.get("notes") or "").strip() or detail.note
 
     try:
+        audit(
+            "UPDATE",
+            "Stock_In",
+            f"Edited stock-in request #{req.request_id}",
+            reference_id=req.request_id,
+            reference_table="StockAdjustmentRequest",
+            user_id=current_user.user_id
+            )
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -389,6 +414,14 @@ def cancel_request(request_id):
 
     try:
         db.session.delete(req)
+        audit(
+            "DELETE",
+            "Stock_In",
+            f"Cancelled stock-in request #{req.request_id}",
+            reference_id=req.request_id,
+            reference_table="StockAdjustmentRequest",
+            user_id=current_user.user_id
+        )
         db.session.commit()
     except Exception:
         db.session.rollback()
