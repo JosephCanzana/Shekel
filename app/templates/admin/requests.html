@@ -125,11 +125,46 @@ function requestsData() {
         },
 
         // ── Active-filter counters ────────────────────────────────────────────
-        get activeStockFilters()         { return [this.stockFilter.type,          this.stockFilter.dateFrom,         this.stockFilter.dateTo].filter(Boolean).length },
-        get activeDefectFilters()        { return [this.defectFilter.reason,        this.defectFilter.origin,          this.defectFilter.dateFrom, this.defectFilter.dateTo].filter(Boolean).length },
-        get activeHistoryStockFilters()  { return [this.historyStockFilter.type,    this.historyStockFilter.status,    this.historyStockFilter.dateFrom, this.historyStockFilter.dateTo].filter(Boolean).length },
-        get activeHistoryDefectFilters() { return [this.historyDefectFilter.reason, this.historyDefectFilter.status,   this.historyDefectFilter.dateFrom, this.historyDefectFilter.dateTo].filter(Boolean).length },
+        // ── helper ────────────────────────────────────────────────────────────────
+        isValidDate(str) {
+            if (!str) return false
+            const d = new Date(str)
+            return !isNaN(d.getTime())
+        },
 
+        // ── getters ───────────────────────────────────────────────────────────────
+        get activeStockFilters() {
+            return [
+                this.stockFilter.type,
+                this.isValidDate(this.stockFilter.dateFrom) && this.stockFilter.dateFrom,
+                this.isValidDate(this.stockFilter.dateTo)   && this.stockFilter.dateTo,
+            ].filter(Boolean).length
+        },
+        get activeDefectFilters() {
+            return [
+                this.defectFilter.reason,
+                this.defectFilter.origin,
+                this.isValidDate(this.defectFilter.dateFrom) && this.defectFilter.dateFrom,
+                this.isValidDate(this.defectFilter.dateTo)   && this.defectFilter.dateTo,
+            ].filter(Boolean).length
+        },
+        get activeHistoryStockFilters() {
+            return [
+                this.historyStockFilter.type,
+                this.historyStockFilter.status,
+                this.isValidDate(this.historyStockFilter.dateFrom) && this.historyStockFilter.dateFrom,
+                this.isValidDate(this.historyStockFilter.dateTo)   && this.historyStockFilter.dateTo,
+            ].filter(Boolean).length
+        },
+        get activeHistoryDefectFilters() {
+            return [
+                this.historyDefectFilter.reason,
+                this.historyDefectFilter.status,
+                this.isValidDate(this.historyDefectFilter.dateFrom) && this.historyDefectFilter.dateFrom,
+                this.isValidDate(this.historyDefectFilter.dateTo)   && this.historyDefectFilter.dateTo,
+            ].filter(Boolean).length
+        },
+        
         // ── Defect reject modal ───────────────────────────────────────────────
         rejectModal:     false,
         rejectDetailId:  null,

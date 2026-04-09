@@ -712,10 +712,11 @@ def bulk_threshold_update():
         p.low_reorder_threshold = threshold
     
     if products:
+        product_names = ", ".join(p.product_name.capitalize() for p in products)
         audit(
             action_type="UPDATE",
             module="Inventory",
-            description=f"Bulk updated low stock threshold to {threshold} for {len(products)} product(s): IDs {[p.product_id for p in products]}",
+            description=f"Bulk updated low stock threshold to {threshold} for {len(products)} product(s): {product_names}",
             reference_id=None,
             reference_table="Products",
             user_id=current_user.user_id
@@ -887,7 +888,7 @@ def adjust_submit():
     )
     db.session.add(req)
     audit("INSERT", "Stock_In",
-      f"Stock adjustment request #{req.request_id} submitted for {len(items)} product(s)",
+      f"Stock adjustment request submitted for {len(items)} product(s)",
       reference_id=req.request_id, reference_table="Stock_Adjustment_Requests")
     db.session.flush()
 

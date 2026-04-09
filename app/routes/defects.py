@@ -221,20 +221,40 @@ def index():
             .join(Defect,  Defect.defect_id   == DefectDetail.defect_id)
             .join(Product, Product.product_id == DefectDetail.product_id)
             .join(User,    User.user_id       == Defect.user_id)
-            .filter(DefectDetail.status     == "submitted")
+            .filter(DefectDetail.status      == "submitted")
             .filter(DefectDetail.is_archived == False)
             .filter(Defect.is_archived       == False)
         )
+
+        # ── parse dates ───────────────────────────────────────────────────────
+        parsed_from = None
+        parsed_to   = None
+
         if date_from:
             try:
-                query = query.filter(Defect.defect_datetime >= datetime.strptime(date_from, "%Y-%m-%d") - PHT_OFFSET)
+                parsed_from = datetime.strptime(date_from, "%Y-%m-%d") - PHT_OFFSET
             except ValueError:
-                pass
+                flash("Invalid 'Date From' format.", "error")
+
         if date_to:
             try:
-                query = query.filter(Defect.defect_datetime <= datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59) - PHT_OFFSET)
+                parsed_to = datetime.strptime(date_to, "%Y-%m-%d").replace(
+                    hour=23, minute=59, second=59
+                ) - PHT_OFFSET
             except ValueError:
-                pass
+                flash("Invalid 'Date To' format.", "error")
+
+        # ── reject reversed range ─────────────────────────────────────────────
+        if parsed_from and parsed_to and parsed_from > parsed_to:
+            flash("'Date From' cannot be later than 'Date To'.", "error")
+            parsed_from = None
+            parsed_to   = None
+
+        if parsed_from:
+            sub_q = sub_q.filter(Defect.defect_datetime >= parsed_from)
+        if parsed_to:
+            sub_q = sub_q.filter(Defect.defect_datetime <= parsed_to)
+
         if search:
             sub_q = sub_q.filter(db.or_(
                 Product.product_name.ilike(f"%{search}%"),
@@ -242,6 +262,7 @@ def index():
             ))
         if filter_reason:
             sub_q = sub_q.filter(DefectDetail.reason == filter_reason)
+
         submitted_items = sub_q.order_by(Defect.defect_datetime.asc()).all()
 
     # Watch list — active records with supplier compensation still pending
