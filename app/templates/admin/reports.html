@@ -2,452 +2,644 @@
 {% block title %}Reports — Shekel{% endblock %}
 {% block nav_title %}Reports{% endblock %}
 
-{% block body %}
-<div x-data="{
-  tab: '{{ active_tab }}',
-  dateFrom: '{{ date_from }}',
-  dateTo:   '{{ date_to }}',
-  navigate(tab) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', tab);
-    url.searchParams.set('date_from', this.dateFrom);
-    url.searchParams.set('date_to',   this.dateTo);
-    window.location.href = url.toString();
-  },
-  applyDates() { this.navigate(this.tab); },
-  quickRange(range) {
-    const today = new Date();
-    const fmt   = d => d.toISOString().slice(0, 10);
-    if (range === 'today') {
-      this.dateFrom = this.dateTo = fmt(today);
-    } else if (range === 'week') {
-      const mon = new Date(today); mon.setDate(today.getDate() - today.getDay() + 1);
-      this.dateFrom = fmt(mon); this.dateTo = fmt(today);
-    } else if (range === 'month') {
-      this.dateFrom = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
-      this.dateTo   = fmt(today);
-    } else if (range === 'last_month') {
-      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const last  = new Date(today.getFullYear(), today.getMonth(), 0);
-      this.dateFrom = fmt(first); this.dateTo = fmt(last);
-    }
-    this.applyDates();
-  }
-}" class="space-y-4">
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>[x-cloak]{display:none!important}</style>
+{% endblock %}
 
-  {# ── Page Header ─────────────────────────────────────────────────────────── #}
-  <div class="flex flex-wrap items-start justify-between gap-3">
+{% block body %}
+<div class="space-y-5"
+     x-data="{
+       dateFrom: '{{ date_from }}',
+       dateTo:   '{{ date_to }}',
+       go(tab, pg) {
+         const u = new URL(window.location.href);
+         u.searchParams.set('tab',       tab || '{{ active_tab }}');
+         u.searchParams.set('date_from', this.dateFrom);
+         u.searchParams.set('date_to',   this.dateTo);
+         u.searchParams.set('page',      pg  || '1');
+         window.location.href = u.toString();
+       },
+       quick(r) {
+         const t = new Date(), fmt = d => d.toISOString().slice(0,10);
+         if      (r==='today') { this.dateFrom = this.dateTo = fmt(t); }
+         else if (r==='week')  { const m=new Date(t); m.setDate(t.getDate()-t.getDay()+1);
+                                  this.dateFrom=fmt(m); this.dateTo=fmt(t); }
+         else if (r==='month') { this.dateFrom=fmt(new Date(t.getFullYear(),t.getMonth(),1));
+                                  this.dateTo=fmt(t); }
+         else if (r==='last')  { this.dateFrom=fmt(new Date(t.getFullYear(),t.getMonth()-1,1));
+                                  this.dateTo  =fmt(new Date(t.getFullYear(),t.getMonth(),0)); }
+         this.go('{{ active_tab }}', 1);
+       }
+     }">
+
+  {# ══ HEADER ══════════════════════════════════════════════════════════════ #}
+  <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="text-xl font-semibold text-txt-primary leading-tight">Reports</h1>
-      <p class="text-sm text-txt-muted mt-0.5">Business performance &amp; stock overview</p>
+      <h1 class="text-xl font-semibold text-txt-primary">Reports</h1>
+      <p class="text-xs text-txt-muted mt-0.5">
+        <span class="material-symbols-outlined text-[13px] align-middle">calendar_today</span>
+        {{ date_from }} → {{ date_to }}
+      </p>
     </div>
-    {# Export button — always exports current tab #}
-    <a :href="`{{ url_for('admin.export_report') }}?tab=${tab}&date_from=${dateFrom}&date_to=${dateTo}`"
-       class="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg
-              bg-txt-primary text-bg font-medium hover:opacity-90 transition-opacity">
-      <span class="material-symbols-outlined text-[18px]">download</span>
-      Export Excel
-    </a>
+    <div class="flex items-center gap-2">
+      <a href="{{ url_for('admin.export_report_pdf',
+                  tab=active_tab, date_from=date_from, date_to=date_to) }}"
+         class="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-border
+                bg-surface text-txt-muted hover:text-txt-primary hover:border-border-strong transition-colors">
+        <span class="material-symbols-outlined text-[17px]">picture_as_pdf</span>
+        PDF
+      </a>
+      <a href="{{ url_for('admin.export_report',
+                  tab=active_tab, date_from=date_from, date_to=date_to) }}"
+         class="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg
+                bg-txt-primary text-bg font-medium hover:opacity-90 transition-opacity">
+        <span class="material-symbols-outlined text-[17px]">download</span>
+        Excel
+      </a>
+    </div>
   </div>
 
-  {# ── Date Range Controls ──────────────────────────────────────────────────── #}
+  {# ══ FILTERS ═════════════════════════════════════════════════════════════ #}
   <div class="bg-surface border border-border rounded-xl p-4">
-    <div class="flex flex-wrap items-end gap-3">
-      {# Quick presets #}
-      <div class="flex flex-wrap gap-1.5">
-        <p class="w-full text-xs text-txt-muted font-medium mb-0.5">Quick Range</p>
-        {% for label, key in [("Today","today"),("This Week","week"),("This Month","month"),("Last Month","last_month")] %}
-        <button @click="quickRange('{{ key }}')"
-                class="px-3 py-1.5 text-xs rounded-lg border border-border bg-bg
-                       text-txt-muted hover:text-txt-primary hover:border-border-strong
-                       transition-colors font-medium">
-          {{ label }}
-        </button>
-        {% endfor %}
+    <div class="flex flex-wrap gap-4 items-end">
+      <div>
+        <p class="text-xs text-txt-muted font-medium mb-2">Quick Range</p>
+        <div class="flex flex-wrap gap-1.5">
+          {% for label, key in [("Today","today"),("This Week","week"),("This Month","month"),("Last Month","last")] %}
+          <button @click="quick('{{ key }}')"
+                  class="px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-bg
+                         text-txt-muted hover:text-txt-primary hover:border-border-strong transition-colors">
+            {{ label }}
+          </button>
+          {% endfor %}
+        </div>
       </div>
-
-      {# Custom range #}
       <div class="flex items-end gap-2 flex-wrap">
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-txt-muted font-medium">From</label>
+        <div>
+          <label class="block text-xs text-txt-muted font-medium mb-1">From</label>
           <input type="date" x-model="dateFrom"
                  class="text-sm bg-bg border border-border rounded-lg px-3 py-1.5
                         text-txt-primary focus:outline-none focus:ring-1 focus:ring-border-strong">
         </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-txt-muted font-medium">To</label>
+        <div>
+          <label class="block text-xs text-txt-muted font-medium mb-1">To</label>
           <input type="date" x-model="dateTo"
                  class="text-sm bg-bg border border-border rounded-lg px-3 py-1.5
                         text-txt-primary focus:outline-none focus:ring-1 focus:ring-border-strong">
         </div>
-        <button @click="applyDates()"
-                class="px-4 py-1.5 text-sm rounded-lg bg-txt-primary text-bg font-medium
-                       hover:opacity-90 transition-opacity">
+        <button @click="go('{{ active_tab }}', 1)"
+                class="px-4 py-1.5 text-sm font-medium rounded-lg bg-txt-primary text-bg hover:opacity-90 transition-opacity">
           Apply
         </button>
       </div>
-
-      {# Current range display #}
-      <p class="ml-auto text-xs text-txt-muted self-end">
-        <span class="material-symbols-outlined text-[14px] align-middle">calendar_today</span>
-        {{ date_from }} → {{ date_to }}
-      </p>
     </div>
   </div>
 
-  {# ── Tab Navigation ──────────────────────────────────────────────────────── #}
-  <div class="flex gap-1 border-b border-border">
-    {% set tabs = [
-      ("sales",     "point_of_sale",  "Sales"),
-      ("inventory", "inventory_2",    "Inventory"),
-      ("stock",     "move_up",        "Stock In"),
-      ("defects",   "report_problem", "Defects"),
+  {# ══ TABS ════════════════════════════════════════════════════════════════ #}
+  <div class="flex border-b border-border overflow-x-auto">
+    {% for key, icon, label in [
+        ("sales",     "point_of_sale",  "Sales"),
+        ("inventory", "inventory_2",    "Inventory"),
+        ("stock",     "move_up",        "Stock In"),
+        ("defects",   "report_problem", "Defects"),
     ] %}
-    {% for key, icon, label in tabs %}
-    <button @click="tab = '{{ key }}'"
-            :class="tab === '{{ key }}'
-              ? 'border-b-2 border-txt-primary text-txt-primary font-semibold'
-              : 'text-txt-muted hover:text-txt-primary'"
-            class="flex items-center gap-1.5 px-4 py-2.5 text-sm -mb-px transition-colors whitespace-nowrap">
-      <span class="material-symbols-outlined text-[18px]">{{ icon }}</span>
+    <a href="?tab={{ key }}&date_from={{ date_from }}&date_to={{ date_to }}&page=1"
+       class="flex items-center gap-1.5 px-4 py-2.5 text-sm -mb-px whitespace-nowrap border-b-2 transition-colors
+              {{ 'border-txt-primary text-txt-primary font-semibold'
+                  if active_tab == key
+                  else 'border-transparent text-txt-muted hover:text-txt-primary' }}">
+      <span class="material-symbols-outlined text-[17px]">{{ icon }}</span>
       {{ label }}
-    </button>
+    </a>
     {% endfor %}
   </div>
 
 
-  {# ═══════════════════════════════════════════════════════════════════════════
-     TAB: SALES
-  ══════════════════════════════════════════════════════════════════════════════ #}
-  <div x-show="tab === 'sales'" x-cloak class="space-y-4">
+  {# ╔═══════════════════════════════════════════════════════════════════╗
+     ║  SALES                                                            ║
+     ╚═══════════════════════════════════════════════════════════════════╝ #}
+  {% if active_tab == "sales" %}
 
-    {# Summary Cards #}
-    <div class="grid grid-cols-3 gap-3">
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Total Revenue</p>
-        <p class="text-2xl font-semibold text-txt-primary mt-1">
-          ₱{{ "%.2f" | format(data.sales.total_revenue) }}
-        </p>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    {% set cards = [
+      ("Total Revenue",   "₱" ~ "%.2f"|format(data.sales.total_revenue),
+       "payments",   "text-emerald-500", "bg-emerald-50 dark:bg-emerald-900/20"),
+      ("Transactions",    data.sales.total_transactions|string,
+       "receipt_long","text-blue-500",   "bg-blue-50 dark:bg-blue-900/20"),
+      ("Avg Order Value", "₱" ~ "%.2f"|format(data.sales.avg_order),
+       "analytics",  "text-violet-500",  "bg-violet-50 dark:bg-violet-900/20"),
+      ("Top Product",
+        (data.sales.top_products[0].product_name[:18].capitalize()
+           if data.sales.top_products else "—"),
+        "star", "text-amber-500", "bg-amber-50 dark:bg-amber-900/20"),
+    ] %}
+    {% for label, value, icon, icolor, ibg in cards %}
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+        </span>
+        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
       </div>
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Transactions</p>
-        <p class="text-2xl font-semibold text-txt-primary mt-1">{{ data.sales.total_transactions }}</p>
+      <p class="text-xl font-semibold text-txt-primary truncate">{{ value }}</p>
+      {% if loop.index == 4 and data.sales.top_products %}
+      <p class="text-xs text-txt-muted mt-0.5">{{ data.sales.top_products[0].units_sold }} units sold</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+    <div class="lg:col-span-3 bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-semibold text-txt-primary">Daily Revenue</p>
+        <div class="flex items-center gap-3 text-xs text-txt-muted">
+          <span class="flex items-center gap-1">
+            <span class="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block"></span>Revenue
+          </span>
+          <span class="flex items-center gap-1">
+            <span class="w-2.5 h-1 rounded-sm bg-amber-500 inline-block"></span>Transactions
+          </span>
+        </div>
       </div>
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Avg Order Value</p>
-        <p class="text-2xl font-semibold text-txt-primary mt-1">
-          ₱{{ "%.2f" | format(data.sales.avg_order) }}
-        </p>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-sales-revenue"></canvas>
       </div>
     </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
-
-      {# Daily Breakdown Table #}
-      <div class="lg:col-span-3 bg-surface border border-border rounded-xl overflow-hidden">
-        <div class="px-4 py-3 border-b border-border">
-          <h3 class="text-sm font-semibold text-txt-primary">Daily Breakdown</h3>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-border bg-bg text-xs text-txt-muted uppercase tracking-wide">
-                <th class="text-left px-4 py-2.5 font-semibold">Date</th>
-                <th class="text-right px-4 py-2.5 font-semibold">Transactions</th>
-                <th class="text-right px-4 py-2.5 font-semibold">Revenue</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-border">
-              {% for row in data.sales.daily %}
-              <tr class="hover:bg-bg transition-colors">
-                <td class="px-4 py-2.5 text-txt-primary font-medium">{{ row.date }}</td>
-                <td class="px-4 py-2.5 text-right text-txt-muted">{{ row.transactions }}</td>
-                <td class="px-4 py-2.5 text-right font-medium text-txt-primary">
-                  ₱{{ "%.2f" | format(row.total | float) }}
-                </td>
-              </tr>
-              {% else %}
-              <tr>
-                <td colspan="3" class="px-4 py-10 text-center text-txt-muted text-xs">
-                  No sales in this period.
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+    <div class="lg:col-span-2 bg-surface border border-border rounded-xl p-4">
+      <p class="text-sm font-semibold text-txt-primary mb-3">Top Products</p>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-top-products"></canvas>
       </div>
+    </div>
+  </div>
 
-      {# Top Products #}
-      <div class="lg:col-span-2 bg-surface border border-border rounded-xl overflow-hidden">
-        <div class="px-4 py-3 border-b border-border">
-          <h3 class="text-sm font-semibold text-txt-primary">Top Products</h3>
-        </div>
-        <div class="divide-y divide-border">
-          {% for row in data.sales.top_products %}
-          <div class="flex items-center justify-between px-4 py-2.5 hover:bg-bg transition-colors">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="text-xs text-txt-muted font-mono w-5 shrink-0">{{ loop.index }}</span>
-              <p class="text-sm text-txt-primary truncate">{{ row.product_name.capitalize() }}</p>
-            </div>
-            <div class="text-right shrink-0 ml-3">
-              <p class="text-xs font-semibold text-txt-primary">{{ row.units_sold }} units</p>
-              <p class="text-xs text-txt-muted">₱{{ "%.2f" | format(row.revenue | float) }}</p>
-            </div>
-          </div>
+  <div class="bg-surface border border-border rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+      <p class="text-sm font-semibold text-txt-primary">Daily Breakdown</p>
+      <span class="text-xs text-txt-muted">{{ detail.total }} days</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-bg border-b border-border text-xs text-txt-muted uppercase tracking-wide">
+            <th class="text-left px-4 py-2.5 font-semibold">Date</th>
+            <th class="text-right px-4 py-2.5 font-semibold">Transactions</th>
+            <th class="text-right px-4 py-2.5 font-semibold">Revenue</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for row in detail.rows %}
+          <tr class="hover:bg-bg transition-colors">
+            <td class="px-4 py-2.5 font-medium text-txt-primary">{{ row.date }}</td>
+            <td class="px-4 py-2.5 text-right text-txt-muted">{{ row.transactions }}</td>
+            <td class="px-4 py-2.5 text-right font-semibold text-txt-primary">₱{{ "%.2f"|format(row.total|float) }}</td>
+          </tr>
           {% else %}
-          <p class="px-4 py-10 text-center text-txt-muted text-xs">No data.</p>
+          <tr><td colspan="3" class="px-4 py-10 text-center text-txt-muted text-xs">No sales in this period.</td></tr>
           {% endfor %}
-        </div>
-      </div>
+        </tbody>
+      </table>
+    </div>
+    {% include "admin/_report_pagination.html" %}
+  </div>
+  {% endif %}
 
+
+  {# ╔═══════════════════════════════════════════════════════════════════╗
+     ║  INVENTORY                                                        ║
+     ╚═══════════════════════════════════════════════════════════════════╝ #}
+  {% if active_tab == "inventory" %}
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    {% set cards = [
+      ("Total Products",  data.inventory.total_products|string, "category",       "text-blue-500",   "bg-blue-50 dark:bg-blue-900/20"),
+      ("Total Units",     data.inventory.total_units|string,    "inventory_2",    "text-emerald-500","bg-emerald-50 dark:bg-emerald-900/20"),
+      ("Low Stock",       data.inventory.low_stock|string,      "warning",        "text-amber-500",  "bg-amber-50 dark:bg-amber-900/20"),
+      ("Out of Stock",    data.inventory.out_of_stock|string,   "do_not_disturb", "text-red-500",    "bg-red-50 dark:bg-red-900/20"),
+    ] %}
+    {% for label, value, icon, icolor, ibg in cards %}
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+        </span>
+        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+      </div>
+      <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="bg-surface border border-border rounded-xl p-4">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-sm font-semibold text-txt-primary">Stock Levels — Top 12 Products</p>
+      <div class="flex items-center gap-3 text-xs text-txt-muted">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block"></span>OK</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block"></span>Low</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block"></span>Out</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-sm bg-rose-400 inline-block"></span>Defective</span>
+      </div>
+    </div>
+    <div style="position:relative;height:240px">
+      <canvas id="chart-inventory"></canvas>
     </div>
   </div>
 
-
-  {# ═══════════════════════════════════════════════════════════════════════════
-     TAB: INVENTORY
-  ══════════════════════════════════════════════════════════════════════════════ #}
-  <div x-show="tab === 'inventory'" x-cloak class="space-y-4">
-
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Products</p>
-        <p class="text-2xl font-semibold text-txt-primary mt-1">{{ data.inventory.total_products }}</p>
-      </div>
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Total Units</p>
-        <p class="text-2xl font-semibold text-txt-primary mt-1">{{ data.inventory.total_units }}</p>
-      </div>
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Low Stock</p>
-        <p class="text-2xl font-semibold text-amber-500 mt-1">{{ data.inventory.low_stock }}</p>
-        <p class="text-xs text-txt-muted">≤ 5 units</p>
-      </div>
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Out of Stock</p>
-        <p class="text-2xl font-semibold text-red-500 mt-1">{{ data.inventory.out_of_stock }}</p>
-      </div>
+  <div class="bg-surface border border-border rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+      <p class="text-sm font-semibold text-txt-primary">All Products</p>
+      <span class="text-xs text-txt-muted">{{ detail.total }} products</span>
     </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-bg border-b border-border text-xs text-txt-muted uppercase tracking-wide">
+            <th class="text-left px-4 py-2.5 font-semibold">Product</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Category</th>
+            <th class="text-right px-4 py-2.5 font-semibold">In Stock</th>
+            <th class="text-right px-4 py-2.5 font-semibold">Defective</th>
+            <th class="text-right px-4 py-2.5 font-semibold whitespace-nowrap">Reorder At</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for product, inv, category in detail.rows %}
+          {% set is_out = inv.quantity_available == 0 %}
+          {% set is_low = not is_out and inv.quantity_available <= product.low_reorder_threshold %}
+          <tr class="hover:bg-bg transition-colors">
+            <td class="px-4 py-2.5 font-medium text-txt-primary">{{ product.product_name.capitalize() }}</td>
+            <td class="px-4 py-2.5 text-txt-muted text-xs">{{ category.category_name.capitalize() if category else '—' }}</td>
+            <td class="px-4 py-2.5 text-right font-mono font-semibold
+              {{ 'text-red-500' if is_out else ('text-amber-500' if is_low else 'text-emerald-600 dark:text-emerald-400') }}">
+              {{ inv.quantity_available }}
+            </td>
+            <td class="px-4 py-2.5 text-right font-mono text-txt-muted">{{ inv.quantity_defective or 0 }}</td>
+            <td class="px-4 py-2.5 text-right text-txt-muted text-xs">{{ product.low_reorder_threshold }}</td>
+            <td class="px-4 py-2.5">
+              {% if is_out %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Out</span>
+              {% elif is_low %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Low</span>
+              {% else %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">OK</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="px-4 py-10 text-center text-txt-muted text-xs">No inventory data.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "admin/_report_pagination.html" %}
+  </div>
+  {% endif %}
 
-    <div class="bg-surface border border-border rounded-xl overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-border bg-bg text-xs text-txt-muted uppercase tracking-wide">
-              <th class="text-left px-4 py-3 font-semibold">Product</th>
-              <th class="text-left px-4 py-3 font-semibold">Category</th>
-              <th class="text-right px-4 py-3 font-semibold">In Stock</th>
-              <th class="text-right px-4 py-3 font-semibold">Defective</th>
-              <th class="text-left px-4 py-3 font-semibold">Status</th>
-              <th class="text-left px-4 py-3 font-semibold whitespace-nowrap">Last Updated</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border">
-            {% for product, inv, category in data.inventory.items %}
-            <tr class="hover:bg-bg transition-colors">
-              <td class="px-4 py-2.5 font-medium text-txt-primary">
-                {{ product.product_name.capitalize() }}
-              </td>
-              <td class="px-4 py-2.5 text-txt-muted text-xs">
-                {{ category.category_name.capitalize() if category else '—' }}
-              </td>
-              <td class="px-4 py-2.5 text-right font-mono font-semibold
-                {% if inv.quantity_available == 0 %} text-red-500
-                {% elif inv.quantity_available <= 5 %} text-amber-500
-                {% else %} text-emerald-600 dark:text-emerald-400
-                {% endif %}">
-                {{ inv.quantity_available }}
-              </td>
-              <td class="px-4 py-2.5 text-right font-mono text-txt-muted">
-                {{ inv.quantity_defective or 0 }}
-              </td>
-              <td class="px-4 py-2.5">
-                {% set s = product.status %}
-                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium
-                  {% if s == 'active' %} bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400
-                  {% else %} bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400
-                  {% endif %}">
-                  {{ s.title() }}
-                </span>
-              </td>
-              <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
-                {{ inv.last_updated | pht("%b %d, %Y") if inv.last_updated else '—' }}
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="6" class="px-4 py-10 text-center text-txt-muted text-xs">
-                No inventory data found.
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+
+  {# ╔═══════════════════════════════════════════════════════════════════╗
+     ║  STOCK IN                                                         ║
+     ╚═══════════════════════════════════════════════════════════════════╝ #}
+  {% if active_tab == "stock" %}
+
+  <div class="grid grid-cols-2 gap-3">
+    {% for label, value, icon, icolor, ibg in [
+      ("Stock-In Entries",     data.stock.total_entries|string, "receipt",   "text-blue-500",   "bg-blue-50 dark:bg-blue-900/20"),
+      ("Total Units Received", data.stock.total_units|string,   "move_up",   "text-emerald-500","bg-emerald-50 dark:bg-emerald-900/20"),
+    ] %}
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+        </span>
+        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide">{{ label }}</p>
       </div>
+      <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="bg-surface border border-border rounded-xl p-4">
+    <p class="text-sm font-semibold text-txt-primary mb-3">Units Received per Day</p>
+    <div style="position:relative;height:200px">
+      <canvas id="chart-stock"></canvas>
     </div>
   </div>
 
-
-  {# ═══════════════════════════════════════════════════════════════════════════
-     TAB: STOCK IN / MOVEMENT
-  ══════════════════════════════════════════════════════════════════════════════ #}
-  <div x-show="tab === 'stock'" x-cloak class="space-y-4">
-
-    <div class="grid grid-cols-2 gap-3">
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Stock-In Entries</p>
-        <p class="text-2xl font-semibold text-txt-primary mt-1">{{ data.stock.total_entries }}</p>
-      </div>
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Total Units Received</p>
-        <p class="text-2xl font-semibold text-txt-primary mt-1">{{ data.stock.total_units }}</p>
-      </div>
+  <div class="bg-surface border border-border rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+      <p class="text-sm font-semibold text-txt-primary">Stock-In Records</p>
+      <span class="text-xs text-txt-muted">{{ detail.total }} entries</span>
     </div>
-
-    <div class="bg-surface border border-border rounded-xl overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-border bg-bg text-xs text-txt-muted uppercase tracking-wide">
-              <th class="text-left px-4 py-3 font-semibold whitespace-nowrap">Date & Time</th>
-              <th class="text-left px-4 py-3 font-semibold">Product</th>
-              <th class="text-right px-4 py-3 font-semibold">Qty Received</th>
-              <th class="text-left px-4 py-3 font-semibold whitespace-nowrap">Received By</th>
-              <th class="text-left px-4 py-3 font-semibold">Notes</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border">
-            {% for stock_in, product, user in data.stock.items %}
-            <tr class="hover:bg-bg transition-colors">
-              <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
-                {{ stock_in.stockin_datetime | pht("%b %d, %Y") }}<br>
-                <span class="text-txt-muted/60">{{ stock_in.stockin_datetime | pht("%I:%M %p") }}</span>
-              </td>
-              <td class="px-4 py-2.5 font-medium text-txt-primary">
-                {{ product.product_name.capitalize() }}
-              </td>
-              <td class="px-4 py-2.5 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                +{{ stock_in.quantity_received }}
-              </td>
-              <td class="px-4 py-2.5 text-txt-muted text-xs whitespace-nowrap">
-                {{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}<br>
-                <span class="text-txt-muted/60">{{ user.role.title() }}</span>
-              </td>
-              <td class="px-4 py-2.5 text-txt-muted text-xs max-w-xs">
-                {{ stock_in.notes or '—' }}
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="5" class="px-4 py-10 text-center text-txt-muted text-xs">
-                No stock-in entries for this period.
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-bg border-b border-border text-xs text-txt-muted uppercase tracking-wide">
+            <th class="text-left px-4 py-2.5 font-semibold whitespace-nowrap">Date & Time</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Product</th>
+            <th class="text-right px-4 py-2.5 font-semibold">Qty</th>
+            <th class="text-left px-4 py-2.5 font-semibold whitespace-nowrap">Received By</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Notes</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for stock_in, product, user in detail.rows %}
+          <tr class="hover:bg-bg transition-colors">
+            <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
+              {{ stock_in.stockin_datetime | pht("%b %d, %Y") }}<br>
+              <span class="text-txt-muted/60">{{ stock_in.stockin_datetime | pht("%I:%M %p") }}</span>
+            </td>
+            <td class="px-4 py-2.5 font-medium text-txt-primary">{{ product.product_name.capitalize() }}</td>
+            <td class="px-4 py-2.5 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">+{{ stock_in.quantity_received }}</td>
+            <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
+              {{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}
+            </td>
+            <td class="px-4 py-2.5 text-xs text-txt-muted max-w-[200px] truncate">{{ stock_in.notes or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="px-4 py-10 text-center text-txt-muted text-xs">No stock-in entries for this period.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+    {% include "admin/_report_pagination.html" %}
+  </div>
+  {% endif %}
+
+
+  {# ╔═══════════════════════════════════════════════════════════════════╗
+     ║  DEFECTS                                                          ║
+     ╚═══════════════════════════════════════════════════════════════════╝ #}
+  {% if active_tab == "defects" %}
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    {% for label, value, icon, icolor, ibg in [
+      ("Total Records",   data.defects.total|string,           "report_problem",             "text-rose-500",   "bg-rose-50 dark:bg-rose-900/20"),
+      ("Total Units",     data.defects.total_units|string,     "production_quantity_limits",  "text-orange-500", "bg-orange-50 dark:bg-orange-900/20"),
+      ("Customer Origin", data.defects.customer_origin|string, "person",                     "text-violet-500", "bg-violet-50 dark:bg-violet-900/20"),
+      ("In-Store Origin", data.defects.store_origin|string,    "store",                      "text-blue-500",   "bg-blue-50 dark:bg-blue-900/20"),
+    ] %}
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+        </span>
+        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+      </div>
+      <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
+    </div>
+    {% endfor %}
   </div>
 
-
-  {# ═══════════════════════════════════════════════════════════════════════════
-     TAB: DEFECTS
-  ══════════════════════════════════════════════════════════════════════════════ #}
-  <div x-show="tab === 'defects'" x-cloak class="space-y-4">
-
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Total Records</p>
-        <p class="text-2xl font-semibold text-txt-primary mt-1">{{ data.defects.total }}</p>
-      </div>
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Total Units</p>
-        <p class="text-2xl font-semibold text-txt-primary mt-1">{{ data.defects.total_units }}</p>
-      </div>
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">Customer Origin</p>
-        <p class="text-2xl font-semibold text-rose-500 mt-1">{{ data.defects.customer_origin }}</p>
-      </div>
-      <div class="bg-surface border border-border rounded-xl p-4">
-        <p class="text-xs text-txt-muted uppercase tracking-wide font-medium">In-Store Origin</p>
-        <p class="text-2xl font-semibold text-orange-500 mt-1">{{ data.defects.store_origin }}</p>
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+    <div class="lg:col-span-2 bg-surface border border-border rounded-xl p-4">
+      <p class="text-sm font-semibold text-txt-primary mb-3">Origin Breakdown</p>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-defects-origin"></canvas>
       </div>
     </div>
-
-    <div class="bg-surface border border-border rounded-xl overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-border bg-bg text-xs text-txt-muted uppercase tracking-wide">
-              <th class="text-left px-4 py-3 font-semibold whitespace-nowrap">Date & Time</th>
-              <th class="text-left px-4 py-3 font-semibold">Product</th>
-              <th class="text-right px-4 py-3 font-semibold">Qty</th>
-              <th class="text-left px-4 py-3 font-semibold">Origin</th>
-              <th class="text-left px-4 py-3 font-semibold">Reason</th>
-              <th class="text-left px-4 py-3 font-semibold whitespace-nowrap">Compensation</th>
-              <th class="text-left px-4 py-3 font-semibold">Status</th>
-              <th class="text-left px-4 py-3 font-semibold whitespace-nowrap">Logged By</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-border">
-            {% for detail, defect, product, user in data.defects.items %}
-            <tr class="hover:bg-bg transition-colors">
-              <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
-                {{ defect.defect_datetime | pht("%b %d, %Y") }}<br>
-                <span class="text-txt-muted/60">{{ defect.defect_datetime | pht("%I:%M %p") }}</span>
-              </td>
-              <td class="px-4 py-2.5 font-medium text-txt-primary">
-                {{ product.product_name.capitalize() }}
-              </td>
-              <td class="px-4 py-2.5 text-right font-mono text-txt-primary">{{ detail.quantity }}</td>
-              <td class="px-4 py-2.5">
-                {% if detail.origin == 'customer' %}
-                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium
-                             bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
-                  Customer
-                </span>
-                {% else %}
-                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium
-                             bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                  In-Store
-                </span>
-                {% endif %}
-              </td>
-              <td class="px-4 py-2.5 text-txt-muted text-xs">
-                {{ detail.reason.replace("_", " ").title() }}
-              </td>
-              <td class="px-4 py-2.5 text-txt-muted text-xs whitespace-nowrap">
-                {{ detail.customer_compensation.replace("_", " ").title() }}
-              </td>
-              <td class="px-4 py-2.5">
-                {% set st = detail.status %}
-                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium
-                  {% if st == 'active' %} bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400
-                  {% elif st == 'rejected' %} bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400
-                  {% elif st == 'submitted' %} bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400
-                  {% else %} bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400
-                  {% endif %}">
-                  {{ st.title() }}
-                </span>
-              </td>
-              <td class="px-4 py-2.5 text-txt-muted text-xs whitespace-nowrap">
-                {{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}
-              </td>
-            </tr>
-            {% else %}
-            <tr>
-              <td colspan="8" class="px-4 py-10 text-center text-txt-muted text-xs">
-                No defect records for this period.
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    <div class="lg:col-span-3 bg-surface border border-border rounded-xl p-4">
+      <p class="text-sm font-semibold text-txt-primary mb-3">Defect Reasons (by units)</p>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-defects-reason"></canvas>
       </div>
     </div>
   </div>
 
-</div>
+  <div class="bg-surface border border-border rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+      <p class="text-sm font-semibold text-txt-primary">Defect Records</p>
+      <span class="text-xs text-txt-muted">{{ detail.total }} records</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-bg border-b border-border text-xs text-txt-muted uppercase tracking-wide">
+            <th class="text-left px-4 py-2.5 font-semibold whitespace-nowrap">Date</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Product</th>
+            <th class="text-right px-4 py-2.5 font-semibold">Qty</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Origin</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Reason</th>
+            <th class="text-left px-4 py-2.5 font-semibold">Status</th>
+            <th class="text-left px-4 py-2.5 font-semibold whitespace-nowrap">Logged By</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-border">
+          {% for detail_row, defect, product, user in detail.rows %}
+          <tr class="hover:bg-bg transition-colors">
+            <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
+              {{ defect.defect_datetime | pht("%b %d, %Y") }}<br>
+              <span class="text-txt-muted/60">{{ defect.defect_datetime | pht("%I:%M %p") }}</span>
+            </td>
+            <td class="px-4 py-2.5 font-medium text-txt-primary">{{ product.product_name.capitalize() }}</td>
+            <td class="px-4 py-2.5 text-right font-mono text-txt-primary">{{ detail_row.quantity }}</td>
+            <td class="px-4 py-2.5">
+              {% if detail_row.origin == 'customer' %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">Customer</span>
+              {% else %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">In-Store</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-2.5 text-txt-muted text-xs">{{ detail_row.reason.replace("_"," ").title() }}</td>
+            <td class="px-4 py-2.5">
+              {% set st = detail_row.status %}
+              <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium
+                {{ 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' if st=='active'
+                else ('bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' if st=='rejected'
+                else 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400') }}">
+                {{ st.title() }}
+              </span>
+            </td>
+            <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
+              {{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="px-4 py-10 text-center text-txt-muted text-xs">No defect records for this period.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "admin/_report_pagination.html" %}
+  </div>
+  {% endif %}
+
+</div>{# /root wrapper #}
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+(function () {
+  const D   = {{ chart_json | safe }};
+  const TAB = '{{ active_tab }}';
+
+  /* Dark-mode detection */
+  const dark    = document.documentElement.classList.contains('dark');
+  const gridCol = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const txtCol  = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.40)';
+
+  Chart.defaults.font.family = 'inherit';
+  Chart.defaults.font.size   = 11;
+  Chart.defaults.color       = txtCol;
+
+  const scales = {
+    x: { grid: { color: gridCol }, ticks: { color: txtCol } },
+    y: { grid: { color: gridCol }, ticks: { color: txtCol }, beginAtZero: true },
+  };
+
+  const P = {
+    blue:   'rgba(59,130,246,0.82)',
+    green:  'rgba(16,185,129,0.82)',
+    amber:  'rgba(245,158,11,0.82)',
+    red:    'rgba(239,68,68,0.82)',
+    violet: 'rgba(139,92,246,0.82)',
+    rose:   'rgba(244,63,94,0.82)',
+    teal:   'rgba(20,184,166,0.82)',
+  };
+
+  function el(id) { return document.getElementById(id); }
+
+  /* ── SALES ──────────────────────────────────────────────────────────── */
+  if (TAB === 'sales') {
+    const revEl = el('chart-sales-revenue');
+    if (revEl && D.sales.labels.length) {
+      new Chart(revEl, {
+        data: {
+          labels: D.sales.labels,
+          datasets: [
+            { type: 'bar',  label: 'Revenue (₱)', data: D.sales.revenue,
+              backgroundColor: P.blue, borderRadius: 4, yAxisID: 'y', order: 2 },
+            { type: 'line', label: 'Transactions', data: D.sales.transactions,
+              borderColor: 'rgb(245,158,11)', backgroundColor: 'transparent',
+              pointBackgroundColor: 'rgb(245,158,11)', pointRadius: 3,
+              tension: 0.35, yAxisID: 'y2', order: 1 },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false } },
+          scales: {
+            x:  { ...scales.x },
+            y:  { ...scales.y, ticks: { ...scales.y.ticks,
+                    callback: v => '₱' + Number(v).toLocaleString() } },
+            y2: { position: 'right', grid: { display: false },
+                  beginAtZero: true, ticks: { color: txtCol } },
+          },
+        },
+      });
+    }
+
+    const tpEl = el('chart-top-products');
+    if (tpEl && D.top_products.labels.length) {
+      new Chart(tpEl, {
+        type: 'bar',
+        data: {
+          labels: D.top_products.labels,
+          datasets: [{ label: 'Units Sold', data: D.top_products.units,
+            backgroundColor: P.green, borderRadius: 4, borderSkipped: false }],
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ...scales.x, beginAtZero: true },
+            y: { grid: { display: false }, ticks: { color: txtCol } },
+          },
+        },
+      });
+    }
+  }
+
+  /* ── INVENTORY ──────────────────────────────────────────────────────── */
+  if (TAB === 'inventory') {
+    const invEl = el('chart-inventory');
+    if (invEl && D.inventory.labels.length) {
+      new Chart(invEl, {
+        type: 'bar',
+        data: {
+          labels: D.inventory.labels,
+          datasets: [
+            { label: 'In Stock',
+              data: D.inventory.in_stock,
+              backgroundColor: D.inventory.in_stock.map((v, i) =>
+                v === 0 ? P.red : v <= D.inventory.threshold[i] ? P.amber : P.green),
+              borderRadius: 4, borderSkipped: false },
+            { label: 'Defective', data: D.inventory.defective,
+              backgroundColor: P.rose, borderRadius: 4, borderSkipped: false },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { ...scales },
+        },
+      });
+    }
+  }
+
+  /* ── STOCK IN ───────────────────────────────────────────────────────── */
+  if (TAB === 'stock') {
+    const skEl = el('chart-stock');
+    if (skEl && D.stock.labels.length) {
+      new Chart(skEl, {
+        type: 'bar',
+        data: {
+          labels: D.stock.labels,
+          datasets: [{ label: 'Units Received', data: D.stock.units,
+            backgroundColor: P.teal, borderRadius: 4 }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { ...scales },
+        },
+      });
+    }
+  }
+
+  /* ── DEFECTS ────────────────────────────────────────────────────────── */
+  if (TAB === 'defects') {
+    const origEl = el('chart-defects-origin');
+    if (origEl) {
+      new Chart(origEl, {
+        type: 'doughnut',
+        data: {
+          labels: D.defects.origin_labels,
+          datasets: [{ data: D.defects.origin_counts,
+            backgroundColor: [P.rose, P.amber], borderWidth: 0, hoverOffset: 6 }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '68%',
+          plugins: { legend: { position: 'bottom',
+            labels: { boxWidth: 10, padding: 14, color: txtCol } } },
+        },
+      });
+    }
+
+    const rsEl = el('chart-defects-reason');
+    if (rsEl && D.defects.reason_labels.length) {
+      new Chart(rsEl, {
+        type: 'bar',
+        data: {
+          labels: D.defects.reason_labels,
+          datasets: [{ label: 'Units', data: D.defects.reason_counts,
+            backgroundColor: P.violet, borderRadius: 4, borderSkipped: false }],
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ...scales.x, beginAtZero: true },
+            y: { grid: { display: false }, ticks: { color: txtCol } },
+          },
+        },
+      });
+    }
+  }
+
+})();
+</script>
 {% endblock %}

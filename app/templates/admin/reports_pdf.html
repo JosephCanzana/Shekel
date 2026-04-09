@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ tab.title() }} Report — Shekel</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 20mm 16mm 20mm 16mm;
+    @bottom-center {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 9pt;
+      color: #94a3b8;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 9.5pt;
+    color: #1e293b;
+    line-height: 1.5;
+    background: #ffffff;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────────────── */
+  .report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #1e293b;
+    margin-bottom: 18px;
+  }
+  .report-header .brand { font-size: 18pt; font-weight: 800; color: #1e293b; }
+  .report-header .meta  { text-align: right; font-size: 8.5pt; color: #64748b; }
+  .report-header .meta strong { display: block; font-size: 12pt; color: #1e293b; font-weight: 700; }
+
+  /* ── Section headings ────────────────────────────────────────────────── */
+  .section-title {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 18px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  /* ── Summary cards ───────────────────────────────────────────────────── */
+  .summary-grid {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .summary-grid-2 { grid-template-columns: 1fr 1fr; }
+  .summary-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .card {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    background: #f8fafc;
+  }
+  .card-label {
+    font-size: 7.5pt;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .card-value {
+    font-size: 15pt;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  .card-sub { font-size: 8pt; color: #94a3b8; margin-top: 1px; }
+
+  /* ── Tables ─────────────────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    margin-bottom: 14px;
+    page-break-inside: auto;
+  }
+  thead tr { background: #1e293b; }
+  thead th {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 6px 8px;
+    text-align: left;
+  }
+  thead th.right { text-align: right; }
+  tbody tr { page-break-inside: avoid; }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+    vertical-align: middle;
+  }
+  tbody td.right    { text-align: right; }
+  tbody td.mono     { font-family: 'Courier New', monospace; font-size: 8pt; }
+  tbody td.bold     { font-weight: 600; color: #1e293b; }
+  tbody td.muted    { color: #64748b; font-size: 8pt; }
+  .no-data td { text-align: center; color: #94a3b8; padding: 16px; }
+
+  /* ── Status badges (text-only for PDF) ───────────────────────────────── */
+  .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 7.5pt;
+    font-weight: 600;
+  }
+  .badge-green  { background: #d1fae5; color: #065f46; }
+  .badge-amber  { background: #fef3c7; color: #92400e; }
+  .badge-red    { background: #fee2e2; color: #991b1b; }
+  .badge-blue   { background: #dbeafe; color: #1e40af; }
+  .badge-rose   { background: #ffe4e6; color: #9f1239; }
+  .badge-violet { background: #ede9fe; color: #5b21b6; }
+  .badge-orange { background: #ffedd5; color: #9a3412; }
+
+  /* ── Footer note ─────────────────────────────────────────────────────── */
+  .report-footer {
+    margin-top: 24px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 7.5pt;
+    color: #94a3b8;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+{# ── HEADER ─────────────────────────────────────────────────────────────── #}
+<div class="report-header">
+  <div class="brand">Shekel</div>
+  <div class="meta">
+    <strong>{{ tab.replace("_"," ").title() }} Report</strong>
+    Period: {{ date_from }} → {{ date_to }}<br>
+    Generated: {{ generated_at }}
+  </div>
+</div>
+
+
+{# ══════════════════════════════════════════════════════════════════════════
+   SALES
+═══════════════════════════════════════════════════════════════════════════ #}
+{% if tab == "sales" %}
+
+<div class="section-title">Summary</div>
+<div class="summary-grid summary-grid-4">
+  <div class="card">
+    <div class="card-label">Total Revenue</div>
+    <div class="card-value">₱{{ "%.2f"|format(data.sales.total_revenue) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Transactions</div>
+    <div class="card-value">{{ data.sales.total_transactions }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Avg Order Value</div>
+    <div class="card-value">₱{{ "%.2f"|format(data.sales.avg_order) }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Top Product</div>
+    <div class="card-value" style="font-size:10pt">
+      {{ data.sales.top_products[0].product_name.capitalize() if data.sales.top_products else "—" }}
+    </div>
+    {% if data.sales.top_products %}
+    <div class="card-sub">{{ data.sales.top_products[0].units_sold }} units sold</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="section-title">Daily Breakdown</div>
+<table>
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th class="right">Transactions</th>
+      <th class="right">Revenue (₱)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in data.sales.daily %}
+    <tr>
+      <td class="bold">{{ row.date }}</td>
+      <td class="right mono">{{ row.transactions }}</td>
+      <td class="right bold">₱{{ "%.2f"|format(row.total|float) }}</td>
+    </tr>
+    {% else %}
+    <tr class="no-data"><td colspan="3">No sales in this period.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if data.sales.top_products %}
+<div class="section-title">Top 10 Products</div>
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Product</th>
+      <th class="right">Units Sold</th>
+      <th class="right">Revenue (₱)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in data.sales.top_products %}
+    <tr>
+      <td class="muted">{{ loop.index }}</td>
+      <td class="bold">{{ row.product_name.capitalize() }}</td>
+      <td class="right mono">{{ row.units_sold }}</td>
+      <td class="right bold">₱{{ "%.2f"|format(row.revenue|float) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% endif %}{# /sales #}
+
+
+{# ══════════════════════════════════════════════════════════════════════════
+   INVENTORY
+═══════════════════════════════════════════════════════════════════════════ #}
+{% if tab == "inventory" %}
+
+<div class="section-title">Summary</div>
+<div class="summary-grid summary-grid-4">
+  <div class="card">
+    <div class="card-label">Total Products</div>
+    <div class="card-value">{{ data.inventory.total_products }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Total Units</div>
+    <div class="card-value">{{ data.inventory.total_units }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Low Stock</div>
+    <div class="card-value" style="color:#b45309">{{ data.inventory.low_stock }}</div>
+    <div class="card-sub">at or below reorder threshold</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Out of Stock</div>
+    <div class="card-value" style="color:#dc2626">{{ data.inventory.out_of_stock }}</div>
+  </div>
+</div>
+
+<div class="section-title">Product Inventory</div>
+<table>
+  <thead>
+    <tr>
+      <th>Product</th>
+      <th>Category</th>
+      <th class="right">In Stock</th>
+      <th class="right">Defective</th>
+      <th class="right">Reorder At</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for product, inv, category in data.inventory.rows %}
+    {% set is_out = inv.quantity_available == 0 %}
+    {% set is_low = not is_out and inv.quantity_available <= product.low_reorder_threshold %}
+    <tr>
+      <td class="bold">{{ product.product_name.capitalize() }}</td>
+      <td class="muted">{{ category.category_name.capitalize() if category else '—' }}</td>
+      <td class="right mono bold">{{ inv.quantity_available }}</td>
+      <td class="right mono muted">{{ inv.quantity_defective or 0 }}</td>
+      <td class="right muted">{{ product.low_reorder_threshold }}</td>
+      <td>
+        {% if is_out %}
+        <span class="badge badge-red">Out</span>
+        {% elif is_low %}
+        <span class="badge badge-amber">Low</span>
+        {% else %}
+        <span class="badge badge-green">OK</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr class="no-data"><td colspan="6">No inventory data.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endif %}{# /inventory #}
+
+
+{# ══════════════════════════════════════════════════════════════════════════
+   STOCK IN
+═══════════════════════════════════════════════════════════════════════════ #}
+{% if tab == "stock" %}
+
+<div class="section-title">Summary</div>
+<div class="summary-grid summary-grid-2">
+  <div class="card">
+    <div class="card-label">Stock-In Entries</div>
+    <div class="card-value">{{ data.stock.total_entries }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Total Units Received</div>
+    <div class="card-value">{{ data.stock.total_units }}</div>
+  </div>
+</div>
+
+<div class="section-title">Stock-In Records</div>
+<table>
+  <thead>
+    <tr>
+      <th>Date & Time (PHT)</th>
+      <th>Product</th>
+      <th class="right">Qty Received</th>
+      <th>Received By</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for stock_in, product, user in data.stock.rows %}
+    <tr>
+      <td class="muted">
+        {{ stock_in.stockin_datetime | pht("%b %d, %Y %I:%M %p") if stock_in.stockin_datetime else '—' }}
+      </td>
+      <td class="bold">{{ product.product_name.capitalize() }}</td>
+      <td class="right mono bold" style="color:#059669">+{{ stock_in.quantity_received }}</td>
+      <td class="muted">{{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}</td>
+      <td class="muted">{{ stock_in.notes or '—' }}</td>
+    </tr>
+    {% else %}
+    <tr class="no-data"><td colspan="5">No stock-in entries for this period.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endif %}{# /stock #}
+
+
+{# ══════════════════════════════════════════════════════════════════════════
+   DEFECTS
+═══════════════════════════════════════════════════════════════════════════ #}
+{% if tab == "defects" %}
+
+<div class="section-title">Summary</div>
+<div class="summary-grid summary-grid-4">
+  <div class="card">
+    <div class="card-label">Total Records</div>
+    <div class="card-value">{{ data.defects.total }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Total Units</div>
+    <div class="card-value">{{ data.defects.total_units }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Customer Origin</div>
+    <div class="card-value">{{ data.defects.customer_origin }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">In-Store Origin</div>
+    <div class="card-value">{{ data.defects.store_origin }}</div>
+  </div>
+</div>
+
+<div class="section-title">Defect Records</div>
+<table>
+  <thead>
+    <tr>
+      <th>Date (PHT)</th>
+      <th>Product</th>
+      <th class="right">Qty</th>
+      <th>Origin</th>
+      <th>Reason</th>
+      <th>Compensation</th>
+      <th>Status</th>
+      <th>Logged By</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for detail_row, defect, product, user in data.defects.rows %}
+    <tr>
+      <td class="muted">
+        {{ defect.defect_datetime | pht("%b %d, %Y") if defect.defect_datetime else '—' }}
+      </td>
+      <td class="bold">{{ product.product_name.capitalize() }}</td>
+      <td class="right mono">{{ detail_row.quantity }}</td>
+      <td>
+        {% if detail_row.origin == 'customer' %}
+        <span class="badge badge-rose">Customer</span>
+        {% else %}
+        <span class="badge badge-orange">In-Store</span>
+        {% endif %}
+      </td>
+      <td class="muted">{{ detail_row.reason.replace("_"," ").title() }}</td>
+      <td class="muted">{{ detail_row.customer_compensation.replace("_"," ").title() }}</td>
+      <td>
+        {% set st = detail_row.status %}
+        <span class="badge {{ 'badge-green' if st=='active' else ('badge-red' if st=='rejected' else 'badge-blue') }}">
+          {{ st.title() }}
+        </span>
+      </td>
+      <td class="muted">{{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}</td>
+    </tr>
+    {% else %}
+    <tr class="no-data"><td colspan="8">No defect records for this period.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endif %}{# /defects #}
+
+
+<div class="report-footer">
+  Shekel Business Report &mdash; {{ tab.replace("_"," ").title() }} &mdash; {{ date_from }} to {{ date_to }}
+  &mdash; Generated {{ generated_at }}
+</div>
+
+</body>
+</html>

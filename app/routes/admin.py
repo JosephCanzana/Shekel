@@ -1,4 +1,6 @@
 import io
+import json
+from collections import Counter, defaultdict
 from datetime import datetime, date as _date
 
 from flask import (
@@ -446,19 +448,107 @@ def export_audit_logs():
 # ═══════════════════════════════════════════════════════════════════════════════
 # REPORTS — helpers
 # ═══════════════════════════════════════════════════════════════════════════════
-
+ 
+def _paginate_list(lst, page, per_page=25):
+    """Slice a plain Python list into a pagination dict."""
+    total    = len(lst)
+    pages    = max(1, (total + per_page - 1) // per_page)
+    page     = max(1, min(page, pages))
+    start    = (page - 1) * per_page
+    return {
+        "rows":     lst[start: start + per_page],
+        "total":    total,
+        "page":     page,
+        "pages":    pages,
+        "per_page": per_page,
+        "has_prev": page > 1,
+        "has_next": page < pages,
+        "prev_num": page - 1,
+        "next_num": page + 1,
+    }
+ 
+ 
+def _build_chart_data(data):
+    """
+    Produce JSON-serialisable dicts consumed by Chart.js in reports.html.
+    All Decimal / date values are cast to native Python types here.
+    """
+    # ── Sales ─────────────────────────────────────────────────────────────────
+    # Reverse so chart x-axis runs oldest → newest
+    daily_asc = list(reversed(list(data["sales"]["daily"])))
+    sales_chart = {
+        "labels":       [str(r.date) for r in daily_asc],
+        "revenue":      [float(r.total or 0) for r in daily_asc],
+        "transactions": [int(r.transactions) for r in daily_asc],
+    }
+    top_products_chart = {
+        "labels":  [r.product_name[:22].capitalize() for r in data["sales"]["top_products"]],
+        "units":   [int(r.units_sold or 0)           for r in data["sales"]["top_products"]],
+        "revenue": [float(r.revenue or 0)            for r in data["sales"]["top_products"]],
+    }
+ 
+    # ── Inventory ─────────────────────────────────────────────────────────────
+    inv_sorted = sorted(
+        data["inventory"]["rows"],
+        key=lambda x: x[1].quantity_available,
+        reverse=True,
+    )[:12]
+    inv_chart = {
+        "labels":    [p.product_name[:22].capitalize() for p, inv, _ in inv_sorted],
+        "in_stock":  [inv.quantity_available            for _, inv, _ in inv_sorted],
+        "defective": [inv.quantity_defective or 0       for _, inv, _ in inv_sorted],
+        "threshold": [p.low_reorder_threshold           for p, _, _ in inv_sorted],
+    }
+ 
+    # ── Stock In ──────────────────────────────────────────────────────────────
+    stock_by_date: dict[str, int] = defaultdict(int)
+    for s, _, _ in data["stock"]["rows"]:
+        if s.stockin_datetime:
+            d = str(to_pht(s.stockin_datetime).date())
+            stock_by_date[d] += s.quantity_received
+    stock_dates = sorted(stock_by_date)
+    stock_chart = {
+        "labels": stock_dates,
+        "units":  [stock_by_date[d] for d in stock_dates],
+    }
+ 
+    # ── Defects ───────────────────────────────────────────────────────────────
+    reason_counter: Counter = Counter()
+    for detail, _, _, _ in data["defects"]["rows"]:
+        reason_counter[detail.reason.replace("_", " ").title()] += detail.quantity
+ 
+    defects_chart = {
+        "origin_labels": ["Customer", "In-Store"],
+        "origin_counts": [
+            data["defects"]["customer_origin"],
+            data["defects"]["store_origin"],
+        ],
+        "reason_labels": [k for k, _ in reason_counter.most_common(8)],
+        "reason_counts": [v for _, v in reason_counter.most_common(8)],
+    }
+ 
+    return {
+        "sales":        sales_chart,
+        "top_products": top_products_chart,
+        "inventory":    inv_chart,
+        "stock":        stock_chart,
+        "defects":      defects_chart,
+    }
+ 
+ 
+ 
 def _parse_date_range():
     """Return (date_from, date_to, date_from_str, date_to_str) from request args."""
     today = datetime.utcnow().date()
     dfrom_s = request.args.get("date_from", today.replace(day=1).isoformat())
     dto_s   = request.args.get("date_to",   today.isoformat())
-
+ 
     try:
         dfrom = datetime.strptime(dfrom_s, "%Y-%m-%d")
     except ValueError:
         dfrom   = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         dfrom_s = dfrom.date().isoformat()
-
+ 
     try:
         dto = datetime.strptime(dto_s, "%Y-%m-%d").replace(
             hour=23, minute=59, second=59, microsecond=999999
@@ -466,14 +556,14 @@ def _parse_date_range():
     except ValueError:
         dto   = datetime.utcnow().replace(hour=23, minute=59, second=59)
         dto_s = dto.date().isoformat()
-
+ 
     return dfrom, dto, dfrom_s, dto_s
-
-
+ 
+ 
 def _build_report_data(date_from, date_to):
     """
     Collect data for all four report tabs.
-
+ 
     Column mapping verified against actual DB schema (shekel_db dump):
         Sales.transaction_id        ← PK  (NOT sale_id)
         Sales.total_amount          ← final selling total
@@ -481,24 +571,24 @@ def _build_report_data(date_from, date_to):
         Sales.total_cost_price      ← cost component
         Sales.sale_datetime         ✓
         Sales.payment_method        ✓
-
+ 
         Sales_Details.sale_detail_id      ← PK
         Sales_Details.transaction_id      ← FK to Sales
         Sales_Details.product_id          ← FK to Products (varchar)
         Sales_Details.quantity            ✓
         Sales_Details.price_at_sale       ← unit selling price
         Sales_Details.subtotal_amount     ← line total
-
+ 
         Products.product_id               ← varchar(100) PK
         Products.low_reorder_threshold    ← per-product low stock level
         Products.total_price              ← current selling price
-
+ 
         Stock_In.stockin_id               ← PK  (NOT stock_in_id)
     """
     from app.models.sale        import Sale
     from app.models.sale_detail import SaleDetail
     from app.models.category    import Category
-
+ 
     # ── 1. Sales ─────────────────────────────────────────────────────────────
     sales_list = (
         Sale.query
@@ -506,7 +596,7 @@ def _build_report_data(date_from, date_to):
         .order_by(Sale.sale_datetime.desc())
         .all()
     )
-
+ 
     # Daily breakdown
     daily_sales = (
         db.session.query(
@@ -519,10 +609,10 @@ def _build_report_data(date_from, date_to):
         .order_by(func.date(Sale.sale_datetime).desc())
         .all()
     )
-
+ 
     total_revenue = sum(float(s.total_amount or 0) for s in sales_list)
     avg_order     = (total_revenue / len(sales_list)) if sales_list else 0
-
+ 
     # Top 10 products by units sold
     top_products = (
         db.session.query(
@@ -538,7 +628,7 @@ def _build_report_data(date_from, date_to):
         .limit(10)
         .all()
     )
-
+ 
     sales_data = {
         "total_revenue":      total_revenue,
         "total_transactions": len(sales_list),
@@ -546,7 +636,7 @@ def _build_report_data(date_from, date_to):
         "daily":              daily_sales,    # (date, transactions, total)
         "top_products":       top_products,   # (product_name, units_sold, revenue)
     }
-
+ 
     # ── 2. Inventory ──────────────────────────────────────────────────────────
     # Shows current state — intentionally NOT date-filtered.
     inv_rows = (
@@ -557,7 +647,7 @@ def _build_report_data(date_from, date_to):
         .order_by(Product.product_name)
         .all()
     )
-
+ 
     inventory_data = {
         "total_products": len(inv_rows),
         "total_units":    sum(inv.quantity_available for _, inv, _ in inv_rows),
@@ -567,9 +657,9 @@ def _build_report_data(date_from, date_to):
             if 0 < inv.quantity_available <= p.low_reorder_threshold
         ),
         "out_of_stock": sum(1 for _, inv, _ in inv_rows if inv.quantity_available == 0),
-        "items":        inv_rows,   # (Product, Inventory, Category)
+        "rows":         inv_rows,   # (Product, Inventory, Category) — NOT "items" (conflicts with dict.items())
     }
-
+ 
     # ── 3. Stock Movement ─────────────────────────────────────────────────────
     stock_rows = (
         db.session.query(StockIn, Product, User)
@@ -579,13 +669,13 @@ def _build_report_data(date_from, date_to):
         .order_by(StockIn.stockin_datetime.desc())
         .all()
     )
-
+ 
     stock_data = {
         "total_entries": len(stock_rows),
         "total_units":   sum(s.quantity_received for s, _, _ in stock_rows),
-        "items":         stock_rows,   # (StockIn, Product, User)
+        "rows":          stock_rows,   # (StockIn, Product, User)
     }
-
+ 
     # ── 4. Defects ────────────────────────────────────────────────────────────
     defect_rows = (
         db.session.query(DefectDetail, Defect, Product, User)
@@ -597,15 +687,15 @@ def _build_report_data(date_from, date_to):
         .order_by(Defect.defect_datetime.desc())
         .all()
     )
-
+ 
     defects_data = {
         "total":           len(defect_rows),
         "total_units":     sum(d.quantity for d, _, _, _ in defect_rows),
         "customer_origin": sum(1 for d, _, _, _ in defect_rows if d.origin == "customer"),
         "store_origin":    sum(1 for d, _, _, _ in defect_rows if d.origin == "in_store"),
-        "items":           defect_rows,   # (DefectDetail, Defect, Product, User)
+        "rows":            defect_rows,   # (DefectDetail, Defect, Product, User)
     }
-
+ 
     return {
         "sales":     sales_data,
         "inventory": inventory_data,
@@ -613,28 +703,77 @@ def _build_report_data(date_from, date_to):
         "defects":   defects_data,
     }
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # REPORTS — routes
 # ═══════════════════════════════════════════════════════════════════════════════
-
+ 
 @admin_bp.route("/reports")
 @login_required
 @role_required("superadmin")
 def reports():
+    
     date_from, date_to, date_from_str, date_to_str = _parse_date_range()
     active_tab = request.args.get("tab", "sales")
+    page       = request.args.get("page", 1, type=int)
+    per_page   = 25
+ 
     data       = _build_report_data(date_from, date_to)
-
+    chart_json = json.dumps(_build_chart_data(data))
+ 
+    # Paginate only the active tab's detail rows
+    if active_tab == "inventory":
+        detail = _paginate_list(data["inventory"]["rows"], page, per_page)
+    elif active_tab == "stock":
+        detail = _paginate_list(data["stock"]["rows"], page, per_page)
+    elif active_tab == "defects":
+        detail = _paginate_list(data["defects"]["rows"], page, per_page)
+    else:  # sales — daily breakdown
+        detail = _paginate_list(list(data["sales"]["daily"]), page, per_page)
+ 
     return render_template(
         "admin/reports.html",
         data       = data,
+        detail     = detail,
+        chart_json = chart_json,
         active_tab = active_tab,
         date_from  = date_from_str,
         date_to    = date_to_str,
     )
-
-
+ 
+ 
+@admin_bp.route("/reports/pdf")
+@login_required
+@role_required("superadmin")
+def export_report_pdf():
+    """Render a print-ready PDF for the current tab + date range."""
+    from weasyprint import HTML
+ 
+    date_from, date_to, date_from_str, date_to_str = _parse_date_range()
+    tab  = request.args.get("tab", "sales")
+    data = _build_report_data(date_from, date_to)
+ 
+    html_str = render_template(
+        "admin/reports_pdf.html",
+        data         = data,
+        tab          = tab,
+        date_from    = date_from_str,
+        date_to      = date_to_str,
+        generated_at = to_pht(datetime.utcnow()).strftime("%B %d, %Y  %I:%M %p PHT"),
+    )
+ 
+    pdf_bytes = HTML(string=html_str, base_url=request.host_url).write_pdf()
+ 
+    buf = io.BytesIO(pdf_bytes)
+    buf.seek(0)
+    filename = f"report_{tab}_{date_from_str}_to_{date_to_str}.pdf"
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/pdf",
+    )
+ 
+ 
 @admin_bp.route("/reports/export")
 @login_required
 @role_required("superadmin")
@@ -643,13 +782,13 @@ def export_report():
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
-
+ 
     date_from, date_to, date_from_str, date_to_str = _parse_date_range()
     tab  = request.args.get("tab", "sales")
     data = _build_report_data(date_from, date_to)
-
+ 
     wb = openpyxl.Workbook()
-
+ 
     # ── Shared style helpers ──────────────────────────────────────────────────
     def make_header(ws, headers, col_widths):
         fill = PatternFill("solid", fgColor="1E293B")
@@ -662,7 +801,7 @@ def export_report():
             ws.column_dimensions[get_column_letter(ci)].width = w
         ws.row_dimensions[1].height = 22
         ws.freeze_panes = "A2"
-
+ 
     def write_row(ws, ri, values, wrap_cols=None):
         alt_fill = PatternFill("solid", fgColor="F8FAFC")
         thin     = Border(bottom=Side(style="thin", color="E2E8F0"))
@@ -673,22 +812,22 @@ def export_report():
             if ri % 2 == 0:
                 cell.fill = alt_fill
         ws.row_dimensions[ri].height = 18
-
+ 
     def add_summary(ws, row, label, value):
         ws.cell(row=row, column=1, value=label).font = Font(bold=True)
         ws.cell(row=row, column=2, value=value)
-
+ 
     # ── Sales ─────────────────────────────────────────────────────────────────
     if tab == "sales":
         ws = wb.active
         ws.title = "Sales Summary"
         s = data["sales"]
-
+ 
         add_summary(ws, 1, "Period",              f"{date_from_str}  →  {date_to_str}")
         add_summary(ws, 2, "Total Transactions",  s["total_transactions"])
         add_summary(ws, 3, "Total Revenue (₱)",   round(s["total_revenue"], 2))
         add_summary(ws, 4, "Avg Order Value (₱)", round(s["avg_order"], 2))
-
+ 
         # Blank row then daily table starting at row 6
         start = 6
         ws.cell(row=start, column=1, value="Daily Breakdown").font = Font(bold=True, size=12)
@@ -702,10 +841,10 @@ def export_report():
             cell.alignment = Alignment(horizontal="center")
             ws.column_dimensions[get_column_letter(ci)].width = w
         ws.freeze_panes = f"A{start + 1}"
-
+ 
         for ri, row in enumerate(s["daily"], start + 1):
             write_row(ws, ri, [str(row.date), row.transactions, round(float(row.total or 0), 2)])
-
+ 
         # Top products on sheet 2
         ws2 = wb.create_sheet("Top Products")
         make_header(ws2, ["Product", "Units Sold", "Revenue (₱)"], [36, 14, 16])
@@ -715,18 +854,18 @@ def export_report():
                 int(row.units_sold or 0),
                 round(float(row.revenue or 0), 2),
             ])
-
+ 
     # ── Inventory ─────────────────────────────────────────────────────────────
     elif tab == "inventory":
         ws = wb.active
         ws.title = "Inventory"
         inv = data["inventory"]
-
+ 
         add_summary(ws, 1, "Total Products",  inv["total_products"])
         add_summary(ws, 2, "Total Units",     inv["total_units"])
         add_summary(ws, 3, "Low Stock",       inv["low_stock"])
         add_summary(ws, 4, "Out of Stock",    inv["out_of_stock"])
-
+ 
         start = 6
         headers    = ["Product", "Category", "In Stock", "Defective", "Reorder Threshold", "Status", "Last Updated"]
         col_widths = [36,        20,          12,         12,          18,                  12,       22]
@@ -737,8 +876,8 @@ def export_report():
             cell.alignment = Alignment(horizontal="center")
             ws.column_dimensions[get_column_letter(ci)].width = w
         ws.freeze_panes = f"A{start + 1}"
-
-        for ri, (product, inv_row, category) in enumerate(inv["items"], start + 1):
+ 
+        for ri, (product, inv_row, category) in enumerate(inv["rows"], start + 1):
             last_upd = to_pht(inv_row.last_updated).strftime("%b %d, %Y") if inv_row.last_updated else "—"
             write_row(ws, ri, [
                 product.product_name.capitalize(),
@@ -749,17 +888,17 @@ def export_report():
                 product.status.title(),
                 last_upd,
             ])
-
+ 
     # ── Stock Movement ────────────────────────────────────────────────────────
     elif tab == "stock":
         ws = wb.active
         ws.title = "Stock Movement"
         sk = data["stock"]
-
+ 
         add_summary(ws, 1, "Period",         f"{date_from_str}  →  {date_to_str}")
         add_summary(ws, 2, "Total Entries",  sk["total_entries"])
         add_summary(ws, 3, "Total Units In", sk["total_units"])
-
+ 
         start = 5
         headers    = ["Date & Time (PHT)", "Product", "Qty Received", "Received By", "Notes"]
         col_widths = [22,                  36,         14,             22,             40]
@@ -770,8 +909,8 @@ def export_report():
             cell.alignment = Alignment(horizontal="center")
             ws.column_dimensions[get_column_letter(ci)].width = w
         ws.freeze_panes = f"A{start + 1}"
-
-        for ri, (stock_in, product, user) in enumerate(sk["items"], start + 1):
+ 
+        for ri, (stock_in, product, user) in enumerate(sk["rows"], start + 1):
             pht_dt = to_pht(stock_in.stockin_datetime).strftime("%b %d, %Y %I:%M %p") if stock_in.stockin_datetime else "—"
             name   = f"{user.first_name} {user.last_name}".strip().title()
             write_row(ws, ri, [
@@ -781,19 +920,19 @@ def export_report():
                 name,
                 stock_in.notes or "—",
             ], wrap_cols={5})
-
+ 
     # ── Defects ───────────────────────────────────────────────────────────────
     elif tab == "defects":
         ws = wb.active
         ws.title = "Defects"
         df = data["defects"]
-
+ 
         add_summary(ws, 1, "Period",           f"{date_from_str}  →  {date_to_str}")
         add_summary(ws, 2, "Total Records",    df["total"])
         add_summary(ws, 3, "Total Units",      df["total_units"])
         add_summary(ws, 4, "Customer Origin",  df["customer_origin"])
         add_summary(ws, 5, "In-Store Origin",  df["store_origin"])
-
+ 
         start = 7
         headers    = ["Date (PHT)", "Product", "Qty", "Origin", "Reason", "Cust. Compensation", "Status", "Logged By"]
         col_widths = [22,           30,         8,     12,       22,       22,                   12,       22]
@@ -804,8 +943,8 @@ def export_report():
             cell.alignment = Alignment(horizontal="center")
             ws.column_dimensions[get_column_letter(ci)].width = w
         ws.freeze_panes = f"A{start + 1}"
-
-        for ri, (detail, defect, product, user) in enumerate(df["items"], start + 1):
+ 
+        for ri, (detail, defect, product, user) in enumerate(df["rows"], start + 1):
             pht_dt = to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p") if defect.defect_datetime else "—"
             name   = f"{user.first_name} {user.last_name}".strip().title()
             write_row(ws, ri, [
@@ -818,14 +957,14 @@ def export_report():
                 detail.status.title(),
                 name,
             ])
-
+ 
     else:
         wb.active.title = "No Data"
-
+ 
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-
+ 
     filename = f"report_{tab}_{date_from_str}_to_{date_to_str}.xlsx"
     return send_file(
         buf,
@@ -833,3 +972,4 @@ def export_report():
         download_name=filename,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
+ 

@@ -1,0 +1,74 @@
+{# templates/admin/_report_pagination.html
+   Expects: detail.page, detail.pages, detail.has_prev, detail.has_next,
+            detail.prev_num, detail.next_num, active_tab, date_from, date_to #}
+{% if detail.pages > 1 %}
+<div class="flex items-center justify-between px-4 py-3 border-t border-border">
+  <p class="text-xs text-txt-muted">
+    Page <span class="font-medium text-txt-primary">{{ detail.page }}</span>
+    of <span class="font-medium text-txt-primary">{{ detail.pages }}</span>
+    &nbsp;·&nbsp; {{ detail.total }} total
+  </p>
+  <div class="flex items-center gap-1">
+
+    {# Prev #}
+    {% if detail.has_prev %}
+    <a href="?tab={{ active_tab }}&date_from={{ date_from }}&date_to={{ date_to }}&page={{ detail.prev_num }}"
+       class="p-1.5 rounded-lg border border-border bg-surface text-txt-muted
+              hover:text-txt-primary hover:border-border-strong transition-colors">
+      <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+    </a>
+    {% else %}
+    <span class="p-1.5 rounded-lg border border-border bg-surface text-txt-muted/30 cursor-not-allowed">
+      <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+    </span>
+    {% endif %}
+
+    {# Page numbers — show at most 5 around current #}
+    {% set show_start = [1, detail.page - 2] | max %}
+    {% set show_end   = [detail.pages, detail.page + 2] | min %}
+
+    {% if show_start > 1 %}
+    <a href="?tab={{ active_tab }}&date_from={{ date_from }}&date_to={{ date_to }}&page=1"
+       class="w-8 h-8 flex items-center justify-center rounded-lg border border-border
+              bg-surface text-txt-muted hover:text-txt-primary text-xs transition-colors">1</a>
+    {% if show_start > 2 %}
+    <span class="w-8 h-8 flex items-center justify-center text-txt-muted text-xs">…</span>
+    {% endif %}
+    {% endif %}
+
+    {% for p in range(show_start, show_end + 1) %}
+    {% if p == detail.page %}
+    <span class="w-8 h-8 flex items-center justify-center rounded-lg
+                 bg-txt-primary text-bg text-xs font-semibold">{{ p }}</span>
+    {% else %}
+    <a href="?tab={{ active_tab }}&date_from={{ date_from }}&date_to={{ date_to }}&page={{ p }}"
+       class="w-8 h-8 flex items-center justify-center rounded-lg border border-border
+              bg-surface text-txt-muted hover:text-txt-primary text-xs transition-colors">{{ p }}</a>
+    {% endif %}
+    {% endfor %}
+
+    {% if show_end < detail.pages %}
+    {% if show_end < detail.pages - 1 %}
+    <span class="w-8 h-8 flex items-center justify-center text-txt-muted text-xs">…</span>
+    {% endif %}
+    <a href="?tab={{ active_tab }}&date_from={{ date_from }}&date_to={{ date_to }}&page={{ detail.pages }}"
+       class="w-8 h-8 flex items-center justify-center rounded-lg border border-border
+              bg-surface text-txt-muted hover:text-txt-primary text-xs transition-colors">{{ detail.pages }}</a>
+    {% endif %}
+
+    {# Next #}
+    {% if detail.has_next %}
+    <a href="?tab={{ active_tab }}&date_from={{ date_from }}&date_to={{ date_to }}&page={{ detail.next_num }}"
+       class="p-1.5 rounded-lg border border-border bg-surface text-txt-muted
+              hover:text-txt-primary hover:border-border-strong transition-colors">
+      <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+    </a>
+    {% else %}
+    <span class="p-1.5 rounded-lg border border-border bg-surface text-txt-muted/30 cursor-not-allowed">
+      <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+    </span>
+    {% endif %}
+
+  </div>
+</div>
+{% endif %}
