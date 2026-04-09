@@ -188,11 +188,11 @@ def complete():
             })
 
         try:
+            names = ", ".join(r["product_name"] for r in received)
             audit(
                 "INSERT",
                 "Stock_In",
-                f"Direct stock-in: {qty} units of '{product.product_name.capitalize()}' by {current_user.full_name}",
-                reference_id=product.product_id,
+                f"Direct stock-in: {len(received)} product(s) [{names}] by {current_user.full_name}",
                 reference_table="StockIn",
                 user_id=current_user.user_id
             )
