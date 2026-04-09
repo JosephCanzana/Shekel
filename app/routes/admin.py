@@ -59,7 +59,7 @@ def requests_page():
         .join(Product,  Product.product_id   == DefectDetail.product_id)
         .join(User,     User.user_id         == Defect.user_id)
         .filter(DefectDetail.status     == "submitted")
-        .filter(DefectDetail.is_deleted == False)
+        .filter(DefectDetail.is_archived == False)
         .order_by(Defect.defect_datetime.asc())
         .all()
     )
@@ -81,7 +81,7 @@ def requests_page():
             "datetime":     to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
             "approve_url":  url_for("defects.approve",     detail_id=detail.defect_detail_id),
             "reject_url":   url_for("defects.reject",      detail_id=detail.defect_detail_id),
-            "delete_url":   url_for("defects.soft_delete", detail_id=detail.defect_detail_id),
+            "delete_url":   url_for("defects.archive_detail", detail_id=detail.defect_detail_id),
         }
         for detail, defect, product, user in defect_rows
     ]
@@ -94,7 +94,7 @@ def requests_page():
         .filter(DefectDetail.status                        == "active")
         .filter(DefectDetail.supplier_compensation         == "pending")
         .filter(DefectDetail.proposed_supplier_compensation != None)
-        .filter(DefectDetail.is_deleted                   == False)
+        .filter(DefectDetail.is_archived                   == False)
         .order_by(Defect.defect_datetime.asc())
         .all()
     )
@@ -123,7 +123,7 @@ def requests_page():
         .join(Product,  Product.product_id   == DefectDetail.product_id)
         .join(User,     User.user_id         == Defect.user_id)
         .filter(DefectDetail.status.in_(["active", "rejected"]))
-        .filter(DefectDetail.is_deleted == False)
+        .filter(DefectDetail.is_archived == False)
         .order_by(Defect.defect_datetime.desc())
         .limit(30).all()
     )

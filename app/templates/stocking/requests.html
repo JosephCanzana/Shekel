@@ -12,6 +12,7 @@ const DEFECT_HISTORY_DATA = {{ defect_history     | tojson }};
 function myRequestsData() {
     return {
         tab: 'pending',
+        historySubTab: 'stock',   // ← new: sub-tab inside History
 
         batches: PENDING_DATA.map(b => ({
             ...b,
@@ -29,10 +30,86 @@ function myRequestsData() {
             }))
         })),
 
-        history:        HISTORY_DATA,
-        defectPending:  DEFECT_PENDING_DATA,
-        defectHistory:  DEFECT_HISTORY_DATA,
+        history:       HISTORY_DATA,
+        defectPending: DEFECT_PENDING_DATA,
+        defectHistory: DEFECT_HISTORY_DATA,
 
+        // ── Pending filters ──────────────────────────────────────────────────
+        stockFilter: {
+            type:     '',
+            dateFrom: '',
+            dateTo:   '',
+        },
+        defectPendingFilter: {
+            reason:   '',
+            origin:   '',
+            dateFrom: '',
+            dateTo:   '',
+        },
+
+        // ── History sub-tab filters ──────────────────────────────────────────
+        historyStockFilter: {
+            type:     '',
+            status:   '',
+            dateFrom: '',
+            dateTo:   '',
+        },
+        historyDefectFilter: {
+            reason:   '',
+            status:   '',
+            dateFrom: '',
+            dateTo:   '',
+        },
+
+        // ── Date-range helper ────────────────────────────────────────────────
+        inDateRange(dateStr, from, to) {
+            if (!dateStr) return true
+            const d = new Date(dateStr)
+            if (from && d < new Date(from))             return false
+            if (to   && d > new Date(to + 'T23:59:59')) return false
+            return true
+        },
+
+        // ── Computed: filtered lists ─────────────────────────────────────────
+        get filteredBatches() {
+            return this.batches.filter(b => {
+                if (this.stockFilter.type && b.request_type !== this.stockFilter.type) return false
+                if (!this.inDateRange(b.submitted_at, this.stockFilter.dateFrom, this.stockFilter.dateTo)) return false
+                return true
+            })
+        },
+        get filteredDefectPending() {
+            return this.defectPending.filter(d => {
+                if (this.defectPendingFilter.reason && d.reason !== this.defectPendingFilter.reason) return false
+                if (this.defectPendingFilter.origin && d.origin !== this.defectPendingFilter.origin) return false
+                if (!this.inDateRange(d.datetime, this.defectPendingFilter.dateFrom, this.defectPendingFilter.dateTo)) return false
+                return true
+            })
+        },
+        get filteredHistoryStock() {
+            return this.history.filter(b => {
+                if (this.historyStockFilter.type   && b.request_type !== this.historyStockFilter.type)   return false
+                if (this.historyStockFilter.status && b.status        !== this.historyStockFilter.status) return false
+                if (!this.inDateRange(b.submitted_at, this.historyStockFilter.dateFrom, this.historyStockFilter.dateTo)) return false
+                return true
+            })
+        },
+        get filteredHistoryDefect() {
+            return this.defectHistory.filter(d => {
+                if (this.historyDefectFilter.reason && d.reason !== this.historyDefectFilter.reason) return false
+                if (this.historyDefectFilter.status && d.status !== this.historyDefectFilter.status) return false
+                if (!this.inDateRange(d.datetime, this.historyDefectFilter.dateFrom, this.historyDefectFilter.dateTo)) return false
+                return true
+            })
+        },
+
+        // ── Active-filter counters ───────────────────────────────────────────
+        get activeStockFilters()        { return [this.stockFilter.type, this.stockFilter.dateFrom, this.stockFilter.dateTo].filter(Boolean).length },
+        get activeDefectPendingFilters(){ return [this.defectPendingFilter.reason, this.defectPendingFilter.origin, this.defectPendingFilter.dateFrom, this.defectPendingFilter.dateTo].filter(Boolean).length },
+        get activeHistoryStockFilters() { return [this.historyStockFilter.type, this.historyStockFilter.status, this.historyStockFilter.dateFrom, this.historyStockFilter.dateTo].filter(Boolean).length },
+        get activeHistoryDefectFilters(){ return [this.historyDefectFilter.reason, this.historyDefectFilter.status, this.historyDefectFilter.dateFrom, this.historyDefectFilter.dateTo].filter(Boolean).length },
+
+        // ── Label / colour helpers ────────────────────────────────────────────
         statusColor(s) {
             return { pending:'var(--color-warning)', approved:'var(--color-success)',
                      partially_approved:'var(--color-accent)', rejected:'var(--color-error)',
@@ -53,6 +130,7 @@ function myRequestsData() {
                   : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'
         },
 
+        // ── Actions ──────────────────────────────────────────────────────────
         async saveEdits(batch) {
             batch.saving = true
             try {
@@ -105,15 +183,9 @@ function myRequestsData() {
             <h1 class="text-xl font-bold tracking-tight" style="color:var(--color-txt-primary);">My Requests</h1>
             <p class="text-sm mt-0.5" style="color:var(--color-txt-muted);">Your submitted stock and defect return requests.</p>
         </div>
-        <a href="{{ url_for('stocking.stock_in') }}"
-           class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
-           style="background:var(--color-primary);color:var(--color-bg);">
-            <span class="material-symbols-outlined text-[17px]">add_box</span>
-            New Stock-In
-        </a>
     </div>
 
-    {# ── Tabs ── #}
+    {# ── Top-level Tabs ── #}
     <div class="flex gap-1 p-1 rounded-xl w-fit"
          style="background:var(--color-surface-alt); border:1px solid var(--color-border);">
         <button @click="tab='pending'"
@@ -154,22 +226,98 @@ function myRequestsData() {
 
 
     {# ══════════════════════════════════════════
-       TAB: STOCK REQUESTS
+       TAB: STOCK REQUESTS (pending)
     ══════════════════════════════════════════ #}
     <div x-show="tab === 'pending'" x-transition>
+        <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);"
+               x-text="filteredBatches.length + ' of ' + batches.length + ' request(s)'"></p>
+            <div class="flex items-center gap-2">
+                <button @click="$refs.stockModal.style.display='flex'"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition relative"
+                        style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="this.style.backgroundColor='transparent'">
+                    <span class="material-symbols-outlined text-[15px]">tune</span> Filters
+                    <template x-if="activeStockFilters > 0">
+                        <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
+                              style="background:var(--color-primary);color:var(--color-bg);" x-text="activeStockFilters"></span>
+                    </template>
+                </button>
+                <template x-if="activeStockFilters > 0">
+                    <button @click="stockFilter={type:'',dateFrom:'',dateTo:''}"
+                            class="px-2 py-1.5 rounded-xl text-xs" style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
+                        <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
+                    </button>
+                </template>
+            </div>
+        </div>
+
+        {# Stock filter modal #}
+        <div x-ref="stockModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+             style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);"
+             @click="if($event.target===$el)$el.style.display='none'">
+            <div class="w-full max-w-sm rounded-2xl overflow-hidden"
+                 style="background:var(--color-surface);border:1px solid var(--color-border);">
+                <div class="px-5 py-4 flex items-center justify-between"
+                     style="border-bottom:1px solid var(--color-border);background:var(--color-surface-alt);">
+                    <h3 class="font-bold text-sm" style="color:var(--color-txt-primary);">Filter Stock Requests</h3>
+                    <button @click="$refs.stockModal.style.display='none'"
+                            class="w-7 h-7 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
+                        <span class="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                </div>
+                <div class="px-5 py-4 flex flex-col gap-4">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Type</label>
+                        <select x-model="stockFilter.type" class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                                style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                            <option value="">All Types</option>
+                            <option value="stock_in">Stock-In</option>
+                            <option value="adjustment">Adjustment</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Date Range</label>
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 flex flex-col gap-1">
+                                <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">From</span>
+                                <input type="date" x-model="stockFilter.dateFrom" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                       style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                            </div>
+                            <span class="text-xs mt-4" style="color:var(--color-txt-muted);">—</span>
+                            <div class="flex-1 flex flex-col gap-1">
+                                <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">To</span>
+                                <input type="date" x-model="stockFilter.dateTo" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                       style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 pt-1">
+                        <button @click="stockFilter={type:'',dateFrom:'',dateTo:''}"
+                                class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                                style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                onmouseout="this.style.backgroundColor='transparent'">Reset</button>
+                        <button @click="$refs.stockModal.style.display='none'"
+                                class="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                                style="background:var(--color-primary);color:var(--color-bg);">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <template x-if="batches.length === 0">
             <div class="rounded-2xl py-20 flex flex-col items-center justify-center gap-3"
                  style="background:var(--color-surface); border:1px solid var(--color-border);">
                 <span class="material-symbols-outlined text-[48px]" style="color:var(--color-border-strong);">pending_actions</span>
                 <p class="text-sm font-medium" style="color:var(--color-txt-muted);">No pending stock requests.</p>
-                <a href="{{ url_for('stocking.stock_in') }}" class="text-sm font-semibold" style="color:var(--color-primary);">
-                    Submit a stock-in →
-                </a>
             </div>
         </template>
 
         <div class="space-y-4">
-            <template x-for="batch in batches" :key="batch.request_id">
+            {# FIX: added :key and closing > to x-for #}
+            <template x-for="batch in filteredBatches" :key="batch.request_id">
                 <div class="rounded-2xl overflow-hidden"
                      style="background:var(--color-surface); border:1px solid var(--color-border);">
 
@@ -245,6 +393,7 @@ function myRequestsData() {
                             </div>
                         </div>
 
+                        {# FIX: added :key and closing > to x-for #}
                         <template x-for="(edit, idx) in batch.edits" :key="edit.detail_id">
                             <div class="px-5 py-4" style="border-bottom:1px solid var(--color-border);">
                                 <div class="flex items-start gap-4">
@@ -294,20 +443,105 @@ function myRequestsData() {
 
 
     {# ══════════════════════════════════════════
-       TAB: DEFECT RETURNS
+       TAB: DEFECT RETURNS (pending only)
     ══════════════════════════════════════════ #}
     <div x-show="tab === 'defects'" x-transition class="space-y-4">
 
-        {# Pending defect submissions #}
         <div>
-            <p class="text-xs font-bold uppercase tracking-wider mb-2" style="color:var(--color-txt-muted);">
-                Awaiting Admin Approval
-                <span class="ml-1.5 px-1.5 py-0.5 rounded-full font-bold"
-                      style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
-                      x-text="defectPending.length"></span>
-            </p>
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
+                    Awaiting Admin Approval
+                    <span class="ml-1.5 px-1.5 py-0.5 rounded-full font-bold"
+                          style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
+                          x-text="defectPending.length"></span>
+                </p>
+                <div class="flex items-center gap-2">
+                    <button @click="$refs.defectPendingModal.style.display='flex'"
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition relative"
+                            style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">
+                        <span class="material-symbols-outlined text-[15px]">tune</span> Filters
+                        <template x-if="activeDefectPendingFilters > 0">
+                            <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
+                                  style="background:var(--color-primary);color:var(--color-bg);"
+                                  x-text="activeDefectPendingFilters"></span>
+                        </template>
+                    </button>
+                    <template x-if="activeDefectPendingFilters > 0">
+                        <button @click="defectPendingFilter={reason:'',origin:'',dateFrom:'',dateTo:''}"
+                                class="px-2 py-1.5 rounded-xl text-xs" style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
+                        </button>
+                    </template>
+                </div>
+            </div>
 
-            <template x-if="defectPending.length === 0">
+            {# Defect pending filter modal #}
+            <div x-ref="defectPendingModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+                 style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);"
+                 @click="if($event.target===$el)$el.style.display='none'">
+                <div class="w-full max-w-sm rounded-2xl overflow-hidden"
+                     style="background:var(--color-surface);border:1px solid var(--color-border);">
+                    <div class="px-5 py-4 flex items-center justify-between"
+                         style="border-bottom:1px solid var(--color-border);background:var(--color-surface-alt);">
+                        <h3 class="font-bold text-sm" style="color:var(--color-txt-primary);">Filter Defect Returns</h3>
+                        <button @click="$refs.defectPendingModal.style.display='none'"
+                                class="w-7 h-7 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                    </div>
+                    <div class="px-5 py-4 flex flex-col gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Reason</label>
+                            <select x-model="defectPendingFilter.reason" class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                                    style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                <option value="">All Reasons</option>
+                                <option value="damaged">Damaged</option>
+                                <option value="expired">Expired</option>
+                                <option value="change_of_mind">Change of Mind</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Origin</label>
+                            <select x-model="defectPendingFilter.origin" class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                                    style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                <option value="">All Origins</option>
+                                <option value="in_store">In-Store</option>
+                                <option value="customer">Customer</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Date Range</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 flex flex-col gap-1">
+                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">From</span>
+                                    <input type="date" x-model="defectPendingFilter.dateFrom" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                </div>
+                                <span class="text-xs mt-4" style="color:var(--color-txt-muted);">—</span>
+                                <div class="flex-1 flex flex-col gap-1">
+                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">To</span>
+                                    <input type="date" x-model="defectPendingFilter.dateTo" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 pt-1">
+                            <button @click="defectPendingFilter={reason:'',origin:'',dateFrom:'',dateTo:''}"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                    onmouseout="this.style.backgroundColor='transparent'">Reset</button>
+                            <button @click="$refs.defectPendingModal.style.display='none'"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                                    style="background:var(--color-primary);color:var(--color-bg);">Apply</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <template x-if="filteredDefectPending.length === 0">
                 <div class="rounded-2xl py-10 flex flex-col items-center justify-center gap-2"
                      style="background:var(--color-surface); border:1px solid var(--color-border);">
                     <span class="material-symbols-outlined text-[36px]" style="color:var(--color-border-strong);">task_alt</span>
@@ -315,9 +549,10 @@ function myRequestsData() {
                 </div>
             </template>
 
-            <div class="rounded-2xl overflow-hidden" x-show="defectPending.length > 0"
+            <div class="rounded-2xl overflow-hidden" x-show="filteredDefectPending.length > 0"
                  style="background:var(--color-surface); border:1px solid var(--color-border);">
-                <template x-for="item in defectPending" :key="item.detail_id">
+                {# FIX: added :key and closing > to x-for #}
+                <template x-for="item in filteredDefectPending" :key="item.defect_id">
                     <div class="flex items-center gap-4 px-5 py-3.5 transition"
                          style="border-bottom:1px solid var(--color-border);"
                          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -333,9 +568,7 @@ function myRequestsData() {
                                       style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
                                       x-text="'×' + item.quantity"></span>
                                 <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                      :style="item.reason==='expired'
-                                          ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
-                                          : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                                      :style="defectBadgeColor(item.reason)"
                                       x-text="item.reason_label"></span>
                                 <span class="text-[10px] px-2 py-0.5 rounded-full"
                                       style="color:var(--color-txt-muted);" x-text="item.origin_label"></span>
@@ -356,24 +589,272 @@ function myRequestsData() {
                 </template>
             </div>
         </div>
+    </div>
 
-        {# Defect submission history #}
-        <div>
-            <p class="text-xs font-bold uppercase tracking-wider mb-2" style="color:var(--color-txt-muted);">
-                Recent Defect History
-            </p>
 
-            <template x-if="defectHistory.length === 0">
-                <div class="rounded-2xl py-10 flex flex-col items-center justify-center gap-2"
+    {# ══════════════════════════════════════════
+       TAB: HISTORY  (Stock sub-tab + Defect sub-tab)
+    ══════════════════════════════════════════ #}
+    <div x-show="tab === 'history'" x-transition class="space-y-4">
+
+        {# ── History sub-tab bar ── #}
+        <div class="flex gap-1 p-1 rounded-xl w-fit"
+             style="background:var(--color-surface-alt); border:1px solid var(--color-border);">
+            <button @click="historySubTab='stock'"
+                    class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition"
+                    :style="historySubTab==='stock'
+                        ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
+                        : 'color:var(--color-txt-muted)'">
+                <span class="material-symbols-outlined text-[14px]">move_to_inbox</span>
+                Stock Requests
+            </button>
+            <button @click="historySubTab='defect'"
+                    class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition"
+                    :style="historySubTab==='defect'
+                        ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
+                        : 'color:var(--color-txt-muted)'">
+                <span class="material-symbols-outlined text-[14px]">assignment_return</span>
+                Defect Returns
+            </button>
+        </div>
+
+
+        {# ── SUB-TAB: Stock history ── #}
+        <div x-show="historySubTab === 'stock'" x-transition>
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
+                    Stock Requests
+                </p>
+                <div class="flex items-center gap-2">
+                    <button @click="$refs.histStockModal.style.display='flex'"
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition relative"
+                            style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">
+                        <span class="material-symbols-outlined text-[15px]">tune</span> Filters
+                        <template x-if="activeHistoryStockFilters > 0">
+                            <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
+                                  style="background:var(--color-primary);color:var(--color-bg);" x-text="activeHistoryStockFilters"></span>
+                        </template>
+                    </button>
+                    <template x-if="activeHistoryStockFilters > 0">
+                        <button @click="historyStockFilter={type:'',status:'',dateFrom:'',dateTo:''}"
+                                class="px-2 py-1.5 rounded-xl text-xs" style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            {# Stock history filter modal #}
+            <div x-ref="histStockModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+                 style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);"
+                 @click="if($event.target===$el)$el.style.display='none'">
+                <div class="w-full max-w-sm rounded-2xl overflow-hidden"
+                     style="background:var(--color-surface);border:1px solid var(--color-border);">
+                    <div class="px-5 py-4 flex items-center justify-between"
+                         style="border-bottom:1px solid var(--color-border);background:var(--color-surface-alt);">
+                        <h3 class="font-bold text-sm" style="color:var(--color-txt-primary);">Filter Stock History</h3>
+                        <button @click="$refs.histStockModal.style.display='none'"
+                                class="w-7 h-7 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                    </div>
+                    <div class="px-5 py-4 flex flex-col gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Type</label>
+                            <select x-model="historyStockFilter.type" class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                                    style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                <option value="">All Types</option>
+                                <option value="stock_in">Stock-In</option>
+                                <option value="adjustment">Adjustment</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Status</label>
+                            <select x-model="historyStockFilter.status" class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                                    style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                <option value="">All Statuses</option>
+                                <option value="approved">Approved</option>
+                                <option value="partially_approved">Partially Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Date Range</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 flex flex-col gap-1">
+                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">From</span>
+                                    <input type="date" x-model="historyStockFilter.dateFrom" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                </div>
+                                <span class="text-xs mt-4" style="color:var(--color-txt-muted);">—</span>
+                                <div class="flex-1 flex flex-col gap-1">
+                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">To</span>
+                                    <input type="date" x-model="historyStockFilter.dateTo" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 pt-1">
+                            <button @click="historyStockFilter={type:'',status:'',dateFrom:'',dateTo:''}"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                    onmouseout="this.style.backgroundColor='transparent'">Reset</button>
+                            <button @click="$refs.histStockModal.style.display='none'"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                                    style="background:var(--color-primary);color:var(--color-bg);">Apply</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <template x-if="filteredHistoryStock.length === 0">
+                <div class="rounded-2xl py-20 flex flex-col items-center justify-center gap-3"
                      style="background:var(--color-surface); border:1px solid var(--color-border);">
-                    <span class="material-symbols-outlined text-[36px]" style="color:var(--color-border-strong);">history</span>
-                    <p class="text-sm" style="color:var(--color-txt-muted);">No defect history yet.</p>
+                    <span class="material-symbols-outlined text-[48px]" style="color:var(--color-border-strong);">history</span>
+                    <p class="text-sm font-medium" style="color:var(--color-txt-muted);">No reviewed stock requests yet.</p>
                 </div>
             </template>
 
-            <div class="rounded-2xl overflow-hidden" x-show="defectHistory.length > 0"
+            <div class="rounded-2xl overflow-hidden" x-show="filteredHistoryStock.length > 0"
+                 style="border:1px solid var(--color-border);">
+                <div class="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr] px-5 py-3 text-xs font-semibold uppercase tracking-wider"
+                     style="background:var(--color-surface-alt);border-bottom:1px solid var(--color-border);color:var(--color-txt-muted);">
+                    <span>Request</span><span>Type</span><span class="text-center">Items</span><span class="text-right">Status</span>
+                </div>
+                {# FIX: added :key and closing > to x-for; was also iterating `history` instead of `filteredHistoryStock` #}
+                <template x-for="b in filteredHistoryStock" :key="b.request_id">
+                    <div class="px-5 py-4 flex flex-col sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr] sm:items-center gap-2"
+                         style="border-bottom:1px solid var(--color-border);background:var(--color-surface);"
+                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                         onmouseout="this.style.backgroundColor='var(--color-surface)'">
+                        <div>
+                            <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="'Request #' + b.request_id"></p>
+                            <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="b.submitted_at"></p>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-semibold w-fit"
+                              :style="`background:color-mix(in srgb,${typeColor(b.request_type)} 12%,transparent);color:${typeColor(b.request_type)}`"
+                              x-text="typeLabel(b.request_type)"></span>
+                        <div class="text-center">
+                            <p class="text-sm font-bold" style="color:var(--color-txt-primary);" x-text="b.approved_count + '/' + b.details.length"></p>
+                            <p class="text-xs" style="color:var(--color-txt-muted);">approved</p>
+                        </div>
+                        <div class="sm:text-right">
+                            <span class="text-xs px-2 py-1 rounded-lg font-semibold capitalize"
+                                  :style="`background:color-mix(in srgb,${statusColor(b.status)} 10%,transparent);color:${statusColor(b.status)}`"
+                                  x-text="statusLabel(b.status)"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+
+        {# ── SUB-TAB: Defect history ── #}
+        <div x-show="historySubTab === 'defect'" x-transition>
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
+                    Defect Returns
+                </p>
+                <div class="flex items-center gap-2">
+                    <button @click="$refs.histDefectModal.style.display='flex'"
+                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition relative"
+                            style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">
+                        <span class="material-symbols-outlined text-[15px]">tune</span> Filters
+                        <template x-if="activeHistoryDefectFilters > 0">
+                            <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
+                                  style="background:var(--color-primary);color:var(--color-bg);" x-text="activeHistoryDefectFilters"></span>
+                        </template>
+                    </button>
+                    <template x-if="activeHistoryDefectFilters > 0">
+                        <button @click="historyDefectFilter={reason:'',status:'',dateFrom:'',dateTo:''}"
+                                class="px-2 py-1.5 rounded-xl text-xs" style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            {# Defect history filter modal #}
+            <div x-ref="histDefectModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+                 style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);"
+                 @click="if($event.target===$el)$el.style.display='none'">
+                <div class="w-full max-w-sm rounded-2xl overflow-hidden"
+                     style="background:var(--color-surface);border:1px solid var(--color-border);">
+                    <div class="px-5 py-4 flex items-center justify-between"
+                         style="border-bottom:1px solid var(--color-border);background:var(--color-surface-alt);">
+                        <h3 class="font-bold text-sm" style="color:var(--color-txt-primary);">Filter Defect History</h3>
+                        <button @click="$refs.histDefectModal.style.display='none'"
+                                class="w-7 h-7 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                    </div>
+                    <div class="px-5 py-4 flex flex-col gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Reason</label>
+                            <select x-model="historyDefectFilter.reason" class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                                    style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                <option value="">All Reasons</option>
+                                <option value="damaged">Damaged</option>
+                                <option value="expired">Expired</option>
+                                <option value="change_of_mind">Change of Mind</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Status</label>
+                            <select x-model="historyDefectFilter.status" class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                                    style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                <option value="">All Statuses</option>
+                                <option value="active">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Date Range</label>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 flex flex-col gap-1">
+                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">From</span>
+                                    <input type="date" x-model="historyDefectFilter.dateFrom" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                </div>
+                                <span class="text-xs mt-4" style="color:var(--color-txt-muted);">—</span>
+                                <div class="flex-1 flex flex-col gap-1">
+                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">To</span>
+                                    <input type="date" x-model="historyDefectFilter.dateTo" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
+                                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 pt-1">
+                            <button @click="historyDefectFilter={reason:'',status:'',dateFrom:'',dateTo:''}"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                    onmouseout="this.style.backgroundColor='transparent'">Reset</button>
+                            <button @click="$refs.histDefectModal.style.display='none'"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                                    style="background:var(--color-primary);color:var(--color-bg);">Apply</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <template x-if="filteredHistoryDefect.length === 0">
+                <div class="rounded-2xl py-20 flex flex-col items-center justify-center gap-3"
+                     style="background:var(--color-surface); border:1px solid var(--color-border);">
+                    <span class="material-symbols-outlined text-[48px]" style="color:var(--color-border-strong);">history</span>
+                    <p class="text-sm font-medium" style="color:var(--color-txt-muted);">No defect return history yet.</p>
+                </div>
+            </template>
+
+            <div class="rounded-2xl overflow-hidden" x-show="filteredHistoryDefect.length > 0"
                  style="background:var(--color-surface); border:1px solid var(--color-border);">
-                <template x-for="item in defectHistory" :key="item.detail_id">
+                {# FIX: added :key and closing > to x-for #}
+                <template x-for="item in filteredHistoryDefect" :key="item.defect_id">
                     <div class="flex items-center gap-4 px-5 py-3.5 transition"
                          style="border-bottom:1px solid var(--color-border);"
                          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -385,9 +866,7 @@ function myRequestsData() {
                                       style="background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted);"
                                       x-text="'×' + item.quantity"></span>
                                 <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                      :style="item.reason==='expired'
-                                          ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
-                                          : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                                      :style="defectBadgeColor(item.reason)"
                                       x-text="item.reason_label"></span>
                                 <template x-if="item.rejection_note">
                                     <span class="text-[10px] px-2 py-0.5 rounded-full italic"
@@ -405,51 +884,8 @@ function myRequestsData() {
                 </template>
             </div>
         </div>
-    </div>
 
-
-    {# ══════════════════════════════════════════
-       TAB: STOCK HISTORY
-    ══════════════════════════════════════════ #}
-    <div x-show="tab === 'history'" x-transition>
-        <template x-if="history.length === 0">
-            <div class="rounded-2xl py-20 flex flex-col items-center justify-center gap-3"
-                 style="background:var(--color-surface); border:1px solid var(--color-border);">
-                <span class="material-symbols-outlined text-[48px]" style="color:var(--color-border-strong);">history</span>
-                <p class="text-sm" style="color:var(--color-txt-muted);">No reviewed stock requests yet.</p>
-            </div>
-        </template>
-
-        <div class="rounded-2xl overflow-hidden" x-show="history.length > 0" style="border:1px solid var(--color-border);">
-            <div class="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr] px-5 py-3 text-xs font-semibold uppercase tracking-wider"
-                 style="background:var(--color-surface-alt);border-bottom:1px solid var(--color-border);color:var(--color-txt-muted);">
-                <span>Request</span><span>Type</span><span class="text-center">Items</span><span class="text-right">Status</span>
-            </div>
-            <template x-for="b in history" :key="b.request_id">
-                <div class="px-5 py-4 flex flex-col sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr] sm:items-center gap-2"
-                     style="border-bottom:1px solid var(--color-border);background:var(--color-surface);"
-                     onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                     onmouseout="this.style.backgroundColor='var(--color-surface)'">
-                    <div>
-                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="'Request #' + b.request_id"></p>
-                        <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="b.submitted_at"></p>
-                    </div>
-                    <span class="text-xs px-2 py-0.5 rounded-full font-semibold w-fit"
-                          :style="`background:color-mix(in srgb,${typeColor(b.request_type)} 12%,transparent);color:${typeColor(b.request_type)}`"
-                          x-text="typeLabel(b.request_type)"></span>
-                    <div class="text-center">
-                        <p class="text-sm font-bold" style="color:var(--color-txt-primary);" x-text="b.approved_count + '/' + b.details.length"></p>
-                        <p class="text-xs" style="color:var(--color-txt-muted);">approved</p>
-                    </div>
-                    <div class="sm:text-right">
-                        <span class="text-xs px-2 py-1 rounded-lg font-semibold capitalize"
-                              :style="`background:color-mix(in srgb,${statusColor(b.status)} 10%,transparent);color:${statusColor(b.status)}`"
-                              x-text="statusLabel(b.status)"></span>
-                    </div>
-                </div>
-            </template>
-        </div>
-    </div>
+    </div>{# end tab=history #}
 
 </div>
 {% endblock %}
