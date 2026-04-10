@@ -114,8 +114,7 @@ class="space-y-5">
                            background-color: var(--color-surface);
                            color: var(--color-txt-primary);">
                 <option value="all">All Roles</option>
-                <option value="superadmin">Admin</option>
-                <option value="admin">Co-Admin</option>
+                <option value="admin">Admin</option>
                 <option value="cashier">Cashier</option>
                 <option value="stocking">Stocking</option>
             </select>
@@ -182,7 +181,7 @@ class="space-y-5">
                     </tr>
                 </template>
 
-                <template x-for="(user, index) in paginated" :key="user.user_id">
+                <template x-for="(user, index) in paginated.filter(u => u.role !== 'superadmin')" :key="user.user_id">
                     <tr style="border-top: 1px solid var(--color-border);"
                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                         onmouseout="this.style.backgroundColor='transparent'">

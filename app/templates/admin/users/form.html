@@ -106,8 +106,7 @@
                     <option value="" disabled {{ '' if user is defined else 'selected' }}>
                         Select a role
                     </option>
-                    <!-- <option value="superadmin"    {{ 'selected' if user is defined and user.role == 'superadmin' }}>Admin</option> -->
-                     {% if current_user.role == 'admin' %}
+                     {% if current_user.role == 'superadmin' %}
                         <option value="admin" {{ 'selected' if user is defined and user.role == 'admin' }}>Admin</option>
                     {% endif %}
                     <option value="cashier"  {{ 'selected' if user is defined and user.role == 'cashier' }}>Cashier</option>

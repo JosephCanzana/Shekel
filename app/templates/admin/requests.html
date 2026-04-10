@@ -12,10 +12,22 @@ const PROPOSAL_DATA = {{ proposal_data | tojson }};
 
 function requestsData() {
     return {
-        tab: DEFECT_DATA.length > 0 && PENDING_DATA.length === 0 ? 'defects' : 'pending',
-        historySubTab: 'stock',   // ← sub-tab inside History
+        // Replace the two lines at the top of requestsData()
+        tab: (() => {
+            const hash = location.hash.replace('#', '');
+            const valid = ['pending', 'defects', 'history'];
+            if (valid.includes(hash)) return hash;
+            const saved = sessionStorage.getItem('requests_tab');
+            if (valid.includes(saved)) return saved;
+            return DEFECT_DATA.length > 0 && PENDING_DATA.length === 0 ? 'defects' : 'pending';
+        })(),
+        historySubTab: (() => {
+            const sub = new URLSearchParams(location.search).get('sub');
+            if (sub === 'defect') return 'defect';
+            const saved = sessionStorage.getItem('requests_subtab');
+            return saved === 'defect' ? 'defect' : 'stock';
+        })(),
 
-        // ── Date helpers ──────────────────────────────────────────────────────
         formatDateTime(dateString) {
             const date = new Date(dateString);
             return date.toLocaleString(undefined, {
@@ -33,7 +45,6 @@ function requestsData() {
             return 'Just now';
         },
 
-        // ── Data ──────────────────────────────────────────────────────────────
         batches: PENDING_DATA.map(b => ({
             ...b,
             expanded:   false,
@@ -56,89 +67,63 @@ function requestsData() {
         proposals:     PROPOSAL_DATA,
         defects:       DEFECT_DATA,
 
-        // ── Filter state ──────────────────────────────────────────────────────
-        stockFilter: {
-            type:     '',
-            dateFrom: '',
-            dateTo:   '',
-        },
-        defectFilter: {
-            reason:   '',
-            origin:   '',
-            dateFrom: '',
-            dateTo:   '',
-        },
-        historyStockFilter: {
-            type:     '',
-            status:   '',
-            dateFrom: '',
-            dateTo:   '',
-        },
-        historyDefectFilter: {
-            reason:   '',
-            status:   '',
-            dateFrom: '',
-            dateTo:   '',
-        },
+        stockFilter:         { type: '', dateFrom: '', dateTo: '' },
+        defectFilter:        { reason: '', origin: '', dateFrom: '', dateTo: '' },
+        historyStockFilter:  { type: '', status: '', dateFrom: '', dateTo: '' },
+        historyDefectFilter: { reason: '', status: '', dateFrom: '', dateTo: '' },
 
-        // ── Helpers ───────────────────────────────────────────────────────────
         inDateRange(dateStr, from, to) {
-            if (!dateStr) return true
-            const d = new Date(dateStr)
-            if (from && d < new Date(from))             return false
-            if (to   && d > new Date(to + 'T23:59:59')) return false
-            return true
+            if (!dateStr) return true;
+            const d = new Date(dateStr);
+            if (from && d < new Date(from))             return false;
+            if (to   && d > new Date(to + 'T23:59:59')) return false;
+            return true;
         },
 
-        // ── Computed filtered arrays ──────────────────────────────────────────
         get filteredBatches() {
             return this.batches.filter(b => {
-                if (this.stockFilter.type && b.request_type !== this.stockFilter.type) return false
-                if (!this.inDateRange(b.submitted_at, this.stockFilter.dateFrom, this.stockFilter.dateTo)) return false
-                return true
-            })
+                if (this.stockFilter.type && b.request_type !== this.stockFilter.type) return false;
+                if (!this.inDateRange(b.submitted_at, this.stockFilter.dateFrom, this.stockFilter.dateTo)) return false;
+                return true;
+            });
         },
         get filteredDefects() {
             return this.defects.filter(d => {
-                if (this.defectFilter.reason && d.reason !== this.defectFilter.reason) return false
-                if (this.defectFilter.origin && d.origin !== this.defectFilter.origin) return false
-                if (!this.inDateRange(d.datetime, this.defectFilter.dateFrom, this.defectFilter.dateTo)) return false
-                return true
-            })
+                if (this.defectFilter.reason && d.reason !== this.defectFilter.reason) return false;
+                if (this.defectFilter.origin && d.origin !== this.defectFilter.origin) return false;
+                if (!this.inDateRange(d.datetime, this.defectFilter.dateFrom, this.defectFilter.dateTo)) return false;
+                return true;
+            });
         },
         get filteredHistory() {
             return this.history.filter(b => {
-                if (this.historyStockFilter.type   && b.request_type !== this.historyStockFilter.type)   return false
-                if (this.historyStockFilter.status && b.status        !== this.historyStockFilter.status) return false
-                if (!this.inDateRange(b.submitted_at, this.historyStockFilter.dateFrom, this.historyStockFilter.dateTo)) return false
-                return true
-            })
+                if (this.historyStockFilter.type   && b.request_type !== this.historyStockFilter.type)   return false;
+                if (this.historyStockFilter.status && b.status        !== this.historyStockFilter.status) return false;
+                if (!this.inDateRange(b.submitted_at, this.historyStockFilter.dateFrom, this.historyStockFilter.dateTo)) return false;
+                return true;
+            });
         },
         get filteredDefectHistory() {
             return this.defectHistory.filter(d => {
-                // FIX: was comparing against a transformed reason_label string; compare raw d.reason instead
-                if (this.historyDefectFilter.reason && d.reason !== this.historyDefectFilter.reason) return false
-                if (this.historyDefectFilter.status && d.status !== this.historyDefectFilter.status) return false
-                if (!this.inDateRange(d.datetime, this.historyDefectFilter.dateFrom, this.historyDefectFilter.dateTo)) return false
-                return true
-            })
+                if (this.historyDefectFilter.reason && d.reason !== this.historyDefectFilter.reason) return false;
+                if (this.historyDefectFilter.status && d.status !== this.historyDefectFilter.status) return false;
+                if (!this.inDateRange(d.datetime, this.historyDefectFilter.dateFrom, this.historyDefectFilter.dateTo)) return false;
+                return true;
+            });
         },
 
-        // ── Active-filter counters ────────────────────────────────────────────
-        // ── helper ────────────────────────────────────────────────────────────────
         isValidDate(str) {
-            if (!str) return false
-            const d = new Date(str)
-            return !isNaN(d.getTime())
+            if (!str) return false;
+            const d = new Date(str);
+            return !isNaN(d.getTime());
         },
 
-        // ── getters ───────────────────────────────────────────────────────────────
         get activeStockFilters() {
             return [
                 this.stockFilter.type,
                 this.isValidDate(this.stockFilter.dateFrom) && this.stockFilter.dateFrom,
                 this.isValidDate(this.stockFilter.dateTo)   && this.stockFilter.dateTo,
-            ].filter(Boolean).length
+            ].filter(Boolean).length;
         },
         get activeDefectFilters() {
             return [
@@ -146,7 +131,7 @@ function requestsData() {
                 this.defectFilter.origin,
                 this.isValidDate(this.defectFilter.dateFrom) && this.defectFilter.dateFrom,
                 this.isValidDate(this.defectFilter.dateTo)   && this.defectFilter.dateTo,
-            ].filter(Boolean).length
+            ].filter(Boolean).length;
         },
         get activeHistoryStockFilters() {
             return [
@@ -154,7 +139,7 @@ function requestsData() {
                 this.historyStockFilter.status,
                 this.isValidDate(this.historyStockFilter.dateFrom) && this.historyStockFilter.dateFrom,
                 this.isValidDate(this.historyStockFilter.dateTo)   && this.historyStockFilter.dateTo,
-            ].filter(Boolean).length
+            ].filter(Boolean).length;
         },
         get activeHistoryDefectFilters() {
             return [
@@ -162,76 +147,114 @@ function requestsData() {
                 this.historyDefectFilter.status,
                 this.isValidDate(this.historyDefectFilter.dateFrom) && this.historyDefectFilter.dateFrom,
                 this.isValidDate(this.historyDefectFilter.dateTo)   && this.historyDefectFilter.dateTo,
-            ].filter(Boolean).length
+            ].filter(Boolean).length;
         },
-        
-        // ── Defect reject modal ───────────────────────────────────────────────
+
         rejectModal:     false,
         rejectDetailId:  null,
         rejectRejectUrl: null,
         rejectNote:      '',
         rejectError:     '',
+        historyModal:    false,
+        selectedHistory: null,
+        defectHistoryModal:    false,
+        selectedDefectHistory: null,
+
+        openDefectHistoryModal(item) {
+            this.selectedDefectHistory = item;
+            this.defectHistoryModal = true;
+        },
+        closeDefectHistoryModal() {
+            this.defectHistoryModal = false;
+            this.selectedDefectHistory = null;
+        },
+
+        openHistoryModal(item) {
+            this.selectedHistory = item;
+            this.historyModal = true;
+        },
+        closeHistoryModal() {
+            this.historyModal = false;
+            this.selectedHistory = null;
+        },
 
         openReject(item) {
-            this.rejectDetailId  = item.detail_id
-            this.rejectRejectUrl = item.reject_url
-            this.rejectNote      = ''
-            this.rejectError     = ''
-            this.rejectModal     = true
+            this.rejectDetailId  = item.detail_id;
+            this.rejectRejectUrl = item.reject_url;
+            this.rejectNote      = '';
+            this.rejectError     = '';
+            this.rejectModal     = true;
         },
-        closeReject() { this.rejectModal = false },
+        closeReject() { this.rejectModal = false; },
 
-        // ── Stock helpers ─────────────────────────────────────────────────────
-        typeLabel(t)  { return t === 'stock_in' ? 'Stock-In' : 'Adjustment' },
-        typeColor(t)  { return t === 'stock_in' ? 'var(--color-accent)' : 'var(--color-warning)' },
-        typeIcon(t)   { return t === 'stock_in' ? 'move_to_inbox' : 'tune' },
+        typeLabel(t)  { return t === 'stock_in' ? 'Stock-In' : 'Adjustment'; },
+        typeColor(t)  { return t === 'stock_in' ? 'var(--color-accent)' : 'var(--color-warning)'; },
+        typeIcon(t)   { return t === 'stock_in' ? 'move_to_inbox' : 'tune'; },
         statusColor(s) {
             return { pending:'var(--color-warning)', approved:'var(--color-success)',
-                     partially_approved:'var(--color-accent)', rejected:'var(--color-error)' }[s] || 'var(--color-txt-muted)'
+                     partially_approved:'var(--color-accent)', rejected:'var(--color-error)' }[s] || 'var(--color-txt-muted)';
         },
         approveAll(batch) {
-            batch.decisions.forEach(d => { d.action = 'approve'; d.quantity_approved = d.quantity_requested })
+            batch.decisions.forEach(d => { d.action = 'approve'; d.quantity_approved = d.quantity_requested; });
         },
-        rejectAll(batch) { batch.decisions.forEach(d => { d.action = 'reject' }) },
-        allDecided(batch) { return batch.decisions.every(d => d.action === 'approve' || d.action === 'reject') },
+        rejectAll(batch) { batch.decisions.forEach(d => { d.action = 'reject'; }); },
+        allDecided(batch) { return batch.decisions.every(d => d.action === 'approve' || d.action === 'reject'); },
 
         async submitReview(batch) {
-            if (batch.submitting || batch.done) return
-            batch.submitting = true
+            if (batch.submitting || batch.done) return;
+            batch.submitting = true;
             const decisions = batch.decisions.map(d => {
-                const dec = { detail_id: d.detail_id, action: d.action }
-                if (d.action === 'approve') dec.quantity_approved = Math.max(1, parseInt(d.quantity_approved) || d.quantity_requested)
-                else dec.rejection_reason = d.rejection_reason.trim() || ''
-                return dec
-            })
+                const dec = { detail_id: d.detail_id, action: d.action };
+                if (d.action === 'approve') dec.quantity_approved = Math.max(1, parseInt(d.quantity_approved) || d.quantity_requested);
+                else dec.rejection_reason = d.rejection_reason.trim() || '';
+                return dec;
+            });
             try {
                 const res  = await fetch(`/admin/requests/${batch.request_id}/review`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json',
                                'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
                     body: JSON.stringify({ decisions })
-                })
-                const data = await res.json()
-                if (!res.ok) { alert(data.error || 'Failed.'); batch.submitting = false; return }
-                batch.done = true; batch.status = data.status
-                setTimeout(() => { this.batches = this.batches.filter(b => b.request_id !== batch.request_id) }, 1800)
-            } catch(e) { alert('Network error.'); batch.submitting = false }
+                });
+                const data = await res.json();
+                if (!res.ok) { alert(data.error || 'Failed.'); batch.submitting = false; return; }
+                batch.done = true; batch.status = data.status;
+                setTimeout(() => { this.batches = this.batches.filter(b => b.request_id !== batch.request_id); }, 1800);
+            } catch(e) { alert('Network error.'); batch.submitting = false; }
+        },
+         init() {
+            this.$watch('tab', val => {
+                history.replaceState(null, '', '#' + val);
+                sessionStorage.setItem('requests_tab', val);
+                if (val !== 'history') {
+                    const url = new URL(location);
+                    url.searchParams.delete('sub');
+                    history.replaceState(null, '', url);
+                    sessionStorage.removeItem('requests_subtab');
+                }
+            });
+            this.$watch('historySubTab', val => {
+                const url = new URL(location);
+                url.searchParams.set('sub', val);
+                history.replaceState(null, '', url);
+                sessionStorage.setItem('requests_subtab', val);
+            });
         },
     }
 }
 </script>
 
-<div x-data="requestsData()" class="space-y-5">
+<div x-data="requestsData()" class="space-y-4">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     {# ── Header ── #}
-    <div class="flex items-center justify-between flex-wrap gap-3">
+    <div class="flex items-start justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-xl font-bold tracking-tight" style="color:var(--color-txt-primary);">Requests</h1>
             <p class="text-sm mt-0.5" style="color:var(--color-txt-muted);">Review stock and defect return submissions.</p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
             <span class="px-3 py-1.5 rounded-full text-xs font-bold"
                   style="background:color-mix(in srgb,var(--color-warning) 12%,transparent); color:var(--color-warning);"
                   x-text="batches.length + ' stock pending'"></span>
@@ -241,43 +264,47 @@ function requestsData() {
         </div>
     </div>
 
-    {# ── Top-level Tabs ── #}
-    <div class="flex gap-1 p-1 rounded-xl w-fit"
-         style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
-        <button @click="tab='pending'"
-                class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition"
-                :style="tab==='pending'
-                    ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
-                    : 'color:var(--color-txt-muted)'">
-            <span class="material-symbols-outlined text-[14px]">move_to_inbox</span>
-            Stock Requests
-            <span class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
-                  :style="tab==='pending'
-                      ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
-                      : 'background:var(--color-border);color:var(--color-txt-muted)'"
-                  x-text="batches.length"></span>
-        </button>
-        <button @click="tab='defects'"
-                class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition"
-                :style="tab==='defects'
-                    ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
-                    : 'color:var(--color-txt-muted)'">
-            <span class="material-symbols-outlined text-[14px]">assignment_return</span>
-            Defect Approvals
-            <span class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
-                  :style="tab==='defects'
-                      ? 'background:color-mix(in srgb,var(--color-info) 15%,transparent);color:var(--color-info)'
-                      : 'background:var(--color-border);color:var(--color-txt-muted)'"
-                  x-text="defects.length"></span>
-        </button>
-        <button @click="tab='history'"
-                class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition"
-                :style="tab==='history'
-                    ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
-                    : 'color:var(--color-txt-muted)'">
-            <span class="material-symbols-outlined text-[14px]">history</span>
-            History
-        </button>
+    {# ── Top-level Tabs ── scrollable on mobile #}
+    <div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div class="flex gap-1 p-1 rounded-xl w-fit min-w-full sm:min-w-0"
+             style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
+            <button @click="tab='pending'"
+                    class="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+                    :style="tab==='pending'
+                        ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
+                        : 'color:var(--color-txt-muted)'">
+                <span class="material-symbols-outlined text-[14px]">move_to_inbox</span>
+                <span class="hidden xs:inline">Stock Requests</span>
+                <span class="xs:hidden">Stock</span>
+                <span class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                      :style="tab==='pending'
+                          ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
+                          : 'background:var(--color-border);color:var(--color-txt-muted)'"
+                      x-text="batches.length"></span>
+            </button>
+            <button @click="tab='defects'"
+                    class="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+                    :style="tab==='defects'
+                        ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
+                        : 'color:var(--color-txt-muted)'">
+                <span class="material-symbols-outlined text-[14px]">assignment_return</span>
+                <span class="hidden xs:inline">Defect Approvals</span>
+                <span class="xs:hidden">Defects</span>
+                <span class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                      :style="tab==='defects'
+                          ? 'background:color-mix(in srgb,var(--color-info) 15%,transparent);color:var(--color-info)'
+                          : 'background:var(--color-border);color:var(--color-txt-muted)'"
+                      x-text="defects.length"></span>
+            </button>
+            <button @click="tab='history'"
+                    class="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+                    :style="tab==='history'
+                        ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
+                        : 'color:var(--color-txt-muted)'">
+                <span class="material-symbols-outlined text-[14px]">history</span>
+                History
+            </button>
+        </div>
     </div>
 
 
@@ -378,14 +405,14 @@ function requestsData() {
             <template x-for="batch in filteredBatches" :key="batch.request_id">
                 <div>
                     <template x-if="batch.done">
-                        <div class="rounded-2xl px-6 py-5 flex items-center gap-4"
+                        <div class="rounded-2xl px-4 sm:px-6 py-4 sm:py-5 flex items-center gap-3 sm:gap-4"
                              x-transition:leave="transition-all duration-500"
                              x-transition:leave-start="opacity-100 scale-100"
                              x-transition:leave-end="opacity-0 scale-95"
                              :style="batch.status === 'rejected'
                                  ? 'background:color-mix(in srgb,var(--color-error) 6%,transparent);border:1px solid color-mix(in srgb,var(--color-error) 20%,transparent)'
                                  : 'background:color-mix(in srgb,var(--color-success) 6%,transparent);border:1px solid color-mix(in srgb,var(--color-success) 20%,transparent)'">
-                            <span class="material-symbols-outlined text-[24px]"
+                            <span class="material-symbols-outlined text-[24px] shrink-0"
                                   :style="batch.status==='rejected' ? 'color:var(--color-error)' : 'color:var(--color-success)'"
                                   x-text="batch.status==='rejected' ? 'cancel' : 'check_circle'"></span>
                             <div>
@@ -399,13 +426,14 @@ function requestsData() {
                     <template x-if="!batch.done">
                         <div class="rounded-2xl overflow-hidden"
                              style="background:var(--color-surface); border:1px solid var(--color-border);">
+                            {# Batch header button #}
                             <button @click="batch.expanded = !batch.expanded"
-                                    class="w-full flex items-center gap-4 px-5 py-4 text-left transition"
+                                    class="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 text-left transition"
                                     onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                                     onmouseout="this.style.backgroundColor='transparent'">
-                                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0"
                                      :style="`background:color-mix(in srgb,${typeColor(batch.request_type)} 12%,transparent)`">
-                                    <span class="material-symbols-outlined text-[20px]"
+                                    <span class="material-symbols-outlined text-[18px] sm:text-[20px]"
                                           :style="`color:${typeColor(batch.request_type)}`"
                                           x-text="typeIcon(batch.request_type)"></span>
                                 </div>
@@ -417,11 +445,11 @@ function requestsData() {
                                               :style="`background:color-mix(in srgb,${typeColor(batch.request_type)} 12%,transparent);color:${typeColor(batch.request_type)}`"
                                               x-text="typeLabel(batch.request_type)"></span>
                                     </div>
-                                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                                    <p class="text-xs mt-0.5 truncate" style="color:var(--color-txt-muted);"
                                        x-text="batch.requested_by + ' · ' + batch.details.length + ' item(s)'"></p>
                                 </div>
-                                <div class="flex items-center gap-3 shrink-0">
-                                    <span class="text-xs px-2 py-1 rounded-lg font-semibold"
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="hidden sm:inline text-xs px-2 py-1 rounded-lg font-semibold"
                                           style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);">
                                         Pending
                                     </span>
@@ -436,17 +464,19 @@ function requestsData() {
                                  x-transition:enter-start="opacity-0"
                                  x-transition:enter-end="opacity-100"
                                  style="border-top:1px solid var(--color-border);">
-                                <div class="flex items-center justify-between px-5 py-3"
+
+                                {# Approve/Reject all — stacks on mobile #}
+                                <div class="flex flex-col xs:flex-row xs:items-center justify-between gap-2 px-4 sm:px-5 py-3"
                                      style="background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
                                     <p class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Review Items</p>
                                     <div class="flex items-center gap-2">
                                         <button @click="approveAll(batch)"
-                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                                                class="flex-1 xs:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                                                 style="background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success);border:1px solid color-mix(in srgb,var(--color-success) 25%,transparent);">
                                             <span class="material-symbols-outlined text-[14px]">done_all</span> Approve All
                                         </button>
                                         <button @click="rejectAll(batch)"
-                                                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                                                class="flex-1 xs:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                                                 style="background:color-mix(in srgb,var(--color-error) 8%,transparent);color:var(--color-error);border:1px solid color-mix(in srgb,var(--color-error) 20%,transparent);">
                                             <span class="material-symbols-outlined text-[14px]">remove_done</span> Reject All
                                         </button>
@@ -454,8 +484,9 @@ function requestsData() {
                                 </div>
 
                                 <template x-for="(dec, idx) in batch.decisions" :key="dec.detail_id">
-                                    <div class="px-5 py-4" style="border-bottom:1px solid var(--color-border);">
-                                        <div class="flex items-start gap-4">
+                                    <div class="px-4 sm:px-5 py-4" style="border-bottom:1px solid var(--color-border);">
+                                        {# Product info + requested qty #}
+                                        <div class="flex items-start gap-3 sm:gap-4">
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="dec.product_name"></p>
                                                 <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="dec.product_id"></p>
@@ -468,36 +499,41 @@ function requestsData() {
                                                 <p class="text-lg font-bold tabular-nums" style="color:var(--color-primary);" x-text="'+' + dec.quantity_requested"></p>
                                             </div>
                                         </div>
-                                        <div class="mt-3 flex items-start gap-3 flex-wrap">
-                                            <div class="flex rounded-lg overflow-hidden shrink-0" style="border:1px solid var(--color-border);">
+
+                                        {# Decision controls — vertical on mobile, horizontal on sm+ #}
+                                        <div class="mt-3 flex flex-col gap-2">
+                                            {# Approve / Reject toggle #}
+                                            <div class="flex rounded-lg overflow-hidden w-fit" style="border:1px solid var(--color-border);">
                                                 <button @click="dec.action = 'approve'"
-                                                        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition"
+                                                        class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition"
                                                         :style="dec.action==='approve' ? 'background:var(--color-success);color:#fff' : 'color:var(--color-txt-muted);background:var(--color-surface-alt)'">
                                                     <span class="material-symbols-outlined text-[13px]">check</span> Approve
                                                 </button>
                                                 <button @click="dec.action = 'reject'"
-                                                        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition"
+                                                        class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition"
                                                         style="border-left:1px solid var(--color-border);"
                                                         :style="dec.action==='reject' ? 'background:var(--color-error);color:#fff' : 'color:var(--color-txt-muted);background:var(--color-surface-alt)'">
                                                     <span class="material-symbols-outlined text-[13px]">close</span> Reject
                                                 </button>
                                             </div>
+
+                                            {# Quantity control — full width on mobile #}
                                             <template x-if="dec.action === 'approve'">
-                                                <div class="flex items-center gap-2">
+                                                <div class="flex items-center gap-2 flex-wrap">
                                                     <p class="text-xs" style="color:var(--color-txt-muted);">Approve qty:</p>
                                                     <div class="flex items-center gap-1">
                                                         <button @click="if(dec.quantity_approved>1) dec.quantity_approved--" :disabled="dec.quantity_approved<=1"
-                                                                class="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30"
+                                                                class="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30"
                                                                 style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-muted);">
                                                             <span class="material-symbols-outlined text-[13px]">remove</span>
                                                         </button>
                                                         <input type="number" x-model="dec.quantity_approved" :max="dec.quantity_requested" min="1"
                                                                @focus="$event.target.select()"
-                                                               class="w-14 py-1 rounded-lg text-sm text-center font-bold focus:outline-none"
+                                                               class="w-14 py-1.5 rounded-lg text-sm text-center font-bold focus:outline-none"
                                                                style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
                                                         <button @click="if(dec.quantity_approved<dec.quantity_requested) dec.quantity_approved++"
                                                                 :disabled="dec.quantity_approved>=dec.quantity_requested"
-                                                                class="w-7 h-7 rounded-lg flex items-center justify-center disabled:opacity-30"
+                                                                class="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30"
                                                                 style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-muted);">
                                                             <span class="material-symbols-outlined text-[13px]">add</span>
                                                         </button>
@@ -508,22 +544,26 @@ function requestsData() {
                                                     </template>
                                                 </div>
                                             </template>
+
+                                            {# Rejection reason — full width #}
                                             <template x-if="dec.action === 'reject'">
                                                 <input type="text" x-model="dec.rejection_reason" placeholder="Reason (optional)…"
-                                                       class="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs focus:outline-none"
+                                                       class="w-full px-3 py-2 rounded-lg text-xs focus:outline-none"
                                                        style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
                                             </template>
                                         </div>
                                     </div>
                                 </template>
 
-                                <div class="flex items-center justify-between px-5 py-4" style="background:var(--color-surface-alt);">
+                                {# Submit footer — stacks on mobile #}
+                                <div class="flex flex-col xs:flex-row xs:items-center justify-between gap-3 px-4 sm:px-5 py-4"
+                                     style="background:var(--color-surface-alt);">
                                     <div class="text-xs" style="color:var(--color-txt-muted);">
                                         <span x-text="batch.decisions.filter(d=>d.action==='approve').length"></span> approving ·
                                         <span x-text="batch.decisions.filter(d=>d.action==='reject').length"></span> rejecting
                                     </div>
                                     <button @click="submitReview(batch)" :disabled="batch.submitting"
-                                            class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 active:scale-[.98]"
+                                            class="w-full xs:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 active:scale-[.98]"
                                             style="background:var(--color-primary);color:var(--color-bg);">
                                         <span x-show="!batch.submitting" class="material-symbols-outlined text-[17px]">task_alt</span>
                                         <span x-show="batch.submitting" class="material-symbols-outlined text-[17px] animate-spin">progress_activity</span>
@@ -635,51 +675,54 @@ function requestsData() {
             </div>
         </div>
 
-        {# Supplier comp proposals #}
+        {# Supplier comp proposals — mobile-first card layout #}
         <template x-if="proposals.length > 0">
             <div class="rounded-2xl overflow-hidden mb-4"
                  style="background:var(--color-surface); border:1px solid var(--color-border);">
-                <div class="px-5 py-3 flex items-center gap-2"
+                <div class="px-4 sm:px-5 py-3 flex flex-wrap items-center gap-2"
                      style="background:color-mix(in srgb,var(--color-warning) 8%,transparent); border-bottom:1px solid var(--color-border);">
                     <span class="material-symbols-outlined text-[16px]" style="color:var(--color-warning);">pending_actions</span>
                     <h3 class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-warning);">Supplier Comp Proposals</h3>
-                    <span class="text-xs px-2 py-0.5 rounded-full font-semibold ml-1"
+                    <span class="text-xs px-2 py-0.5 rounded-full font-semibold"
                           style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning);"
                           x-text="proposals.length"></span>
-                    <p class="text-xs ml-auto" style="color:var(--color-txt-muted);">Submitted by stocking — awaiting your approval</p>
+                    <p class="text-xs sm:ml-auto w-full sm:w-auto" style="color:var(--color-txt-muted);">Submitted by stocking — awaiting your approval</p>
                 </div>
                 <template x-for="item in proposals" :key="item.detail_id">
-                    <div class="flex items-center gap-4 px-5 py-3.5 transition"
+                    <div class="px-4 sm:px-5 py-3.5 transition"
                          style="border-bottom:1px solid var(--color-border);"
                          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                          onmouseout="this.style.backgroundColor='transparent'">
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
-                            <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                      style="background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted);"
-                                      x-text="'×' + item.quantity"></span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full"
-                                      style="color:var(--color-txt-muted);" x-text="item.origin_label + ' · ' + item.reason_label"></span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                      style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted);"
-                                      x-text="'By: ' + item.logged_by + ' · ' + item.datetime"></span>
+                        <div class="flex items-start gap-3 sm:gap-4">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
+                                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                          style="background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted);"
+                                          x-text="'×' + item.quantity"></span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full"
+                                          style="color:var(--color-txt-muted);" x-text="item.origin_label + ' · ' + item.reason_label"></span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                          style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted);"
+                                          x-text="'By: ' + item.logged_by + ' · ' + item.datetime"></span>
+                                </div>
+                            </div>
+                            <div class="shrink-0 text-center px-2 sm:px-3">
+                                <p class="text-[10px]" style="color:var(--color-txt-muted);">Proposed</p>
+                                <span class="text-xs font-bold px-2 py-1 rounded-lg"
+                                      style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);"
+                                      x-text="item.proposed"></span>
                             </div>
                         </div>
-                        <div class="shrink-0 text-center px-3">
-                            <p class="text-[10px]" style="color:var(--color-txt-muted);">Proposed</p>
-                            <span class="text-xs font-bold px-2 py-1 rounded-lg"
-                                  style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);"
-                                  x-text="item.proposed"></span>
-                        </div>
-                        <div class="flex items-center gap-1.5 shrink-0">
+                        {# Action buttons — full width on mobile #}
+                        <div class="flex items-center gap-2 mt-3">
                             <button @click="$dispatch('confirm', {
                                         title:   'Approve Proposal',
                                         message: 'Approve supplier comp of ' + item.proposed + ' for ' + item.product_name + '? Inventory will be adjusted.',
                                         action:  item.approve_url,
                                         fields:  [{ name: 'supplier_compensation', value: item.proposed_raw }]
                                     })"
-                                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"
+                                    class="flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg text-xs font-semibold transition"
                                     style="background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success);"
                                     onmouseover="this.style.background='color-mix(in srgb,var(--color-success) 22%,transparent)'"
                                     onmouseout="this.style.background='color-mix(in srgb,var(--color-success) 12%,transparent)'">
@@ -691,7 +734,7 @@ function requestsData() {
                                         action:  item.reject_url,
                                         fields:  []
                                     })"
-                                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"
+                                    class="flex-1 sm:flex-none flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg text-xs font-semibold transition"
                                     style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
                                     onmouseover="this.style.background='color-mix(in srgb,var(--color-error) 22%,transparent)'"
                                     onmouseout="this.style.background='color-mix(in srgb,var(--color-error) 12%,transparent)'">
@@ -801,35 +844,57 @@ function requestsData() {
                         </div>
                     </div>
 
-                    {# Mobile card #}
-                    <div class="sm:hidden flex items-center justify-between gap-3 px-4 py-3"
+                    {# Mobile card — richer layout #}
+                    <div class="sm:hidden px-4 py-4"
                          style="border-top:1px solid var(--color-border);">
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
-                            <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="item.datetime + ' · ' + item.logged_by"></p>
-                            <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                      style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
-                                      x-text="'×' + item.quantity"></span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                      style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
-                                      x-text="item.reason_label"></span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full"
-                                      style="color:var(--color-txt-muted);" x-text="item.origin_label"></span>
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
+                                <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="item.product_id"></p>
                             </div>
+                            <span class="text-base font-bold tabular-nums shrink-0" style="color:var(--color-info);" x-text="'×' + item.quantity"></span>
                         </div>
-                        <div class="flex gap-1.5 shrink-0">
+                        <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                  :style="item.reason === 'expired'
+                                      ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
+                                      : item.reason === 'change_of_mind'
+                                        ? 'background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)'
+                                        : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                                  x-text="item.reason_label"></span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                  :style="item.origin === 'customer'
+                                      ? 'background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)'
+                                      : 'background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)'"
+                                  x-text="item.origin_label"></span>
+                            <span class="text-[10px]" style="color:var(--color-txt-muted);" x-text="item.datetime"></span>
+                        </div>
+                        <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                            <span class="text-[10px]" style="color:var(--color-txt-muted);" x-text="'By: ' + item.logged_by"></span>
+                            <template x-if="item.customer_compensation">
+                                <span class="text-[10px]" style="color:var(--color-txt-muted);" x-text="'· Comp: ' + item.customer_compensation"></span>
+                            </template>
+                        </div>
+                        {# Full-width action buttons on mobile #}
+                        <div class="flex gap-2 mt-3">
                             <button @click="$dispatch('confirm', {
-                                        title:'Approve', message:'Approve ' + item.product_name + '?',
+                                        title:'Approve', message:'Approve ' + item.product_name + ' (×' + item.quantity + ')? Inventory will be adjusted.',
                                         action:item.approve_url, fields:[] })"
-                                    class="w-8 h-8 rounded-xl flex items-center justify-center"
-                                    style="background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success);">
-                                <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                                    class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold"
+                                    style="background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success);border:1px solid color-mix(in srgb,var(--color-success) 25%,transparent);">
+                                <span class="material-symbols-outlined text-[14px]">check_circle</span> Approve
                             </button>
                             <button @click="openReject(item)"
-                                    class="w-8 h-8 rounded-xl flex items-center justify-center"
-                                    style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);">
-                                <span class="material-symbols-outlined text-[16px]">cancel</span>
+                                    class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold"
+                                    style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);border:1px solid color-mix(in srgb,var(--color-error) 20%,transparent);">
+                                <span class="material-symbols-outlined text-[14px]">cancel</span> Reject
+                            </button>
+                            <button @click="$dispatch('confirm', {
+                                        title:'Delete', message:'Delete this submission? No inventory change.',
+                                        action:item.delete_url, fields:[] })"
+                                    class="w-10 flex items-center justify-center rounded-xl text-xs transition"
+                                    style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
+                                <span class="material-symbols-outlined text-[16px]">delete</span>
                             </button>
                         </div>
                     </div>
@@ -840,29 +905,31 @@ function requestsData() {
 
 
     {# ══════════════════════════════════════════
-       TAB: HISTORY  (Stock sub-tab + Defect sub-tab)
+       TAB: HISTORY
     ══════════════════════════════════════════ #}
     <div x-show="tab === 'history'" x-transition class="space-y-4">
 
-        {# ── History sub-tab bar ── #}
-        <div class="flex gap-1 p-1 rounded-xl w-fit"
-             style="background:var(--color-surface-alt); border:1px solid var(--color-border);">
-            <button @click="historySubTab='stock'"
-                    class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition"
-                    :style="historySubTab==='stock'
-                        ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
-                        : 'color:var(--color-txt-muted)'">
-                <span class="material-symbols-outlined text-[14px]">move_to_inbox</span>
-                Stock Requests
-            </button>
-            <button @click="historySubTab='defect'"
-                    class="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold transition"
-                    :style="historySubTab==='defect'
-                        ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
-                        : 'color:var(--color-txt-muted)'">
-                <span class="material-symbols-outlined text-[14px]">assignment_return</span>
-                Defect Returns
-            </button>
+        {# History sub-tab bar — scrollable on mobile #}
+        <div class="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div class="flex gap-1 p-1 rounded-xl w-fit"
+                 style="background:var(--color-surface-alt); border:1px solid var(--color-border);">
+                <button @click="historySubTab='stock'"
+                        class="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+                        :style="historySubTab==='stock'
+                            ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
+                            : 'color:var(--color-txt-muted)'">
+                    <span class="material-symbols-outlined text-[14px]">move_to_inbox</span>
+                    Stock Requests
+                </button>
+                <button @click="historySubTab='defect'"
+                        class="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold transition whitespace-nowrap"
+                        :style="historySubTab==='defect'
+                            ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
+                            : 'color:var(--color-txt-muted)'">
+                    <span class="material-symbols-outlined text-[14px]">assignment_return</span>
+                    Defect Returns
+                </button>
+            </div>
         </div>
 
 
@@ -967,15 +1034,18 @@ function requestsData() {
 
             <div class="rounded-2xl overflow-hidden" x-show="filteredHistory.length > 0"
                  style="border:1px solid var(--color-border);">
+                {# Desktop header #}
                 <div class="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1fr] px-5 py-3 text-xs font-semibold uppercase tracking-wider"
                      style="background:var(--color-surface-alt);border-bottom:1px solid var(--color-border);color:var(--color-txt-muted);">
                     <span>Request</span><span>Type</span><span class="text-center">Items</span><span>Reviewed by</span><span class="text-right">Status</span>
                 </div>
                 <template x-for="b in filteredHistory" :key="b.request_id">
-                    <div class="px-5 py-4 flex flex-col sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1fr] sm:items-center gap-2"
+                    {# Desktop row #}
+                    <div class="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1fr] items-center px-5 py-4 cursor-pointer"
                          style="border-bottom:1px solid var(--color-border);background:var(--color-surface);"
                          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                         onmouseout="this.style.backgroundColor='var(--color-surface)'">
+                         onmouseout="this.style.backgroundColor='var(--color-surface)'"
+                         @click="openHistoryModal(b)">
                         <div>
                             <p class="text-sm font-semibold" style="color:var(--color-txt-primary);"
                                x-text="'Request · ' + b.submitted_at"></p>
@@ -989,11 +1059,34 @@ function requestsData() {
                             <p class="text-xs" style="color:var(--color-txt-muted);">approved</p>
                         </div>
                         <p class="text-xs" style="color:var(--color-txt-secondary);" x-text="b.reviewed_by"></p>
-                        <div class="sm:text-right">
+                        <div class="text-right">
                             <span class="text-xs px-2 py-1 rounded-lg font-semibold capitalize"
                                   :style="`background:color-mix(in srgb,${statusColor(b.status)} 10%,transparent);color:${statusColor(b.status)}`"
                                   x-text="b.status.replace('_',' ')"></span>
                         </div>
+                    </div>
+
+                    {# Mobile card #}
+                    <div class="sm:hidden px-4 py-3.5 flex items-start justify-between gap-3 cursor-pointer"
+                         style="border-bottom:1px solid var(--color-border);background:var(--color-surface);"
+                         @click="openHistoryModal(b)">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);"
+                               x-text="b.submitted_at"></p>
+                            <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="b.requested_by"></p>
+                            <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                                      :style="`background:color-mix(in srgb,${typeColor(b.request_type)} 12%,transparent);color:${typeColor(b.request_type)}`"
+                                      x-text="typeLabel(b.request_type)"></span>
+                                <span class="text-[10px]" style="color:var(--color-txt-muted);"
+                                      x-text="b.approved_count + '/' + b.details.length + ' approved'"></span>
+                                <span class="text-[10px]" style="color:var(--color-txt-muted);"
+                                      x-text="'· ' + b.reviewed_by"></span>
+                            </div>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-lg font-semibold capitalize shrink-0 mt-0.5"
+                              :style="`background:color-mix(in srgb,${statusColor(b.status)} 10%,transparent);color:${statusColor(b.status)}`"
+                              x-text="b.status.replace('_',' ')"></span>
                     </div>
                 </template>
             </div>
@@ -1101,15 +1194,19 @@ function requestsData() {
 
             <div class="rounded-2xl overflow-hidden" x-show="filteredDefectHistory.length > 0"
                  style="border:1px solid var(--color-border);">
+                {# Desktop header #}
                 <div class="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] px-5 py-3 text-xs font-semibold uppercase tracking-wider"
                      style="background:var(--color-surface-alt);border-bottom:1px solid var(--color-border);color:var(--color-txt-muted);">
                     <span>Request</span><span>Origin</span><span>Reason</span><span>Customer Comp</span><span>Supplier Comp</span><span class="text-right">Status</span>
                 </div>
                 <template x-for="(item, i) in filteredDefectHistory" :key="i">
-                    <div class="px-5 py-4 flex flex-col sm:grid sm:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] sm:items-center gap-2"
+                    {# Desktop row #}
+                    <div class="hidden sm:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] items-center px-5 py-4 cursor-pointer"
                          style="border-bottom:1px solid var(--color-border);background:var(--color-surface);"
                          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                         onmouseout="this.style.backgroundColor='var(--color-surface)'">
+                         onmouseout="this.style.backgroundColor='var(--color-surface)'"
+                         @click="openDefectHistoryModal(item)">
+
                         <div>
                             <p class="text-sm font-semibold" style="color:var(--color-txt-primary);"
                                x-text="'Request · ' + item.datetime.split(' ').slice(0,3).join(' ')"></p>
@@ -1128,13 +1225,46 @@ function requestsData() {
                         <span class="text-xs" style="color:var(--color-txt-secondary);" x-text="item.reason_label"></span>
                         <span class="text-xs" style="color:var(--color-txt-secondary);" x-text="item.customer_compensation"></span>
                         <span class="text-xs" style="color:var(--color-txt-secondary);" x-text="item.supplier_compensation"></span>
-                        <div class="sm:text-right">
+                        <div class="text-right">
                             <span class="text-xs px-2 py-1 rounded-lg font-semibold"
                                   :style="item.status === 'active'
                                       ? 'background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success)'
                                       : 'background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error)'"
                                   x-text="item.status === 'active' ? 'Approved' : 'Rejected'"></span>
                         </div>
+                    </div>
+
+                    {# Mobile card #}
+                    <div class="sm:hidden px-4 py-3.5 flex items-start justify-between gap-3 cursor-pointer"
+                         style="border-bottom:1px solid var(--color-border);background:var(--color-surface);"
+                         @click="openDefectHistoryModal(item)">
+
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);"
+                               x-text="item.product_name"></p>
+                            <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                               x-text="'×' + item.quantity + ' · ' + item.logged_by"></p>
+                            <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                      :style="item.origin_label === 'Customer'
+                                          ? 'background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)'
+                                          : 'background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)'"
+                                      x-text="item.origin_label"></span>
+                                <span class="text-[10px]" style="color:var(--color-txt-muted);" x-text="item.reason_label"></span>
+                                <template x-if="item.customer_compensation">
+                                    <span class="text-[10px]" style="color:var(--color-txt-muted);" x-text="'Comp: ' + item.customer_compensation"></span>
+                                </template>
+                            </div>
+                            <template x-if="item.rejection_note">
+                                <p class="text-[10px] italic mt-1" style="color:var(--color-error);"
+                                   x-text="'Rejected: ' + item.rejection_note"></p>
+                            </template>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-lg font-semibold shrink-0 mt-0.5"
+                              :style="item.status === 'active'
+                                  ? 'background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success)'
+                                  : 'background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error)'"
+                              x-text="item.status === 'active' ? 'Approved' : 'Rejected'"></span>
                     </div>
                 </template>
             </div>
@@ -1145,9 +1275,9 @@ function requestsData() {
 
     {# ── REJECT MODAL ── #}
     <template x-if="rejectModal">
-        <div class="fixed inset-0 z-50 flex items-center justify-center px-4"
+        <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:px-4"
              style="background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);">
-            <div class="w-full max-w-sm rounded-2xl overflow-hidden"
+            <div class="w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl overflow-hidden"
                  style="background:var(--color-surface); border:1px solid var(--color-border);">
                 <div class="px-6 py-4 flex items-center justify-between"
                      style="border-bottom:1px solid var(--color-border); background:var(--color-surface-alt);">
@@ -1170,9 +1300,9 @@ function requestsData() {
                         <p class="mt-1.5 text-xs" style="color:var(--color-error);" x-text="rejectError"></p>
                     </template>
                 </div>
-                <div class="px-6 pb-5 flex gap-3">
+                <div class="px-6 pb-6 flex gap-3">
                     <button @click="closeReject()"
-                            class="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                            class="flex-1 py-3 rounded-xl text-sm font-medium"
                             style="border:1px solid var(--color-border);color:var(--color-txt-secondary);">Cancel</button>
                     <button @click="
                         if (!rejectNote.trim()) { rejectError = 'Rejection note is required.'; return; }
@@ -1183,9 +1313,233 @@ function requestsData() {
                             fields:  [{ name: 'rejection_note', value: rejectNote.trim() }]
                         });
                         closeReject();"
-                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                            class="flex-1 py-3 rounded-xl text-sm font-semibold"
                             style="background:var(--color-error);color:#fff;">Reject</button>
                 </div>
+            </div>
+        </div>
+    </template>
+    {# ── HISTORY DETAIL MODAL ── #}
+    <template x-if="historyModal && selectedHistory">
+        <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:px-4"
+             style="background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);"
+             @click.self="closeHistoryModal()">
+            <div class="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl overflow-hidden"
+                 style="background:var(--color-surface);border:1px solid var(--color-border);">
+
+                {# Header #}
+                <div class="px-5 py-4 flex items-center justify-between"
+                     style="border-bottom:1px solid var(--color-border);background:var(--color-surface-alt);">
+                    <div>
+                        <h3 class="font-bold text-sm" style="color:var(--color-txt-primary);"
+                            x-text="'Request · ' + selectedHistory.submitted_at"></h3>
+                        <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                           x-text="selectedHistory.requested_by + ' · ' + (selectedHistory.request_type === 'stock_in' ? 'Stock-In' : 'Adjustment')"></p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs px-2 py-1 rounded-lg font-semibold capitalize"
+                              :style="`background:color-mix(in srgb,${statusColor(selectedHistory.status)} 10%,transparent);color:${statusColor(selectedHistory.status)}`"
+                              x-text="selectedHistory.status.replace('_',' ')"></span>
+                        <button @click="closeHistoryModal()"
+                                class="w-8 h-8 rounded-lg flex items-center justify-center"
+                                style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                {# Reviewed by #}
+                <div class="px-5 py-2.5 flex items-center gap-2 text-xs"
+                     style="background:color-mix(in srgb,var(--color-info) 6%,transparent);border-bottom:1px solid var(--color-border);">
+                    <span class="material-symbols-outlined text-[14px]" style="color:var(--color-info);">verified_user</span>
+                    <span style="color:var(--color-txt-muted);">Reviewed by</span>
+                    <span class="font-semibold" style="color:var(--color-txt-primary);" x-text="selectedHistory.reviewed_by || '—'"></span>
+                </div>
+
+                {# Item list #}
+                <div class="overflow-y-auto max-h-[60vh]">
+                    <template x-if="!selectedHistory.details || selectedHistory.details.length === 0">
+                        <p class="px-5 py-8 text-sm text-center" style="color:var(--color-txt-muted);">No item details available.</p>
+                    </template>
+                    <template x-for="(det, i) in selectedHistory.details" :key="i">
+                        <div class="px-5 py-4" style="border-bottom:1px solid var(--color-border);">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="det.product_name"></p>
+                                    <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="det.product_id"></p>
+                                    <template x-if="det.note">
+                                        <p class="text-xs italic mt-1" style="color:var(--color-txt-muted);" x-text="'Note: ' + det.note"></p>
+                                    </template>
+                                </div>
+                                {# Status badge #}
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 mt-0.5 capitalize"
+                                      :style="det.status === 'approved'
+                                          ? 'background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)'
+                                          : det.status === 'rejected'
+                                            ? 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'
+                                            : 'background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)'"
+                                      x-text="det.status"></span>
+                            </div>
+
+                            {# Qty comparison #}
+                            <div class="flex items-center gap-3 mt-2.5 flex-wrap">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">Requested</span>
+                                    <span class="text-sm font-bold tabular-nums" style="color:var(--color-txt-primary);"
+                                          x-text="'+' + det.quantity_requested"></span>
+                                </div>
+                                <span class="material-symbols-outlined text-[14px]" style="color:var(--color-txt-muted);">arrow_forward</span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">Approved</span>
+                                    <span class="text-sm font-bold tabular-nums"
+                                          :style="det.quantity_approved > 0 ? 'color:var(--color-success)' : 'color:var(--color-error)'"
+                                          x-text="det.status === 'rejected' ? '—' : ('+' + det.quantity_approved)"></span>
+                                </div>
+                                <template x-if="det.quantity_approved > 0 && det.quantity_approved < det.quantity_requested && det.status !== 'rejected'">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                                          style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);">Partial</span>
+                                </template>
+                            </div>
+
+                            {# Rejection reason #}
+                            <template x-if="det.rejection_reason">
+                                <div class="mt-2 flex items-start gap-1.5">
+                                    <span class="material-symbols-outlined text-[13px] mt-0.5" style="color:var(--color-error);">info</span>
+                                    <p class="text-xs" style="color:var(--color-error);" x-text="'Reason: ' + det.rejection_reason"></p>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                {# Footer #}
+                <div class="px-5 py-4 flex justify-end" style="background:var(--color-surface-alt);">
+                    <button @click="closeHistoryModal()"
+                            class="px-5 py-2.5 rounded-xl text-sm font-semibold"
+                            style="background:var(--color-primary);color:var(--color-bg);">Close</button>
+                </div>
+            </div>
+        </div>
+    </template>
+    {# ── DEFECT HISTORY DETAIL MODAL ── #}
+    <template x-if="defectHistoryModal && selectedDefectHistory">
+        <div class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:px-4"
+             style="background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);"
+             @click.self="closeDefectHistoryModal()">
+            <div class="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl overflow-hidden"
+                 style="background:var(--color-surface);border:1px solid var(--color-border);">
+
+                {# Header #}
+                <div class="px-5 py-4 flex items-center justify-between"
+                     style="border-bottom:1px solid var(--color-border);background:var(--color-surface-alt);">
+                    <div>
+                        <h3 class="font-bold text-sm" style="color:var(--color-txt-primary);"
+                            x-text="selectedDefectHistory.product_name"></h3>
+                        <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                           x-text="selectedDefectHistory.datetime + ' · ' + selectedDefectHistory.logged_by"></p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs px-2 py-1 rounded-lg font-semibold"
+                              :style="selectedDefectHistory.status === 'active'
+                                  ? 'background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success)'
+                                  : 'background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error)'"
+                              x-text="selectedDefectHistory.status === 'active' ? 'Approved' : 'Rejected'"></span>
+                        <button @click="closeDefectHistoryModal()"
+                                class="w-8 h-8 rounded-lg flex items-center justify-center"
+                                style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                {# Body #}
+                <div class="px-5 py-4 flex flex-col gap-4">
+
+                    {# Product + qty #}
+                    <div class="flex items-center justify-between gap-3 p-3.5 rounded-xl"
+                         style="background:var(--color-surface-alt);border:1px solid var(--color-border);">
+                        <div>
+                            <p class="text-xs uppercase tracking-wide font-semibold" style="color:var(--color-txt-muted);">Product</p>
+                            <p class="text-sm font-bold mt-0.5" style="color:var(--color-txt-primary);"
+                               x-text="selectedDefectHistory.product_name"></p>
+                            <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);"
+                               x-text="selectedDefectHistory.product_id || ''"></p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-xs uppercase tracking-wide font-semibold" style="color:var(--color-txt-muted);">Quantity</p>
+                            <p class="text-2xl font-bold tabular-nums mt-0.5" style="color:var(--color-info);"
+                               x-text="'×' + selectedDefectHistory.quantity"></p>
+                        </div>
+                    </div>
+
+                    {# Origin + Reason #}
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3 rounded-xl" style="background:var(--color-surface-alt);border:1px solid var(--color-border);">
+                            <p class="text-xs uppercase tracking-wide font-semibold" style="color:var(--color-txt-muted);">Origin</p>
+                            <span class="inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full font-medium"
+                                  :style="selectedDefectHistory.origin_label === 'Customer'
+                                      ? 'background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)'
+                                      : 'background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)'"
+                                  x-text="selectedDefectHistory.origin_label"></span>
+                        </div>
+                        <div class="p-3 rounded-xl" style="background:var(--color-surface-alt);border:1px solid var(--color-border);">
+                            <p class="text-xs uppercase tracking-wide font-semibold" style="color:var(--color-txt-muted);">Reason</p>
+                            <span class="inline-block mt-1.5 text-xs px-2 py-0.5 rounded-full font-medium"
+                                  :style="selectedDefectHistory.reason_label === 'Expired'
+                                      ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
+                                      : selectedDefectHistory.reason_label === 'Change Of Mind'
+                                        ? 'background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)'
+                                        : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                                  x-text="selectedDefectHistory.reason_label"></span>
+                        </div>
+                    </div>
+
+                    {# Compensations #}
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3 rounded-xl" style="background:var(--color-surface-alt);border:1px solid var(--color-border);">
+                            <p class="text-xs uppercase tracking-wide font-semibold" style="color:var(--color-txt-muted);">Customer Comp</p>
+                            <p class="text-sm font-semibold mt-1" style="color:var(--color-txt-primary);"
+                               x-text="selectedDefectHistory.customer_compensation || '—'"></p>
+                        </div>
+                        <div class="p-3 rounded-xl" style="background:var(--color-surface-alt);border:1px solid var(--color-border);">
+                            <p class="text-xs uppercase tracking-wide font-semibold" style="color:var(--color-txt-muted);">Supplier Comp</p>
+                            <p class="text-sm font-semibold mt-1" style="color:var(--color-txt-primary);"
+                               x-text="selectedDefectHistory.supplier_compensation || '—'"></p>
+                        </div>
+                    </div>
+
+                    {# Logged by #}
+                    <div class="flex items-center gap-2 px-3.5 py-3 rounded-xl"
+                         style="background:color-mix(in srgb,var(--color-info) 6%,transparent);border:1px solid color-mix(in srgb,var(--color-info) 15%,transparent);">
+                        <span class="material-symbols-outlined text-[16px]" style="color:var(--color-info);">person</span>
+                        <span class="text-xs" style="color:var(--color-txt-muted);">Logged by</span>
+                        <span class="text-xs font-semibold" style="color:var(--color-txt-primary);"
+                              x-text="selectedDefectHistory.logged_by"></span>
+                    </div>
+
+                    {# Rejection note — only if rejected #}
+                    <template x-if="selectedDefectHistory.status === 'rejected' && selectedDefectHistory.rejection_note">
+                        <div class="flex items-start gap-2 px-3.5 py-3 rounded-xl"
+                             style="background:color-mix(in srgb,var(--color-error) 6%,transparent);border:1px solid color-mix(in srgb,var(--color-error) 20%,transparent);">
+                            <span class="material-symbols-outlined text-[16px] mt-0.5" style="color:var(--color-error);">info</span>
+                            <div>
+                                <p class="text-xs font-semibold" style="color:var(--color-error);">Rejection Note</p>
+                                <p class="text-xs mt-0.5" style="color:var(--color-error);"
+                                   x-text="selectedDefectHistory.rejection_note"></p>
+                            </div>
+                        </div>
+                    </template>
+
+                </div>
+
+                {# Footer #}
+                <div class="px-5 py-4 flex justify-end"
+                     style="background:var(--color-surface-alt);border-top:1px solid var(--color-border);">
+                    <button @click="closeDefectHistoryModal()"
+                            class="px-5 py-2.5 rounded-xl text-sm font-semibold"
+                            style="background:var(--color-primary);color:var(--color-bg);">Close</button>
+                </div>
+
             </div>
         </div>
     </template>

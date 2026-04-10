@@ -58,7 +58,7 @@ def dashboard():
 def requests_page():
     pending = StockAdjustmentRequest.query\
         .filter_by(status="pending")\
-        .order_by(StockAdjustmentRequest.submitted_at.asc())\
+        .order_by(StockAdjustmentRequest.submitted_at.desc())\
         .all()
     history = StockAdjustmentRequest.query\
         .filter(StockAdjustmentRequest.status != "pending")\
@@ -156,12 +156,28 @@ def requests_page():
         for detail, defect, product, user in defect_history_rows
     ]
 
+    def _history_dict(r):
+        d = _pht_fix(r.to_dict())
+        d['details'] = [
+            {
+                'product_id':         det.product_id,
+                'product_name':       Product.query.get(det.product_id).product_name.capitalize(),
+                'quantity_requested': det.quantity_requested,
+                'quantity_approved':  det.quantity_approved,
+                'status':             det.status,
+                'rejection_reason':   det.rejection_reason or '',
+                'note':               det.note or '',
+            }
+            for det in r.details
+        ]
+        return d
+
     return render_template(
         "admin/requests.html",
-        pending_data  = [_pht_fix(r.to_dict()) for r in pending],
-        history_data  = [_pht_fix(r.to_dict()) for r in history],
-        defect_data   = defect_data,
-        proposal_data = proposal_data,
+        pending_data   = [_pht_fix(r.to_dict()) for r in pending],
+        history_data   = [_history_dict(r) for r in history],
+        defect_data    = defect_data,
+        proposal_data  = proposal_data,
         defect_history = defect_history,
     )
 

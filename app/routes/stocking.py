@@ -345,10 +345,26 @@ def my_requests():
         .all()
     )
  
+    def _history_dict(r):
+        d = _pht_fix(r.to_dict())
+        d['details'] = [
+            {
+                'product_id':         det.product_id,
+                'product_name':       Product.query.get(det.product_id).product_name.capitalize(),
+                'quantity_requested': det.quantity_requested,
+                'quantity_approved':  det.quantity_approved,
+                'status':             det.status,
+                'rejection_reason':   det.rejection_reason or '',
+                'note':               det.note or '',
+            }
+            for det in r.details
+        ]
+        return d
+
     return render_template(
         "stocking/requests.html",
-        pending_data = [_pht_fix(r.to_dict()) for r in pending],
-        history_data = [_pht_fix(r.to_dict()) for r in history],
+        pending_data    = [_pht_fix(r.to_dict()) for r in pending],
+        history_data    = [_history_dict(r) for r in history],
         defect_pending  = [_serialize(d, def_, p) for d, def_, p in defect_pending],
         defect_history  = [_serialize(d, def_, p) for d, def_, p in defect_history],
     )

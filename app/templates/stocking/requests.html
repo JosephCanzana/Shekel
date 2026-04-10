@@ -11,8 +11,16 @@ const DEFECT_HISTORY_DATA = {{ defect_history     | tojson }};
 
 function myRequestsData() {
     return {
-        tab: 'pending',
-        historySubTab: 'stock',   // ← new: sub-tab inside History
+         tab: (() => {
+            const hash = location.hash.replace('#', '');
+            const valid = ['pending', 'defects', 'history'];
+            if (valid.includes(hash)) return hash;
+            return 'pending';
+        })(),
+        historySubTab: (() => {
+            const sub = new URLSearchParams(location.search).get('sub');
+            return sub === 'defect' ? 'defect' : 'stock';
+        })(),
 
         batches: PENDING_DATA.map(b => ({
             ...b,
@@ -157,6 +165,7 @@ function myRequestsData() {
         },
 
         async cancelRequest(batch) {
+          async cancelRequest(batch) {
             if (!confirm('Cancel this request? This cannot be undone.')) return
             batch.cancelling = true
             try {
@@ -168,6 +177,24 @@ function myRequestsData() {
                 if (!res.ok) { alert(data.error || 'Failed.'); batch.cancelling = false; return }
                 this.batches = this.batches.filter(b => b.request_id !== batch.request_id)
             } catch(e) { alert('Network error.'); batch.cancelling = false }
+        },
+        init() {
+            this.$watch('tab', val => {
+                history.replaceState(null, '', '#' + val);
+                sessionStorage.setItem('requests_tab', val);
+                if (val !== 'history') {
+                    const url = new URL(location);
+                    url.searchParams.delete('sub');
+                    history.replaceState(null, '', url);
+                    sessionStorage.removeItem('requests_subtab');
+                }
+            });
+            this.$watch('historySubTab', val => {
+                const url = new URL(location);
+                url.searchParams.set('sub', val);
+                history.replaceState(null, '', url);
+                sessionStorage.setItem('requests_subtab', val);
+            });
         },
     }
 }
