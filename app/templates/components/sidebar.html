@@ -11,9 +11,10 @@
         {'url': url_for('defects.index'),           'icon': 'report_problem','label': 'Defects/Returns'},
         {'url': url_for('cashier.transaction'), 'icon': 'point_of_sale',  'label': 'New Sale'},
         {'url': url_for('manage_categories.index'), 'icon': 'category',      'label': 'Categories'},
+        {'url': url_for('admin.sales_history'),'icon': 'payments',   'label': 'Sales History'},
         {'url': url_for('admin.requests_page'), 'icon': 'assignment',      'label': 'Requests'},
-        {'url': url_for('admin.reports'),                                'icon': 'monitoring',    'label': 'Reports'},
-        {'url': url_for('admin.audit_logs'),                                'icon': 'history',       'label': 'Audit Log'},
+        {'url': url_for('admin.reports'),      'icon': 'monitoring', 'label': 'Reports'},
+        {'url': url_for('admin.audit_logs'),   'icon': 'history',    'label': 'Audit Log'},
         ],
         
         'admin': [
@@ -31,7 +32,7 @@
     'cashier': [
         {'url': url_for('cashier.transaction'), 'icon': 'point_of_sale',  'label': 'New Sale'},
         {'url': url_for('defects.log'),         'icon': 'report_problem', 'label': 'Returns'},
-        {'url': '#',                            'icon': 'receipt_long',   'label': 'Sales History'},
+        {'url': url_for('cashier.sales_history'), 'icon': 'receipt_long',   'label': 'Sales History'},
     ],
 
     'stocking': [

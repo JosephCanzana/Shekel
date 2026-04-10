@@ -141,7 +141,7 @@ def account_activation(user_id):
         login_user(user)
         flash("Welcome! Your account has been activated.", "success")
 
-        audit("ACCOUNT ACTIVATION", "Auth", f"{user.first_name} activated the account", user_id=user.user_id)
+        audit("UPDATE", "Auth", f"{user.first_name} activated the account", user_id=user.user_id)
         db.session.commit()
 
         if user.role == "superadmin":

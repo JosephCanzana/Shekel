@@ -10,6 +10,7 @@ from app.models.sale_detail import SaleDetail
 from app.extensions import db
 from app.utils.helpers import generate_charge_token
 from app.utils.audit import audit
+from app.utils.helpers import to_pht
 
 cashier_bp = Blueprint("cashier", __name__, url_prefix="/cashier")
 
@@ -241,3 +242,133 @@ def charge():
 def refresh_token():
     session["charge_token"] = generate_charge_token()
     return jsonify({"charge_token": session["charge_token"]})
+# ═══════════════════════════════════════════════════════════════════════════════
+# SALES HISTORY  (cashier — own transactions only)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@cashier_bp.route("/sales")
+@login_required
+@role_required("superadmin", "admin", "cashier")
+def sales_history():
+    from sqlalchemy  import func
+    from datetime    import date as _date, timedelta
+
+    PER_PAGE = 50
+
+    page      = request.args.get("page",      1,  type=int)
+    q         = request.args.get("q",         "").strip()
+    date_from = request.args.get("date_from", "").strip()
+    date_to   = request.args.get("date_to",   "").strip()
+
+    qry = (
+        Sale.query
+        .filter(Sale.user_id == current_user.user_id)
+        .order_by(Sale.sale_datetime.desc())
+    )
+
+    if q:
+        try:
+            qry = qry.filter(Sale.transaction_id == int(q))
+        except ValueError:
+            pass
+
+    if date_from:
+        try:
+            qry = qry.filter(
+                Sale.sale_datetime >= datetime.strptime(date_from, "%Y-%m-%d")
+            )
+        except ValueError:
+            date_from = ""
+
+    if date_to:
+        try:
+            qry = qry.filter(
+                Sale.sale_datetime
+                <= datetime.strptime(date_to, "%Y-%m-%d")
+                           .replace(hour=23, minute=59, second=59)
+            )
+        except ValueError:
+            date_to = ""
+
+    sales = qry.paginate(page=page, per_page=PER_PAGE, error_out=False)
+
+    # ── Period stats (scoped to this cashier) ────────────────────────────
+    uid         = current_user.user_id
+    today_dt    = datetime.combine(_date.today(), datetime.min.time())
+    week_dt     = today_dt - timedelta(days=today_dt.weekday())
+    month_dt    = today_dt.replace(day=1)
+    year_dt     = today_dt.replace(month=1, day=1)
+
+    def _period(start):
+        row = db.session.query(
+            func.count(Sale.transaction_id),
+            func.coalesce(func.sum(Sale.total_amount),        0),
+            func.coalesce(func.sum(Sale.total_cost_price),    0),
+            func.coalesce(func.sum(Sale.total_revenue_price), 0),
+        ).filter(
+            Sale.user_id        == uid,
+            Sale.sale_datetime  >= start,
+        ).first()
+        return dict(
+            count  = int(row[0]),
+            sales  = float(row[1]),
+            cost   = float(row[2]),
+            profit = float(row[3]),
+        )
+
+    stats = dict(
+        today = _period(today_dt),
+        week  = _period(week_dt),
+        month = _period(month_dt),
+        year  = _period(year_dt),
+    )
+
+    filters = dict(q=q, date_from=date_from, date_to=date_to)
+
+    return render_template(
+        "sales/history.html",
+        sales     = sales,
+        filters   = filters,
+        stats     = stats,
+        all_users = [],
+        is_admin  = False,
+    )
+
+
+@cashier_bp.route("/sales/<int:transaction_id>")
+@login_required
+@role_required("superadmin", "admin", "cashier")
+def sale_detail(transaction_id):
+    sale = Sale.query.get_or_404(transaction_id)
+
+    # Cashiers can only view their own transactions
+    if current_user.role == "cashier" and sale.user_id != current_user.user_id:
+        return jsonify({"error": "Not authorised."}), 403
+
+    u = sale.user
+    details = [
+        {
+            "product_id":   d.product_id,
+            "product_name": d.product.product_name.capitalize() if d.product else d.product_id,
+            "quantity":     d.quantity,
+            "price":        float(d.price_at_sale),
+            "subtotal":     float(d.subtotal_amount),
+        }
+        for d in sale.sale_details
+    ]
+
+    return jsonify({
+        "transaction_id":      sale.transaction_id,
+        "sale_datetime":       to_pht(sale.sale_datetime).strftime("%B %d, %Y  %I:%M:%S %p PHT")
+                               if sale.sale_datetime else "—",
+        "total_amount":        float(sale.total_amount),
+        "total_cost_price":    float(sale.total_cost_price),
+        "total_revenue_price": float(sale.total_revenue_price),
+        "payment_method":      sale.payment_method or "cash",
+        "cashier": {
+            "name": f"{u.first_name} {u.last_name}".strip().title() if u else "—",
+            "role": u.role.title() if u else "—",
+            "id":   u.user_id if u else None,
+        },
+        "items": details,
+    })
