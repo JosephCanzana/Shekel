@@ -703,6 +703,36 @@ def _build_report_data(date_from, date_to):
         "defects":   defects_data,
     }
 
+@admin_bp.route("/audit_logs/<int:log_id>")
+@login_required
+@role_required("superadmin")
+def audit_log_detail(log_id):
+    """Return a single audit log entry as JSON for the detail modal."""
+    log = AuditLog.query.get_or_404(log_id)
+    u   = log.user
+
+    # Fetch email from Recovery_Details
+    email = "—"
+    if u and u.recovery_detail:
+        email = u.recovery_detail.email or "—"
+
+    return jsonify({
+        "log_id":          log.log_id,
+        "action_datetime": to_pht(log.action_datetime).strftime("%B %d, %Y  %I:%M:%S %p PHT")
+                           if log.action_datetime else "—",
+        "action_type":     log.action_type or "—",
+        "module":          log.module or "—",
+        "description":     log.description or "—",
+        "reference_table": log.reference_table or None,
+        "reference_id":    log.reference_id or None,
+        "user": {
+            "name":  f"{u.first_name} {u.last_name}".strip().title() if u else "—",
+            "role":  u.role.title() if u else "—",
+            "email": email,
+            "id":    u.user_id if u else None,
+        },
+    })
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # REPORTS — routes
 # ═══════════════════════════════════════════════════════════════════════════════

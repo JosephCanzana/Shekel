@@ -3,568 +3,786 @@
 {% block nav_title %}Audit Logs{% endblock %}
 
 {% block body %}
-<div class="space-y-4"
-     x-data="{
-       showFilters: {{ 'true' if (filters.user_id or filters.action_type or filters.module or filters.q or filters.date_from or filters.date_to) else 'false' }}
-     }">
+<div class="flex flex-col gap-4" style="margin-top:-17px;">
 
-  {# ── Page Header ──────────────────────────────────────────────────────────── #}
-  <div class="flex flex-wrap items-start justify-between gap-3">
+  {# ── Page header ──────────────────────────────────────────────────────── #}
+  <div class="flex items-center justify-between flex-wrap gap-3">
     <div>
-      <h1 class="text-xl font-bold tracking-tight" style="color:var(--color-txt-primary);">
-        Audit Logs
-      </h1>
-      <p class="text-sm mt-0.5" style="color:var(--color-txt-muted);">
-        Full system-wide activity trail
+      <h1 class="text-lg font-bold" style="color:var(--color-txt-primary);">Audit Logs</h1>
+      <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
+        Full record of every system action
       </p>
     </div>
-    <div class="flex items-center gap-2">
-
-      {# Filter toggle #}
-      <button @click="showFilters = !showFilters"
-              class="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg transition-colors"
-              :style="showFilters
-                  ? 'border:1px solid var(--color-accent);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 8%,transparent)'
-                  : 'border:1px solid var(--color-border);color:var(--color-txt-muted);background:var(--color-surface)'"
-              onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-        <span class="material-symbols-outlined text-[18px]">filter_list</span>
-        <span class="hidden sm:inline" x-text="showFilters ? 'Hide Filters' : 'Filters'"></span>
-      </button>
-
-      {# Export #}
-      <a href="{{ url_for('admin.export_audit_logs',
-                  user_id=filters.user_id or '',
-                  action_type=filters.action_type,
-                  module=filters.module,
-                  q=filters.q,
-                  date_from=filters.date_from,
-                  date_to=filters.date_to) }}"
-         class="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-medium transition-opacity"
-         style="background-color:var(--color-txt-primary);color:var(--color-bg);"
-         onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-        <span class="material-symbols-outlined text-[18px]">download</span>
-        <span class="hidden sm:inline">Export Excel</span>
-      </a>
-    </div>
+    <a href="{{ url_for('admin.export_audit_logs', **filters) }}"
+       class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition"
+       style="background-color:var(--color-txt-primary); color:var(--color-bg);"
+       onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+      <span class="material-symbols-outlined text-[17px]">download</span>
+      Export Excel
+    </a>
   </div>
 
-  {# ── Stats Row ─────────────────────────────────────────────────────────────── #}
-  <div class="grid grid-cols-3 gap-3">
-    {% set stat_items = [
-      ("today_total",   "calendar_today",  "Logs Today",          stats.total_today,         "--color-accent"),
-      ("logins",        "login",           "Logins Today",        stats.logins_today,        "--color-success"),
-      ("active_users",  "group",           "Active Users",        stats.unique_users_today,  "--color-info"),
+  {# ── Today stats ──────────────────────────────────────────────────────── #}
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    {% set stat_cards = [
+      ("Actions Today",      stats.total_today,        "system_update_alt"),
+      ("Logins Today",       stats.logins_today,       "login"),
+      ("Active Users Today", stats.unique_users_today, "group"),
     ] %}
-    {% for key, icon, label, value, clr in stat_items %}
-    <div class="rounded-xl p-3 sm:p-4"
-         style="background-color:var(--color-surface);border:1px solid var(--color-border);">
-      <div class="flex items-center gap-2 mb-2">
-        <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-             style="background:color-mix(in srgb,var({{ clr }}) 12%,transparent);">
-          <span class="material-symbols-outlined text-[15px]"
-                style="color:var({{ clr }});">{{ icon }}</span>
-        </div>
-        <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider truncate"
-           style="color:var(--color-txt-muted);">{{ label }}</p>
+    {% for label, value, icon in stat_cards %}
+    <div class="rounded-2xl flex items-center gap-4 px-5 py-4"
+         style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+           style="background-color:var(--color-surface-alt);">
+        <span class="material-symbols-outlined text-[20px]"
+              style="color:var(--color-txt-muted);">{{ icon }}</span>
       </div>
-      <p class="text-xl sm:text-2xl font-bold tabular-nums"
-         style="color:var(--color-txt-primary);">{{ value }}</p>
+      <div>
+        <p class="text-xs font-medium uppercase tracking-wide"
+           style="color:var(--color-txt-muted);">{{ label }}</p>
+        <p class="text-2xl font-bold" style="color:var(--color-txt-primary);">{{ value }}</p>
+      </div>
     </div>
     {% endfor %}
   </div>
 
-  {# ── Filter Bar ────────────────────────────────────────────────────────────── #}
-  <div x-show="showFilters"
-       x-transition:enter="transition-all duration-200 ease-out"
-       x-transition:enter-start="opacity-0 -translate-y-2"
-       x-transition:enter-end="opacity-100 translate-y-0"
-       x-transition:leave="transition-all duration-150 ease-in"
-       x-transition:leave-start="opacity-100 translate-y-0"
-       x-transition:leave-end="opacity-0 -translate-y-2"
-       class="rounded-xl p-4"
-       style="background-color:var(--color-surface);border:1px solid var(--color-border);">
+  {# ── Filter bar ───────────────────────────────────────────────────────── #}
+  <div class="rounded-2xl overflow-hidden"
+       style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+
+    <div class="px-5 py-3 flex items-center justify-between"
+         style="border-bottom:1px solid var(--color-border);
+                background-color:var(--color-surface-alt);">
+      <h3 class="text-sm font-semibold" style="color:var(--color-txt-primary);">Filters</h3>
+      {% set active_count = [
+        filters.user_id, filters.action_type, filters.module,
+        filters.q, filters.date_from, filters.date_to
+      ] | select | list | length %}
+      {% if active_count > 0 %}
+      <a href="{{ url_for('admin.audit_logs') }}"
+         class="flex items-center gap-1 text-xs font-medium transition"
+         style="color:var(--color-txt-muted);"
+         onmouseover="this.style.color='var(--color-txt-primary)'"
+         onmouseout="this.style.color='var(--color-txt-muted)'">
+        <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
+        Clear ({{ active_count }})
+      </a>
+      {% endif %}
+    </div>
 
     <form method="GET" action="{{ url_for('admin.audit_logs') }}"
-          class="space-y-3">
+          class="px-5 py-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 
-      {# Row 1: User / Action / Module #}
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {# Search #}
+        <div class="lg:col-span-2">
+          <label class="text-xs font-semibold uppercase tracking-wide block mb-1.5"
+                 style="color:var(--color-txt-muted);">Search description</label>
+          <div class="relative">
+            <span class="material-symbols-outlined text-[15px] absolute left-3
+                         top-1/2 -translate-y-1/2 pointer-events-none"
+                  style="color:var(--color-txt-muted);">search</span>
+            <input type="text" name="q" value="{{ filters.q }}"
+                   placeholder="e.g. product updated…"
+                   class="w-full pl-8 pr-3 py-2 rounded-xl text-sm focus:outline-none transition"
+                   style="border:1px solid var(--color-border);
+                          background:var(--color-surface-alt);
+                          color:var(--color-txt-primary);"
+                   onfocus="this.style.borderColor='var(--color-accent)'"
+                   onblur="this.style.borderColor='var(--color-border)'">
+          </div>
+        </div>
 
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wider"
+        {# User #}
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide block mb-1.5"
                  style="color:var(--color-txt-muted);">User</label>
-          <div class="relative">
-            <span class="material-symbols-outlined text-[15px] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style="color:var(--color-txt-muted);">person</span>
-            <select name="user_id"
-                    class="w-full pl-8 pr-3 py-2 rounded-lg text-sm focus:outline-none transition appearance-none"
-                    style="border:1px solid var(--color-border);
-                           background-color:var(--color-surface-alt);
-                           color:var(--color-txt-primary);"
-                    onfocus="this.style.borderColor='var(--color-accent)'"
-                    onblur="this.style.borderColor='var(--color-border)'">
-              <option value="">All Users</option>
-              {% for u in all_users %}
-              <option value="{{ u.user_id }}"
-                {{ 'selected' if filters.user_id == u.user_id }}>
-                {{ (u.first_name ~ ' ' ~ u.last_name).strip().title() }}
-              </option>
-              {% endfor %}
-            </select>
-          </div>
+          <select name="user_id"
+                  class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
+                  style="border:1px solid var(--color-border);
+                         background:var(--color-surface-alt);
+                         color:var(--color-txt-primary);"
+                  onfocus="this.style.borderColor='var(--color-accent)'"
+                  onblur="this.style.borderColor='var(--color-border)'">
+            <option value="">All users</option>
+            {% for u in all_users %}
+            <option value="{{ u.user_id }}"
+              {{ "selected" if filters.user_id == u.user_id }}>
+              {{ (u.first_name ~ " " ~ u.last_name).strip().title() }}
+            </option>
+            {% endfor %}
+          </select>
         </div>
 
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wider"
-                 style="color:var(--color-txt-muted);">Action</label>
-          <div class="relative">
-            <span class="material-symbols-outlined text-[15px] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style="color:var(--color-txt-muted);">bolt</span>
-            <select name="action_type"
-                    class="w-full pl-8 pr-3 py-2 rounded-lg text-sm focus:outline-none transition appearance-none"
-                    style="border:1px solid var(--color-border);
-                           background-color:var(--color-surface-alt);
-                           color:var(--color-txt-primary);"
-                    onfocus="this.style.borderColor='var(--color-accent)'"
-                    onblur="this.style.borderColor='var(--color-border)'">
-              <option value="">All Actions</option>
-              {% for act in ["INSERT","UPDATE","DELETE","LOGIN","LOGOUT"] %}
-              <option value="{{ act }}" {{ 'selected' if filters.action_type == act }}>{{ act }}</option>
-              {% endfor %}
-            </select>
-          </div>
+        {# Action type #}
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide block mb-1.5"
+                 style="color:var(--color-txt-muted);">Action type</label>
+          <select name="action_type"
+                  class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
+                  style="border:1px solid var(--color-border);
+                         background:var(--color-surface-alt);
+                         color:var(--color-txt-primary);"
+                  onfocus="this.style.borderColor='var(--color-accent)'"
+                  onblur="this.style.borderColor='var(--color-border)'">
+            <option value="">All actions</option>
+            {% for at in ["LOGIN","LOGOUT","CREATE","UPDATE","DELETE","APPROVE","REJECT","EXPORT","VIEW"] %}
+            <option value="{{ at }}"
+              {{ "selected" if filters.action_type == at }}>{{ at }}</option>
+            {% endfor %}
+          </select>
         </div>
 
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wider"
+        {# Module #}
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide block mb-1.5"
                  style="color:var(--color-txt-muted);">Module</label>
-          <div class="relative">
-            <span class="material-symbols-outlined text-[15px] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style="color:var(--color-txt-muted);">apps</span>
-            <select name="module"
-                    class="w-full pl-8 pr-3 py-2 rounded-lg text-sm focus:outline-none transition appearance-none"
-                    style="border:1px solid var(--color-border);
-                           background-color:var(--color-surface-alt);
-                           color:var(--color-txt-primary);"
-                    onfocus="this.style.borderColor='var(--color-accent)'"
-                    onblur="this.style.borderColor='var(--color-border)'">
-              <option value="">All Modules</option>
-              {% for mod, label in [
-                ("Products","Products"),("Inventory","Inventory"),
-                ("Sales","Sales"),("Defects","Defects"),
-                ("Users","Users"),("Stock_In","Stock In"),
-                ("Settings","Settings"),("Auth","Auth"),
-              ] %}
-              <option value="{{ mod }}" {{ 'selected' if filters.module == mod }}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
+          <select name="module"
+                  class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
+                  style="border:1px solid var(--color-border);
+                         background:var(--color-surface-alt);
+                         color:var(--color-txt-primary);"
+                  onfocus="this.style.borderColor='var(--color-accent)'"
+                  onblur="this.style.borderColor='var(--color-border)'">
+            <option value="">All modules</option>
+            {% for m in ["auth","products","inventory","sales","defects",
+                         "stock","users","reports","audit"] %}
+            <option value="{{ m }}"
+              {{ "selected" if filters.module == m }}>{{ m.title() }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# Date from #}
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide block mb-1.5"
+                 style="color:var(--color-txt-muted);">From</label>
+          <input type="date" name="date_from" value="{{ filters.date_from or '' }}"
+                 class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
+                 style="border:1px solid var(--color-border);
+                        background:var(--color-surface-alt);
+                        color:var(--color-txt-primary);"
+                 onfocus="this.style.borderColor='var(--color-accent)'"
+                 onblur="this.style.borderColor='var(--color-border)'">
+        </div>
+
+        {# Date to #}
+        <div>
+          <label class="text-xs font-semibold uppercase tracking-wide block mb-1.5"
+                 style="color:var(--color-txt-muted);">To</label>
+          <input type="date" name="date_to" value="{{ filters.date_to or '' }}"
+                 class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
+                 style="border:1px solid var(--color-border);
+                        background:var(--color-surface-alt);
+                        color:var(--color-txt-primary);"
+                 onfocus="this.style.borderColor='var(--color-accent)'"
+                 onblur="this.style.borderColor='var(--color-border)'">
+        </div>
+
+        {# Submit #}
+        <div class="flex items-end sm:col-span-2 lg:col-span-4 justify-end">
+          <button type="submit"
+                  class="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm
+                         font-semibold transition"
+                  style="background:var(--color-primary); color:var(--color-bg);"
+                  onmouseover="this.style.opacity='0.85'"
+                  onmouseout="this.style.opacity='1'">
+            <span class="material-symbols-outlined text-[16px]">tune</span>
+            Apply filters
+          </button>
         </div>
       </div>
-
-      {# Row 2: Dates + Search #}
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wider"
-                 style="color:var(--color-txt-muted);">From Date</label>
-          <div class="relative">
-            <span class="material-symbols-outlined text-[15px] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style="color:var(--color-txt-muted);">calendar_today</span>
-            <input type="date" name="date_from" value="{{ filters.date_from }}"
-                   class="w-full pl-8 pr-3 py-2 rounded-lg text-sm focus:outline-none transition"
-                   style="border:1px solid var(--color-border);
-                          background-color:var(--color-surface-alt);
-                          color:var(--color-txt-primary);"
-                   onfocus="this.style.borderColor='var(--color-accent)'"
-                   onblur="this.style.borderColor='var(--color-border)'">
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wider"
-                 style="color:var(--color-txt-muted);">To Date</label>
-          <div class="relative">
-            <span class="material-symbols-outlined text-[15px] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style="color:var(--color-txt-muted);">event</span>
-            <input type="date" name="date_to" value="{{ filters.date_to }}"
-                   class="w-full pl-8 pr-3 py-2 rounded-lg text-sm focus:outline-none transition"
-                   style="border:1px solid var(--color-border);
-                          background-color:var(--color-surface-alt);
-                          color:var(--color-txt-primary);"
-                   onfocus="this.style.borderColor='var(--color-accent)'"
-                   onblur="this.style.borderColor='var(--color-border)'">
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <label class="text-xs font-semibold uppercase tracking-wider"
-                 style="color:var(--color-txt-muted);">Search Description</label>
-          <div class="flex gap-2">
-            <div class="relative flex-1 min-w-0">
-              <span class="material-symbols-outlined text-[15px] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                    style="color:var(--color-txt-muted);">search</span>
-              <input type="text" name="q" value="{{ filters.q }}"
-                     placeholder="Filter by description…"
-                     class="w-full pl-8 pr-3 py-2 rounded-lg text-sm focus:outline-none transition"
-                     style="border:1px solid var(--color-border);
-                            background-color:var(--color-surface-alt);
-                            color:var(--color-txt-primary);"
-                     onfocus="this.style.borderColor='var(--color-accent)'"
-                     onblur="this.style.borderColor='var(--color-border)'">
-            </div>
-            <button type="submit"
-                    class="px-4 py-2 rounded-lg text-sm font-semibold transition-opacity whitespace-nowrap shrink-0"
-                    style="background-color:var(--color-primary);color:var(--color-bg);"
-                    onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-              Apply
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {% if filters.user_id or filters.action_type or filters.module or filters.q or filters.date_from or filters.date_to %}
-      <div class="flex justify-end pt-1">
-        <a href="{{ url_for('admin.audit_logs') }}"
-           class="flex items-center gap-1 text-xs transition-colors"
-           style="color:var(--color-txt-muted);"
-           onmouseover="this.style.color='var(--color-txt-primary)'"
-           onmouseout="this.style.color='var(--color-txt-muted)'">
-          <span class="material-symbols-outlined text-[14px]">close</span>
-          Clear all filters
-        </a>
-      </div>
-      {% endif %}
     </form>
   </div>
 
-  {# ── Results count ─────────────────────────────────────────────────────────── #}
-  {% set range_start = ((logs.page - 1) * 50) + 1 %}
-  {% set range_end   = [logs.page * 50, logs.total] | min %}
-  <div class="flex items-center justify-between">
-    <p class="text-sm" style="color:var(--color-txt-muted);">
-      Showing
-      <span class="font-semibold" style="color:var(--color-txt-primary);">
-        {{ range_start }}–{{ range_end }}
-      </span>
-      of
-      <span class="font-semibold" style="color:var(--color-txt-primary);">
-        {{ logs.total }}
-      </span>
-      entries
-    </p>
-    {% if logs.total > 0 %}
-    <p class="text-xs" style="color:var(--color-txt-muted);">
-      Page {{ logs.page }} of {{ logs.pages }}
-    </p>
-    {% endif %}
-  </div>
+  {# ── Log table (desktop sm+) ──────────────────────────────────────────── #}
+  <div class="hidden sm:block rounded-2xl overflow-hidden"
+       style="background-color:var(--color-surface); border:1px solid var(--color-border);">
 
-  {# ══════════════════════════════════════════════════════════════════════════
-     DESKTOP TABLE  (sm and above)
-  ══════════════════════════════════════════════════════════════════════════ #}
-  <div class="hidden sm:block rounded-xl overflow-hidden"
-       style="border:1px solid var(--color-border);">
+    {# Result count bar #}
+    <div class="flex items-center justify-between px-5 py-2.5"
+         style="border-bottom:1px solid var(--color-border);
+                background-color:var(--color-surface-alt);">
+      <p class="text-xs" style="color:var(--color-txt-muted);">
+        Showing
+        <span class="font-semibold" style="color:var(--color-txt-primary);">
+          {{ logs.items | length }}
+        </span>
+        of
+        <span class="font-semibold" style="color:var(--color-txt-primary);">
+          {{ logs.total }}
+        </span>
+        entries
+      </p>
+      <p class="text-xs" style="color:var(--color-txt-muted);">
+        Page {{ logs.page }} / {{ logs.pages }}
+      </p>
+    </div>
+
     <div class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr style="background-color:var(--color-surface-alt);
-                     border-bottom:1px solid var(--color-border);">
-            <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
-                style="color:var(--color-txt-muted);">Date &amp; Time</th>
-            <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                style="color:var(--color-txt-muted);">User</th>
-            <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                style="color:var(--color-txt-muted);">Action</th>
-            <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                style="color:var(--color-txt-muted);">Module</th>
-            <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                style="color:var(--color-txt-muted);">Description</th>
-            <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap"
-                style="color:var(--color-txt-muted);">Reference</th>
-          </tr>
-        </thead>
-        <tbody style="background-color:var(--color-surface);">
-          {% for log in logs.items %}
-          <tr style="border-top:1px solid var(--color-border);"
-              onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-              onmouseout="this.style.backgroundColor='transparent'">
-
-            {# Date / Time #}
-            <td class="px-4 py-3 whitespace-nowrap">
-              <p class="text-xs font-medium" style="color:var(--color-txt-primary);">
-                {{ log.action_datetime | pht("%b %d, %Y") }}
-              </p>
-              <p class="text-xs" style="color:var(--color-txt-muted);">
-                {{ log.action_datetime | pht("%I:%M %p") }}
-              </p>
-            </td>
-
-            {# User #}
-            <td class="px-4 py-3 whitespace-nowrap">
-              {% if log.user %}
-              <p class="text-sm font-medium" style="color:var(--color-txt-primary);">
-                {{ (log.user.first_name ~ ' ' ~ log.user.last_name).strip().title() }}
-              </p>
-              <p class="text-xs" style="color:var(--color-txt-muted);">
-                {{ log.user.role.title() }}
-              </p>
-              {% else %}
-              <span style="color:var(--color-txt-muted);">—</span>
-              {% endif %}
-            </td>
-
-            {# Action badge #}
-            <td class="px-4 py-3">
-              {% set action_style = {
-                "INSERT":  "background:color-mix(in srgb,var(--color-success) 15%,transparent);color:var(--color-success)",
-                "UPDATE":  "background:color-mix(in srgb,var(--color-info) 15%,transparent);color:var(--color-info)",
-                "DELETE":  "background:color-mix(in srgb,var(--color-error) 15%,transparent);color:var(--color-error)",
-                "LOGIN":   "background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)",
-                "LOGOUT":  "background:color-mix(in srgb,var(--color-txt-muted) 15%,transparent);color:var(--color-txt-muted)",
-              } %}
-              <span class="inline-flex px-2 py-0.5 rounded-md text-[11px] font-bold"
-                    style="{{ action_style.get(log.action_type, 'background:var(--color-surface-alt);color:var(--color-txt-muted)') }}">
-                {{ log.action_type }}
-              </span>
-            </td>
-
-            {# Module badge #}
-            <td class="px-4 py-3">
-              {% set module_style = {
-                "Products":  "background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)",
-                "Inventory": "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)",
-                "Sales":     "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)",
-                "Defects":   "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)",
-                "Users":     "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)",
-                "Stock_In":  "background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success)",
-                "Settings":  "background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-secondary)",
-                "Auth":      "background:color-mix(in srgb,var(--color-info) 10%,transparent);color:var(--color-info)",
-              } %}
-              <span class="inline-flex px-2 py-0.5 rounded-md text-[11px] font-semibold whitespace-nowrap"
-                    style="{{ module_style.get(log.module, 'background:var(--color-surface-alt);color:var(--color-txt-muted)') }}">
-                {{ log.module.replace("_", " ") }}
-              </span>
-            </td>
-
-            {# Description #}
-            <td class="px-4 py-3 max-w-xs">
-              <p class="text-sm line-clamp-2" style="color:var(--color-txt-primary);">
-                {{ log.description }}
-              </p>
-            </td>
-
-            {# Reference #}
-            <td class="px-4 py-3 whitespace-nowrap">
-              {% if log.reference_id %}
-              <p class="font-mono text-xs" style="color:var(--color-txt-muted);">
-                {{ log.reference_table }}
-              </p>
-              <p class="font-mono text-xs font-semibold" style="color:var(--color-txt-secondary);">
-                #{{ log.reference_id }}
-              </p>
-              {% else %}
-              <span style="color:var(--color-txt-muted);">—</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="6" class="px-4 py-16 text-center">
-              <span class="material-symbols-outlined text-[48px] block mb-2"
-                    style="color:var(--color-border-strong);">manage_search</span>
-              <p class="text-sm" style="color:var(--color-txt-muted);">
-                No audit entries found for the current filters.
-              </p>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  {# ══════════════════════════════════════════════════════════════════════════
-     MOBILE CARDS  (below sm)
-  ══════════════════════════════════════════════════════════════════════════ #}
-  <div class="sm:hidden space-y-2">
-
-    {% if not logs.items %}
-    <div class="rounded-xl py-14 text-center"
-         style="border:1px solid var(--color-border);background-color:var(--color-surface);">
-      <span class="material-symbols-outlined text-[44px] block mb-2"
-            style="color:var(--color-border-strong);">manage_search</span>
-      <p class="text-sm" style="color:var(--color-txt-muted);">
-        No audit entries found.
-      </p>
-    </div>
-    {% endif %}
-
-    {% for log in logs.items %}
-    {# set local vars for badges #}
-    {% set action_style = {
-      "INSERT":  "background:color-mix(in srgb,var(--color-success) 15%,transparent);color:var(--color-success)",
-      "UPDATE":  "background:color-mix(in srgb,var(--color-info) 15%,transparent);color:var(--color-info)",
-      "DELETE":  "background:color-mix(in srgb,var(--color-error) 15%,transparent);color:var(--color-error)",
-      "LOGIN":   "background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)",
-      "LOGOUT":  "background:color-mix(in srgb,var(--color-txt-muted) 15%,transparent);color:var(--color-txt-muted)",
-    } %}
-    {% set module_style = {
-      "Products":  "background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)",
-      "Inventory": "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)",
-      "Sales":     "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)",
-      "Defects":   "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)",
-      "Users":     "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)",
-      "Stock_In":  "background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success)",
-      "Settings":  "background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-secondary)",
-      "Auth":      "background:color-mix(in srgb,var(--color-info) 10%,transparent);color:var(--color-info)",
-    } %}
-
-    <div class="rounded-xl px-4 py-3"
-         style="border:1px solid var(--color-border);background-color:var(--color-surface);">
-
-      {# Top row: badges + datetime #}
-      <div class="flex items-center justify-between gap-2 mb-2">
-        <div class="flex items-center gap-1.5 flex-wrap">
-          <span class="inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold"
-                style="{{ action_style.get(log.action_type, '') }}">
-            {{ log.action_type }}
-          </span>
-          <span class="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold"
-                style="{{ module_style.get(log.module, '') }}">
-            {{ log.module.replace("_", " ") }}
-          </span>
-        </div>
-        <p class="text-[10px] shrink-0 text-right" style="color:var(--color-txt-muted);">
-          {{ log.action_datetime | pht("%b %d") }}<br>
-          {{ log.action_datetime | pht("%I:%M %p") }}
-        </p>
+      {# Header row #}
+      <div class="grid px-5 py-2.5 text-xs font-semibold uppercase tracking-wider"
+           style="grid-template-columns: 40px 150px 160px 90px 100px 1fr 130px 52px;
+                  color:var(--color-txt-muted);
+                  border-bottom:1px solid var(--color-border);
+                  background-color:var(--color-surface-alt);">
+        <span>#</span>
+        <span>Date &amp; Time</span>
+        <span>User</span>
+        <span>Action</span>
+        <span>Module</span>
+        <span>Description</span>
+        <span>Reference</span>
+        <span class="text-center">Detail</span>
       </div>
 
-      {# Description #}
-      <p class="text-sm leading-snug mb-2" style="color:var(--color-txt-primary);">
-        {{ log.description }}
-      </p>
+      {% set offset = (logs.page - 1) * 50 %}
+      {% if logs.items %}
+        {% for log in logs.items %}
+        {% set u = log.user %}
+        <div class="grid px-5 py-3.5 items-center transition"
+             style="grid-template-columns: 40px 150px 160px 90px 100px 1fr 130px 52px;
+                    border-top:1px solid var(--color-border);"
+             onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+             onmouseout="this.style.backgroundColor='transparent'">
 
-      {# Bottom row: user + reference #}
-      <div class="flex items-center justify-between gap-2 pt-2"
-           style="border-top:1px solid var(--color-border);">
-        <div class="flex items-center gap-1.5 min-w-0">
-          <span class="material-symbols-outlined text-[13px] shrink-0"
-                style="color:var(--color-txt-muted);">person</span>
-          {% if log.user %}
-          <p class="text-xs truncate" style="color:var(--color-txt-secondary);">
-            {{ (log.user.first_name ~ ' ' ~ log.user.last_name).strip().title() }}
-            <span style="color:var(--color-txt-muted);">· {{ log.user.role.title() }}</span>
+          {# # #}
+          <span class="text-xs tabular-nums"
+                style="color:var(--color-txt-muted);">
+            {{ offset + loop.index }}
+          </span>
+
+          {# Date & Time — uses pht filter #}
+          <div>
+            {% if log.action_datetime %}
+            <p class="text-sm" style="color:var(--color-txt-primary);">
+              {{ log.action_datetime | pht('%b %d, %Y') }}
+            </p>
+            <p class="text-xs" style="color:var(--color-txt-muted);">
+              {{ log.action_datetime | pht('%I:%M %p') }}
+            </p>
+            {% else %}
+            <span style="color:var(--color-txt-muted);">—</span>
+            {% endif %}
+          </div>
+
+          {# User #}
+          <div>
+            {% if u %}
+            <p class="text-sm font-medium" style="color:var(--color-txt-primary);">
+              {{ (u.first_name ~ " " ~ u.last_name).strip().title() }}
+            </p>
+            <p class="text-xs capitalize" style="color:var(--color-txt-muted);">
+              {{ u.role }}
+            </p>
+            {% else %}
+            <span style="color:var(--color-txt-muted);">—</span>
+            {% endif %}
+          </div>
+
+          {# Action badge #}
+          <div>
+            {% if log.action_type == 'LOGIN' %}
+              {% set bstyle = "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)" %}
+            {% elif log.action_type == 'LOGOUT' %}
+              {% set bstyle = "background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)" %}
+            {% elif log.action_type == 'CREATE' %}
+              {% set bstyle = "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)" %}
+            {% elif log.action_type == 'UPDATE' %}
+              {% set bstyle = "background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)" %}
+            {% elif log.action_type in ('DELETE', 'REJECT') %}
+              {% set bstyle = "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)" %}
+            {% elif log.action_type == 'APPROVE' %}
+              {% set bstyle = "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)" %}
+            {% elif log.action_type == 'EXPORT' %}
+              {% set bstyle = "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)" %}
+            {% else %}
+              {% set bstyle = "background:color-mix(in srgb,var(--color-info) 10%,transparent);color:var(--color-info)" %}
+            {% endif %}
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style="{{ bstyle }}">
+              {{ log.action_type or "—" }}
+            </span>
+          </div>
+
+          {# Module chip #}
+          <div>
+            <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+                         color:var(--color-primary);">
+              {{ (log.module or "—").title() }}
+            </span>
+          </div>
+
+          {# Description #}
+          <p class="text-sm pr-4 line-clamp-2"
+             style="color:var(--color-txt-secondary);">
+            {{ log.description or "—" }}
           </p>
-          {% else %}
-          <p class="text-xs" style="color:var(--color-txt-muted);">Unknown user</p>
-          {% endif %}
+
+          {# Reference #}
+          <div>
+            {% if log.reference_id %}
+            <p class="text-xs font-mono" style="color:var(--color-txt-muted);">
+              {{ log.reference_table }}
+              <span class="font-semibold"
+                    style="color:var(--color-txt-primary);">#{{ log.reference_id }}</span>
+            </p>
+            {% else %}
+            <span class="text-xs" style="color:var(--color-txt-muted);">—</span>
+            {% endif %}
+          </div>
+
+          {# View detail #}
+          <div class="flex justify-center">
+            <button type="button"
+                    data-log-id="{{ log.log_id }}"
+                    onclick="openLogDetail(this)"
+                    title="View details"
+                    class="w-8 h-8 rounded-xl flex items-center justify-center transition"
+                    style="border:1px solid var(--color-border);
+                           color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)';
+                                 this.style.borderColor='var(--color-border-strong)'"
+                    onmouseout="this.style.backgroundColor='transparent';
+                                this.style.borderColor='var(--color-border)'">
+              <span class="material-symbols-outlined text-[18px] pointer-events-none">
+                visibility
+              </span>
+            </button>
+          </div>
+
         </div>
-        {% if log.reference_id %}
-        <p class="font-mono text-[10px] shrink-0" style="color:var(--color-txt-muted);">
-          {{ log.reference_table }} #{{ log.reference_id }}
-        </p>
-        {% endif %}
-      </div>
+        {% endfor %}
+
+      {% else %}
+        <div class="flex flex-col items-center justify-center gap-3 py-16">
+          <span class="material-symbols-outlined text-[52px]"
+                style="color:var(--color-border-strong);">manage_search</span>
+          <p class="text-sm" style="color:var(--color-txt-muted);">
+            No audit logs found for the selected filters.
+          </p>
+        </div>
+      {% endif %}
     </div>
-    {% endfor %}
   </div>
 
-  {# ── Pagination ────────────────────────────────────────────────────────────── #}
-  {% if logs.pages > 1 %}
-  <div class="flex items-center justify-between gap-4 pt-1">
-    <p class="text-xs" style="color:var(--color-txt-muted);">
-      Page <span class="font-semibold" style="color:var(--color-txt-primary);">{{ logs.page }}</span>
-      of
-      <span class="font-semibold" style="color:var(--color-txt-primary);">{{ logs.pages }}</span>
-    </p>
+  {# ── Log cards (mobile) ───────────────────────────────────────────────── #}
+  <div class="sm:hidden space-y-2">
+    {% if logs.items %}
+      {% for log in logs.items %}
+      {% set u = log.user %}
+      <button type="button"
+              data-log-id="{{ log.log_id }}"
+              onclick="openLogDetail(this)"
+              class="w-full text-left rounded-xl px-4 py-3 transition"
+              style="border:1px solid var(--color-border);
+                     background-color:var(--color-surface);"
+              onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+              onmouseout="this.style.backgroundColor='var(--color-surface)'">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">
+              {% if log.action_datetime %}
+                {{ log.action_datetime | pht('%b %d, %Y') }}
+                <span class="text-xs font-normal ml-1"
+                      style="color:var(--color-txt-muted);">
+                  {{ log.action_datetime | pht('%I:%M %p') }}
+                </span>
+              {% else %}—{% endif %}
+            </p>
+            {% if u %}
+            <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
+              {{ (u.first_name ~ " " ~ u.last_name).strip().title() }}
+              · {{ u.role.title() }}
+            </p>
+            {% endif %}
+            <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+              {% if log.action_type == 'LOGIN' %}
+                {% set bstyle = "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)" %}
+              {% elif log.action_type == 'LOGOUT' %}
+                {% set bstyle = "background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)" %}
+              {% elif log.action_type == 'CREATE' %}
+                {% set bstyle = "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)" %}
+              {% elif log.action_type == 'UPDATE' %}
+                {% set bstyle = "background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)" %}
+              {% elif log.action_type in ('DELETE', 'REJECT') %}
+                {% set bstyle = "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)" %}
+              {% elif log.action_type == 'APPROVE' %}
+                {% set bstyle = "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)" %}
+              {% elif log.action_type == 'EXPORT' %}
+                {% set bstyle = "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)" %}
+              {% else %}
+                {% set bstyle = "background:color-mix(in srgb,var(--color-info) 10%,transparent);color:var(--color-info)" %}
+              {% endif %}
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                    style="{{ bstyle }}">
+                {{ log.action_type or "—" }}
+              </span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                    style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);
+                           color:var(--color-primary);">
+                {{ (log.module or "—").title() }}
+              </span>
+            </div>
+            {% if log.description %}
+            <p class="text-xs mt-1.5 line-clamp-2"
+               style="color:var(--color-txt-muted);">{{ log.description }}</p>
+            {% endif %}
+          </div>
+          <span class="material-symbols-outlined text-[18px] mt-1 shrink-0"
+                style="color:var(--color-txt-muted);">chevron_right</span>
+        </div>
+      </button>
+      {% endfor %}
+    {% else %}
+      <div class="rounded-xl py-14 text-center"
+           style="border:1px solid var(--color-border);
+                  background-color:var(--color-surface);">
+        <span class="material-symbols-outlined text-[40px] block mb-2"
+              style="color:var(--color-border-strong);">manage_search</span>
+        <p class="text-sm" style="color:var(--color-txt-muted);">
+          No audit logs found for the selected filters.
+        </p>
+      </div>
+    {% endif %}
+  </div>
 
+  {# ── Pagination ───────────────────────────────────────────────────────── #}
+  {% if logs.pages > 1 %}
+  <div class="flex items-center justify-between">
+    <p class="text-xs" style="color:var(--color-txt-muted);">
+      Page {{ logs.page }} of {{ logs.pages }} · {{ logs.total }} entries
+    </p>
     <div class="flex items-center gap-1">
 
-      {# Prev #}
       {% if logs.has_prev %}
-      <a href="{{ url_for('admin.audit_logs', page=logs.prev_num,
-                  user_id=filters.user_id or '', action_type=filters.action_type,
-                  module=filters.module, q=filters.q,
-                  date_from=filters.date_from, date_to=filters.date_to) }}"
-         class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-         style="border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface);"
+      <a href="{{ url_for('admin.audit_logs', page=logs.prev_num, **filters) }}"
+         class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+         style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-         onmouseout="this.style.backgroundColor='var(--color-surface)'">
-        <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+         onmouseout="this.style.backgroundColor='transparent'">
+        <span class="material-symbols-outlined text-[16px]">chevron_left</span>
       </a>
-      {% else %}
-      <span class="w-8 h-8 rounded-lg flex items-center justify-center opacity-30 cursor-not-allowed"
-            style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
-        <span class="material-symbols-outlined text-[18px]">chevron_left</span>
-      </span>
       {% endif %}
 
-      {# Page numbers — only render if ≤ 7 pages, otherwise show compact variant #}
-      {% if logs.pages <= 7 %}
-        {% for p in range(1, logs.pages + 1) %}
-        {% if p == logs.page %}
-        <span class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold"
-              style="background-color:var(--color-primary);color:var(--color-bg);">{{ p }}</span>
-        {% else %}
-        <a href="{{ url_for('admin.audit_logs', page=p,
-                    user_id=filters.user_id or '', action_type=filters.action_type,
-                    module=filters.module, q=filters.q,
-                    date_from=filters.date_from, date_to=filters.date_to) }}"
-           class="w-8 h-8 flex items-center justify-center rounded-lg text-sm transition-colors"
-           style="color:var(--color-txt-secondary);border:1px solid var(--color-border);background:var(--color-surface);"
+      {% set win_start = [1, logs.page - 2] | max %}
+      {% set win_end   = [logs.pages, logs.page + 2] | min %}
+
+      {% if win_start > 1 %}
+        <a href="{{ url_for('admin.audit_logs', page=1, **filters) }}"
+           class="w-8 h-8 rounded-lg flex items-center justify-center text-xs
+                  font-semibold transition"
+           style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-           onmouseout="this.style.backgroundColor='var(--color-surface)'">{{ p }}</a>
+           onmouseout="this.style.backgroundColor='transparent'">1</a>
+        {% if win_start > 2 %}
+        <span class="text-xs px-1" style="color:var(--color-txt-muted);">…</span>
         {% endif %}
-        {% endfor %}
-
-      {% else %}
-        {# Compact: iter_pages with ellipsis #}
-        {% for p in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-          {% if p %}
-            {% if p == logs.page %}
-            <span class="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold"
-                  style="background-color:var(--color-primary);color:var(--color-bg);">{{ p }}</span>
-            {% else %}
-            <a href="{{ url_for('admin.audit_logs', page=p,
-                        user_id=filters.user_id or '', action_type=filters.action_type,
-                        module=filters.module, q=filters.q,
-                        date_from=filters.date_from, date_to=filters.date_to) }}"
-               class="w-8 h-8 flex items-center justify-center rounded-lg text-sm transition-colors"
-               style="color:var(--color-txt-secondary);border:1px solid var(--color-border);background:var(--color-surface);"
-               onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-               onmouseout="this.style.backgroundColor='var(--color-surface)'">{{ p }}</a>
-            {% endif %}
-          {% else %}
-          <span class="w-8 h-8 flex items-center justify-center text-sm"
-                style="color:var(--color-txt-muted);">…</span>
-          {% endif %}
-        {% endfor %}
       {% endif %}
 
-      {# Next #}
-      {% if logs.has_next %}
-      <a href="{{ url_for('admin.audit_logs', page=logs.next_num,
-                  user_id=filters.user_id or '', action_type=filters.action_type,
-                  module=filters.module, q=filters.q,
-                  date_from=filters.date_from, date_to=filters.date_to) }}"
-         class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-         style="border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface);"
+      {% for p in range(win_start, win_end + 1) %}
+      <a href="{{ url_for('admin.audit_logs', page=p, **filters) }}"
+         class="w-8 h-8 rounded-lg flex items-center justify-center text-xs
+                font-semibold transition"
+         style="{% if p == logs.page %}
+                  background:var(--color-primary); color:var(--color-bg)
+                {% else %}
+                  border:1px solid var(--color-border); color:var(--color-txt-muted)
+                {% endif %}"
+         {% if p != logs.page %}
          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-         onmouseout="this.style.backgroundColor='var(--color-surface)'">
-        <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+         onmouseout="this.style.backgroundColor='transparent'"
+         {% endif %}>
+        {{ p }}
       </a>
-      {% else %}
-      <span class="w-8 h-8 rounded-lg flex items-center justify-center opacity-30 cursor-not-allowed"
-            style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
-        <span class="material-symbols-outlined text-[18px]">chevron_right</span>
-      </span>
+      {% endfor %}
+
+      {% if win_end < logs.pages %}
+        {% if win_end < logs.pages - 1 %}
+        <span class="text-xs px-1" style="color:var(--color-txt-muted);">…</span>
+        {% endif %}
+        <a href="{{ url_for('admin.audit_logs', page=logs.pages, **filters) }}"
+           class="w-8 h-8 rounded-lg flex items-center justify-center text-xs
+                  font-semibold transition"
+           style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+           onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+           onmouseout="this.style.backgroundColor='transparent'">
+          {{ logs.pages }}
+        </a>
+      {% endif %}
+
+      {% if logs.has_next %}
+      <a href="{{ url_for('admin.audit_logs', page=logs.next_num, **filters) }}"
+         class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+         style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+         onmouseout="this.style.backgroundColor='transparent'">
+        <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+      </a>
       {% endif %}
 
     </div>
   </div>
   {% endif %}
 
-</div>
+</div>{# /outer flex-col #}
+
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# Detail Modal                                                                #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+<div id="logDetailModal"
+     class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+     style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);"
+     onclick="if(event.target===this) closeLogDetail()">
+
+  <div id="modalCard"
+       class="w-full max-w-lg rounded-2xl overflow-hidden"
+       style="background-color:var(--color-surface);
+              border:1px solid var(--color-border);
+              transform:scale(0.95); opacity:0;
+              transition:transform 0.2s ease, opacity 0.2s ease;">
+
+    {# Header #}
+    <div class="flex items-center justify-between px-6 py-4"
+         style="border-bottom:1px solid var(--color-border);
+                background-color:var(--color-surface-alt);">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[20px]"
+              style="color:var(--color-txt-muted);">manage_search</span>
+        <h2 class="text-base font-bold" style="color:var(--color-txt-primary);">
+          Audit Log Detail
+        </h2>
+      </div>
+      <button onclick="closeLogDetail()"
+              class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+              style="color:var(--color-txt-muted);"
+              onmouseover="this.style.backgroundColor='var(--color-border)'"
+              onmouseout="this.style.backgroundColor='transparent'">
+        <span class="material-symbols-outlined text-[20px]">close</span>
+      </button>
+    </div>
+
+    {# Loading #}
+    <div id="modalLoading"
+         class="px-6 py-12 flex flex-col items-center gap-3">
+      <span class="material-symbols-outlined text-[36px] animate-spin"
+            style="color:var(--color-txt-muted);">progress_activity</span>
+      <span class="text-sm" style="color:var(--color-txt-muted);">Loading…</span>
+    </div>
+
+    {# Error #}
+    <div id="modalError"
+         class="hidden px-6 py-10 flex flex-col items-center gap-2 text-center">
+      <span class="material-symbols-outlined text-[32px]"
+            style="color:var(--color-error);">error</span>
+      <p class="text-sm" style="color:var(--color-error);">
+        Failed to load log details. Please try again.
+      </p>
+    </div>
+
+    {# Content #}
+    <div id="modalContent" class="hidden px-6 py-5 flex flex-col gap-3">
+
+      {# Log ID + badge #}
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-mono" id="dLogId"
+              style="color:var(--color-txt-muted);"></span>
+        <span id="dActionBadge"
+              class="text-xs px-3 py-0.5 rounded-full font-bold"></span>
+      </div>
+
+      {# Datetime #}
+      <div class="flex items-start gap-3 rounded-xl px-4 py-3"
+           style="background-color:var(--color-surface-alt);
+                  border:1px solid var(--color-border);">
+        <span class="material-symbols-outlined text-[18px] mt-0.5 shrink-0"
+              style="color:var(--color-txt-muted);">calendar_month</span>
+        <div>
+          <p class="text-xs font-medium mb-0.5"
+             style="color:var(--color-txt-muted);">Date &amp; Time</p>
+          <p class="text-sm font-semibold" id="dDatetime"
+             style="color:var(--color-txt-primary);"></p>
+        </div>
+      </div>
+
+      {# User #}
+      <div class="flex items-start gap-3 rounded-xl px-4 py-3"
+           style="background-color:var(--color-surface-alt);
+                  border:1px solid var(--color-border);">
+        <span class="material-symbols-outlined text-[18px] mt-0.5 shrink-0"
+              style="color:var(--color-txt-muted);">person</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-medium mb-0.5"
+             style="color:var(--color-txt-muted);">Performed by</p>
+          <p class="text-sm font-semibold" id="dUserName"
+             style="color:var(--color-txt-primary);"></p>
+          <p class="text-xs capitalize" id="dUserRole"
+             style="color:var(--color-txt-secondary);"></p>
+          <p class="text-xs truncate" id="dUserEmail"
+             style="color:var(--color-txt-muted);"></p>
+        </div>
+      </div>
+
+      {# Module + Action #}
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-xl px-4 py-3"
+             style="background-color:var(--color-surface-alt);
+                    border:1px solid var(--color-border);">
+          <p class="text-xs font-medium mb-1"
+             style="color:var(--color-txt-muted);">Module</p>
+          <p class="text-sm font-semibold" id="dModule"
+             style="color:var(--color-primary);"></p>
+        </div>
+        <div class="rounded-xl px-4 py-3"
+             style="background-color:var(--color-surface-alt);
+                    border:1px solid var(--color-border);">
+          <p class="text-xs font-medium mb-1"
+             style="color:var(--color-txt-muted);">Action Type</p>
+          <p class="text-sm font-semibold" id="dActionType"
+             style="color:var(--color-txt-primary);"></p>
+        </div>
+      </div>
+
+      {# Description #}
+      <div class="rounded-xl px-4 py-3"
+           style="background-color:var(--color-surface-alt);
+                  border:1px solid var(--color-border);">
+        <p class="text-xs font-medium mb-1 flex items-center gap-1"
+           style="color:var(--color-txt-muted);">
+          <span class="material-symbols-outlined text-[14px]">description</span>
+          Description
+        </p>
+        <p class="text-sm leading-relaxed" id="dDescription"
+           style="color:var(--color-txt-secondary);"></p>
+      </div>
+
+      {# Reference — shown only when present #}
+      <div id="dReferenceWrap"
+           class="hidden rounded-xl px-4 py-3"
+           style="background-color:var(--color-surface-alt);
+                  border:1px solid var(--color-border);">
+        <p class="text-xs font-medium mb-1 flex items-center gap-1"
+           style="color:var(--color-txt-muted);">
+          <span class="material-symbols-outlined text-[14px]">link</span>
+          Reference
+        </p>
+        <p class="text-sm font-mono font-semibold" id="dReference"
+           style="color:var(--color-txt-primary);"></p>
+      </div>
+
+    </div>
+
+    {# Footer #}
+    <div id="modalFooter"
+         class="hidden px-6 py-4 flex justify-end"
+         style="border-top:1px solid var(--color-border);
+                background-color:var(--color-surface-alt);">
+      <button onclick="closeLogDetail()"
+              class="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm
+                     font-semibold transition"
+              style="background:var(--color-primary); color:var(--color-bg);"
+              onmouseover="this.style.opacity='0.85'"
+              onmouseout="this.style.opacity='1'">
+        Close
+      </button>
+    </div>
+
+  </div>{# /modalCard #}
+</div>{# /logDetailModal #}
+
+
+<script>
+  const DETAIL_URL = "{{ url_for('admin.audit_log_detail', log_id=0) }}"
+                       .replace("/0", "/");
+
+  const modal   = document.getElementById("logDetailModal");
+  const card    = document.getElementById("modalCard");
+  const loading = document.getElementById("modalLoading");
+  const errorEl = document.getElementById("modalError");
+  const content = document.getElementById("modalContent");
+  const footer  = document.getElementById("modalFooter");
+
+  // Uses same color-mix pattern as the rest of the app
+  const BADGE = {
+    LOGIN:   "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)",
+    LOGOUT:  "background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)",
+    CREATE:  "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)",
+    UPDATE:  "background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)",
+    DELETE:  "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)",
+    APPROVE: "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)",
+    REJECT:  "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)",
+    EXPORT:  "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)",
+    VIEW:    "background:color-mix(in srgb,var(--color-info) 10%,transparent);color:var(--color-info)",
+  };
+
+  function openLogDetail(btn) {
+    const logId = btn.dataset.logId;
+
+    // Reset
+    loading.classList.remove("hidden");
+    errorEl.classList.add("hidden");
+    content.classList.add("hidden");
+    footer.classList.add("hidden");
+
+    // Show modal
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    requestAnimationFrame(() => {
+      card.style.transform = "scale(1)";
+      card.style.opacity   = "1";
+    });
+
+    fetch(DETAIL_URL + logId)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => {
+        document.getElementById("dLogId").textContent       = `Log #${d.log_id}`;
+        document.getElementById("dDatetime").textContent    = d.action_datetime;
+        document.getElementById("dUserName").textContent    = d.user.name;
+        document.getElementById("dUserRole").textContent    = d.user.role;
+        document.getElementById("dUserEmail").textContent   = d.user.email;
+        document.getElementById("dModule").textContent      = d.module;
+        document.getElementById("dActionType").textContent  = d.action_type;
+        document.getElementById("dDescription").textContent = d.description;
+
+        const badge = document.getElementById("dActionBadge");
+        badge.textContent   = d.action_type;
+        badge.style.cssText = BADGE[d.action_type]
+          || "background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)";
+
+        const refWrap = document.getElementById("dReferenceWrap");
+        if (d.reference_id) {
+          document.getElementById("dReference").textContent =
+            `${d.reference_table}  #${d.reference_id}`;
+          refWrap.classList.remove("hidden");
+        } else {
+          refWrap.classList.add("hidden");
+        }
+
+        loading.classList.add("hidden");
+        content.classList.remove("hidden");
+        footer.classList.remove("hidden");
+      })
+      .catch(() => {
+        loading.classList.add("hidden");
+        errorEl.classList.remove("hidden");
+      });
+  }
+
+  function closeLogDetail() {
+    card.style.transform = "scale(0.95)";
+    card.style.opacity   = "0";
+    setTimeout(() => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }, 180);
+  }
+
+  // Close on Escape
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden"))
+      closeLogDetail();
+  });
+</script>
 {% endblock %}
