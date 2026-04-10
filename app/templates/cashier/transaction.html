@@ -82,12 +82,7 @@
         if (el) el.focus()
     },
     handleBlur() {
-        setTimeout(() => {
-            if (!this.isClickingSuggestion) {
-                this.suggestions = []
-            }
-            this.isClickingSuggestion = false
-        }, 150)
+        setTimeout(() => { this.suggestions = [] }, 150)
     },
 
     async lookupProduct() {
@@ -416,7 +411,7 @@
                             <div class="absolute left-0 right-10 mt-1 rounded-xl overflow-hidden z-20 shadow-lg"
                                  style="background-color:var(--color-surface); border:1px solid var(--color-border);">
                                 <template x-for="(s, i) in suggestions" :key="s.product_id">
-                                    <button x-ref="'suggestion_' + i" @click="selectSuggestion(s)"
+                                    padding:10px<button x-ref="'suggestion_' + i" @mousedown.prevent="selectSuggestion(s)"
                                             @keydown.arrow-down.prevent="focusSuggestion(i+1)"
                                             @keydown.arrow-up.prevent="i===0 ? $refs.searchField.focus() : focusSuggestion(i-1)"
                                             @keydown.enter.prevent="selectSuggestion(s)"
@@ -708,7 +703,7 @@
                                 <div class="absolute left-0 right-13 mt-1 rounded-2xl overflow-hidden z-20 shadow-xl"
                                      style="background-color:var(--color-surface); border:1px solid var(--color-border);">
                                     <template x-for="(s, i) in suggestions" :key="s.product_id">
-                                        <button @click="selectSuggestion(s)"
+                                        <button @mousedown.prevent="selectSuggestion(s)"
                                                 class="w-full flex items-center justify-between px-4 py-3 text-left transition"
                                                 style="border-top:1px solid var(--color-border);" :style="i===0 ? 'border-top:none' : ''"
                                                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
