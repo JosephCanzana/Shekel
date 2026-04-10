@@ -5,497 +5,364 @@
 {% block body %}
 
 <script>
-    const PRODUCTS_DATA = {{ products_data | tojson }};
-    const CAN_MANAGE    = {{ can_manage | tojson }};
-    const USER_ROLE     = {{ current_user.role | tojson }};
+    const PRODUCTS_DATA   = {{ products_data | tojson }};
+    const CAN_MANAGE      = {{ can_manage | tojson }};
+    const USER_ROLE       = {{ current_user.role | tojson }};
     const CATEGORIES_DATA = {{ categories_data | tojson if categories_data is defined else '[]' }};
 
     function inventoryData() {
-    return {
-        // ── existing state ────────────────────────────────
-        mode:            'manual',
-        search:          '',
-        filterStatus:    'active',
-        filterCategory:  '',
-        filterLowStock:  false,
-        filterNoStock:   false,
-        sortOrder:       '',
-        rows:            PRODUCTS_DATA,
-        canManage:       CAN_MANAGE,
-        page:            1,
-        perPage:         10,
-        selectedProduct: null,
-        mobileDetailOpen: false,
-        filterModalOpen:  false,
-        // ── select mode state ─────────────────────────────
-        selectMode:       false,
-        selectedIds:      [],
-        confirmArchiveOpen: false,
+        return {
+            // ── state ─────────────────────────────────────────────
+            search:          '',
+            filterStatus:    'active',
+            filterCategory:  '',
+            filterLowStock:  false,
+            filterNoStock:   false,
+            sortOrder:       '',
+            rows:            PRODUCTS_DATA,
+            canManage:       CAN_MANAGE,
+            page:            1,
+            perPage:         10,
+            selectedProduct: null,
+            mobileDetailOpen:    false,
+            filterModalOpen:     false,
+            columnPickerOpen:    false,
+            bulkActionSheetOpen: false,
+            bulkArchiveConfirm:   false,
+            bulkUnarchiveConfirm: false,
 
-        // ── bulk threshold modal ──────────────────────────
-        thresholdModalOpen:  false,
-        thresholdInput:      '',
-        thresholdSubmitting: false,
-        thresholdError:      '',
+            // ── select mode ───────────────────────────────────────
+            selectMode:  false,
+            selectedIds: [],
 
-        // ── bulk category modal ───────────────────────────
-        categoryModalOpen:   false,
-        categorySelectedId:  '',
-        categorySubmitting:  false,
-        categoryError:       '',
+            // ── bulk threshold modal ──────────────────────────────
+            thresholdModalOpen:  false,
+            thresholdInput:      '',
+            thresholdSubmitting: false,
+            thresholdError:      '',
 
-        // ── mobile bulk action sheet ──────────────────────
-        bulkActionSheetOpen: false,
+            // ── bulk category modal ───────────────────────────────
+            categoryModalOpen:  false,
+            categorySelectedId: '',
+            categorySubmitting: false,
+            categoryError:      '',
 
-        // ── column picker state ───────────────────────────
-        columnPickerOpen: false,
-        visibleColumns:   [],
-        availableColumns: [],
-        defaultColumns:   [],
-        columnsLoaded:    false,
+            // ── column state ──────────────────────────────────────
+            visibleColumns:   [],
+            availableColumns: [],
+            defaultColumns:   [],
+            columnsLoaded:    false,
 
-        // ── column definitions ────────────────────────────
-        columnDefs: [
-            { key: 'sku',                 label: 'Barcode / SKU',       group: 'Product' },
-            { key: 'bundle_barcode',      label: 'Bundle Barcode',       group: 'Product' },
-            { key: 'bundle_name',         label: 'Bundle Name',          group: 'Product' },
-            { key: 'units_per_bundle',    label: 'Units per Bundle',     group: 'Product' },
-            { key: 'category',            label: 'Category',             group: 'Product' },
-            { key: 'status',              label: 'Status',               group: 'Product' },
-            { key: 'stock',               label: 'Stock (Units)',        group: 'Inventory' },
-            { key: 'low_stock_threshold', label: 'Low Stock Threshold',  group: 'Inventory' },
-            { key: 'last_updated',        label: 'Last Updated',         group: 'Inventory' },
-            { key: 'unit_cost',           label: 'Unit Cost',            group: 'Pricing' },
-            { key: 'unit_revenue',        label: 'Unit Revenue',         group: 'Pricing' },
-            { key: 'unit_price',          label: 'Unit Price',           group: 'Pricing' },
-            { key: 'bundle_cost',         label: 'Bundle Cost',          group: 'Pricing' },
-            { key: 'bundle_revenue',      label: 'Bundle Revenue',       group: 'Pricing' },
-            { key: 'bundle_price',        label: 'Bundle Price',         group: 'Pricing' },
-            { key: 'stock_cost_value',    label: 'Stock Cost Value',     group: 'Value' },
-            { key: 'stock_revenue_value', label: 'Stock Revenue Value',  group: 'Value' },
-            { key: 'stock_total_value',   label: 'Stock Total Value',    group: 'Value' },
-        ],
+            columnDefs: [
+                { key: 'sku',                 label: 'Barcode / SKU',      group: 'Product'   },
+                { key: 'bundle_barcode',      label: 'Bundle Barcode',      group: 'Product'   },
+                { key: 'bundle_name',         label: 'Bundle Name',         group: 'Product'   },
+                { key: 'units_per_bundle',    label: 'Units per Bundle',    group: 'Product'   },
+                { key: 'category',            label: 'Category',            group: 'Product'   },
+                { key: 'status',              label: 'Status',              group: 'Product'   },
+                { key: 'stock',               label: 'Stock (Units)',       group: 'Inventory' },
+                { key: 'low_stock_threshold', label: 'Low Stock Threshold', group: 'Inventory' },
+                { key: 'last_updated',        label: 'Last Updated',        group: 'Inventory' },
+                { key: 'unit_cost',           label: 'Unit Cost',           group: 'Pricing'   },
+                { key: 'unit_revenue',        label: 'Unit Revenue',        group: 'Pricing'   },
+                { key: 'unit_price',          label: 'Unit Price',          group: 'Pricing'   },
+                { key: 'bundle_cost',         label: 'Bundle Cost',         group: 'Pricing'   },
+                { key: 'bundle_revenue',      label: 'Bundle Revenue',      group: 'Pricing'   },
+                { key: 'bundle_price',        label: 'Bundle Price',        group: 'Pricing'   },
+                { key: 'stock_cost_value',    label: 'Stock Cost Value',    group: 'Value'     },
+                { key: 'stock_revenue_value', label: 'Stock Revenue Value', group: 'Value'     },
+                { key: 'stock_total_value',   label: 'Stock Total Value',   group: 'Value'     },
+            ],
 
-        get columnGroups() {
-            const g = {}
-            this.columnDefs.forEach(col => {
-                if (this.availableColumns.includes(col.key)) {
-                    if (!g[col.group]) g[col.group] = []
-                    g[col.group].push(col)
+            get columnGroups() {
+                const g = {}
+                this.columnDefs.forEach(col => {
+                    if (this.availableColumns.includes(col.key)) {
+                        if (!g[col.group]) g[col.group] = []
+                        g[col.group].push(col)
+                    }
+                })
+                return Object.entries(g).map(([name, cols]) => ({ name, cols }))
+            },
+
+            isVisible(key)   { return this.visibleColumns.includes(key) },
+            isAvailable(key) { return this.availableColumns.includes(key) },
+
+            toggleColumn(key) {
+                const idx = this.visibleColumns.indexOf(key)
+                if (idx === -1) this.visibleColumns.push(key)
+                else            this.visibleColumns.splice(idx, 1)
+            },
+
+            resetColumnsToDefault() { this.visibleColumns = [...this.defaultColumns] },
+
+            async loadColumnPreferences() {
+                try {
+                    const res  = await fetch('/inventory/api/column-preferences?page=inventory')
+                    const data = await res.json()
+                    this.availableColumns = data.available || []
+                    this.defaultColumns   = data.defaults  || []
+                    this.visibleColumns   = data.columns.length ? data.columns : [...this.defaultColumns]
+                } catch(e) {
+                    this.visibleColumns   = ['stock', 'unit_price', 'stock_total_value', 'low_stock_threshold']
+                    this.availableColumns = this.visibleColumns
                 }
-            })
-            return Object.entries(g).map(([name, cols]) => ({ name, cols }))
-        },
+                this.columnsLoaded = true
+            },
 
-        isVisible(key)   { return this.visibleColumns.includes(key) },
-        isAvailable(key) { return this.availableColumns.includes(key) },
-
-        toggleColumn(key) {
-            const idx = this.visibleColumns.indexOf(key)
-            if (idx === -1) { this.visibleColumns.push(key) }
-            else            { this.visibleColumns.splice(idx, 1) }
-        },
-
-        resetColumnsToDefault() {
-            this.visibleColumns = [...this.defaultColumns]
-        },
-
-        async loadColumnPreferences() {
-            try {
-                const res  = await fetch('/inventory/api/column-preferences?page=inventory')
-                const data = await res.json()
-                this.availableColumns = data.available || []
-                this.defaultColumns   = data.defaults  || []
-                this.visibleColumns   = data.columns.length
-                    ? data.columns
-                    : [...this.defaultColumns]
-            } catch(e) {
-                console.error('Failed to load column preferences', e)
-                this.visibleColumns   = ['stock', 'unit_price', 'stock_total_value', 'low_stock_threshold']
-                this.availableColumns = this.visibleColumns
-            }
-            this.columnsLoaded = true
-        },
-
-        async saveColumnPreferences() {
-            try {
-                await fetch('/inventory/api/column-preferences', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrf_token]').value
-                    },
-                    body: JSON.stringify({
-                        page:    'inventory',
-                        columns: this.visibleColumns
+            async saveColumnPreferences() {
+                try {
+                    await fetch('/inventory/api/column-preferences', {
+                        method:  'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken':  document.querySelector('[name=csrf_token]').value
+                        },
+                        body: JSON.stringify({ page: 'inventory', columns: this.visibleColumns })
                     })
-                })
-            } catch(e) { console.error('Failed to save column preferences', e) }
-        },
+                } catch(e) { console.error('Failed to save column preferences', e) }
+            },
 
-        // ── bulk threshold ────────────────────────────────
-        openThresholdModal() {
-            this.thresholdInput      = ''
-            this.thresholdError      = ''
-            this.thresholdSubmitting = false
-            this.thresholdModalOpen  = true
-            this.bulkActionSheetOpen = false
-        },
-
-        async submitBulkThreshold() {
-            const val = parseInt(this.thresholdInput)
-            if (isNaN(val) || val < 0) {
-                this.thresholdError = 'Enter a valid non-negative number.'
-                return
-            }
-            this.thresholdSubmitting = true
-            this.thresholdError      = ''
-            try {
-                const res = await fetch('/inventory/bulk/threshold-update', {
-                    method:  'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken':  document.querySelector('[name=csrf_token]').value,
-                    },
-                    body: JSON.stringify({ product_ids: this.selectedIds, threshold: val }),
-                })
-                const data = await res.json()
-                if (!res.ok) {
-                    this.thresholdError      = data.error || 'Failed to update.'
-                    this.thresholdSubmitting = false
-                    return
-                }
-                this.selectedIds.forEach(id => {
-                    const row = this.rows.find(r => r.product_id === id)
-                    if (row) row.low_reorder_threshold = val
-                })
-                this.thresholdModalOpen = false
-                this.selectedIds        = []
-                this.selectMode         = false
-            } catch(e) {
-                this.thresholdError      = 'Network error. Please try again.'
+            // ── bulk threshold ────────────────────────────────────
+            openThresholdModal() {
+                this.thresholdInput      = ''
+                this.thresholdError      = ''
                 this.thresholdSubmitting = false
-            }
-        },
+                this.thresholdModalOpen  = true
+                this.bulkActionSheetOpen = false
+            },
 
-        // ── bulk category ─────────────────────────────────
-        openCategoryModal() {
-            this.categorySelectedId = ''
-            this.categoryError      = ''
-            this.categorySubmitting = false
-            this.categoryModalOpen  = true
-            this.bulkActionSheetOpen = false
-        },
+            async submitBulkThreshold() {
+                const val = parseInt(this.thresholdInput)
+                if (isNaN(val) || val < 0) { this.thresholdError = 'Enter a valid non-negative number.'; return }
+                this.thresholdSubmitting = true
+                this.thresholdError      = ''
+                try {
+                    const res  = await fetch('/inventory/bulk/threshold-update', {
+                        method:  'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                        body:    JSON.stringify({ product_ids: this.selectedIds, threshold: val }),
+                    })
+                    const data = await res.json()
+                    if (!res.ok) { this.thresholdError = data.error || 'Failed to update.'; this.thresholdSubmitting = false; return }
+                    this.selectedIds.forEach(id => {
+                        const row = this.rows.find(r => r.product_id === id)
+                        if (row) row.low_reorder_threshold = val
+                    })
+                    this.thresholdModalOpen = false
+                    this.selectedIds        = []
+                    this.selectMode         = false
+                } catch(e) { this.thresholdError = 'Network error.'; this.thresholdSubmitting = false }
+            },
 
-        async submitBulkCategory() {
-            if (!this.categorySelectedId) {
-                this.categoryError = 'Please select a category.'
-                return
-            }
-            this.categorySubmitting = true
-            this.categoryError      = ''
-            try {
-                const res = await fetch('/inventory/bulk/category-update', {
+            // ── bulk category ─────────────────────────────────────
+            openCategoryModal() {
+                this.categorySelectedId  = ''
+                this.categoryError       = ''
+                this.categorySubmitting  = false
+                this.categoryModalOpen   = true
+                this.bulkActionSheetOpen = false
+            },
+
+            async submitBulkCategory() {
+                if (!this.categorySelectedId) { this.categoryError = 'Please select a category.'; return }
+                this.categorySubmitting = true
+                this.categoryError      = ''
+                try {
+                    const res  = await fetch('/inventory/bulk/category-update', {
+                        method:  'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                        body:    JSON.stringify({ product_ids: this.selectedIds, category_id: parseInt(this.categorySelectedId) }),
+                    })
+                    const data = await res.json()
+                    if (!res.ok) { this.categoryError = data.error || 'Failed.'; this.categorySubmitting = false; return }
+                    const catId   = parseInt(this.categorySelectedId)
+                    const catName = this.categories.find(c => c.id === catId)?.name || data.category_name || ''
+                    this.selectedIds.forEach(id => {
+                        const row = this.rows.find(r => r.product_id === id)
+                        if (row) { row.category_id = catId; row.category_name = catName }
+                    })
+                    this.categoryModalOpen = false
+                    this.selectedIds       = []
+                    this.selectMode        = false
+                } catch(e) { this.categoryError = 'Network error.'; this.categorySubmitting = false }
+            },
+
+            // ── archive / unarchive (AJAX, called after confirm) ──
+            async archiveSelected() {
+                const res = await fetch('/inventory/bulk/status-update', {
                     method:  'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken':  document.querySelector('[name=csrf_token]').value,
-                    },
-                    body: JSON.stringify({
-                        product_ids: this.selectedIds,
-                        category_id: parseInt(this.categorySelectedId)
-                    }),
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                    body:    JSON.stringify({ product_ids: this.selectedIds, status: 'archived' })
                 })
-                const data = await res.json()
-                if (!res.ok) {
-                    this.categoryError      = data.error || 'Failed to update.'
-                    this.categorySubmitting = false
-                    return
+                if (res.ok) {
+                    this.selectedIds.forEach(id => { const r = this.rows.find(r => r.product_id === id); if (r) r.status = 'archived' })
+                    this.selectedIds = []
+                    this.selectMode  = false
                 }
-                const catId   = parseInt(this.categorySelectedId)
-                const catName = this.categories.find(c => c.id === catId)?.name || data.category_name || ''
-                this.selectedIds.forEach(id => {
-                    const row = this.rows.find(r => r.product_id === id)
-                    if (row) { row.category_id = catId; row.category_name = catName }
+            },
+
+            async unarchiveSelected() {
+                const res = await fetch('/inventory/bulk/status-update', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                    body:    JSON.stringify({ product_ids: this.selectedIds, status: 'active' })
                 })
-                this.categoryModalOpen = false
-                this.selectedIds       = []
-                this.selectMode        = false
-            } catch(e) {
-                this.categoryError      = 'Network error. Please try again.'
-                this.categorySubmitting = false
-            }
-        },
+                if (res.ok) {
+                    this.selectedIds.forEach(id => { const r = this.rows.find(r => r.product_id === id); if (r) r.status = 'active' })
+                    this.selectedIds = []
+                    this.selectMode  = false
+                }
+            },
 
-        // ── column value helpers ──────────────────────────
-        colValue(p, key) {
-            switch(key) {
-                case 'sku':                 return p.product_id
-                case 'bundle_barcode':      return p.bundle_id || '—'
-                case 'bundle_name':         return p.bundle_name || '—'
-                case 'units_per_bundle':    return p.bundle_count ? p.bundle_count + ' units' : '—'
-                case 'category':            return this.titleCase(p.category_name)
-                case 'status':              return this.titleCase(p.status)
-                case 'stock':               return p.stock + ' units'
-                case 'low_stock_threshold': return p.low_reorder_threshold + ' units'
-                case 'last_updated':        return p.last_updated || '—'
-                case 'unit_cost':           return this.formatPeso(p.cost_price)
-                case 'unit_revenue':        return this.formatPeso(p.revenue_price)
-                case 'unit_price':          return this.formatPeso(p.total_price)
-                case 'bundle_cost':         return p.bundle_count ? this.formatPeso(p.cost_price * p.bundle_count) : '—'
-                case 'bundle_revenue':      return p.bundle_count ? this.formatPeso(p.revenue_price * p.bundle_count) : '—'
-                case 'bundle_price':        return p.bundle_count ? this.formatPeso(p.total_price * p.bundle_count) : '—'
-                case 'stock_cost_value':    return this.formatPeso(p.cost_price * p.stock)
-                case 'stock_revenue_value': return this.formatPeso(p.revenue_price * p.stock)
-                case 'stock_total_value':   return this.formatPeso(p.total_price * p.stock)
-                default: return '—'
-            }
-        },
+            // ── column helpers ────────────────────────────────────
+            colValue(p, key) {
+                switch(key) {
+                    case 'sku':                 return p.product_id
+                    case 'bundle_barcode':      return p.bundle_id || '—'
+                    case 'bundle_name':         return p.bundle_name || '—'
+                    case 'units_per_bundle':    return p.bundle_count ? p.bundle_count + ' units' : '—'
+                    case 'category':            return this.titleCase(p.category_name)
+                    case 'status':              return this.titleCase(p.status)
+                    case 'stock':               return p.stock + ' units'
+                    case 'low_stock_threshold': return p.low_reorder_threshold + ' units'
+                    case 'last_updated':        return p.last_updated || '—'
+                    case 'unit_cost':           return this.formatPeso(p.cost_price)
+                    case 'unit_revenue':        return this.formatPeso(p.revenue_price)
+                    case 'unit_price':          return this.formatPeso(p.total_price)
+                    case 'bundle_cost':         return p.bundle_count ? this.formatPeso(p.cost_price * p.bundle_count) : '—'
+                    case 'bundle_revenue':      return p.bundle_count ? this.formatPeso(p.revenue_price * p.bundle_count) : '—'
+                    case 'bundle_price':        return p.bundle_count ? this.formatPeso(p.total_price * p.bundle_count) : '—'
+                    case 'stock_cost_value':    return this.formatPeso(p.cost_price * p.stock)
+                    case 'stock_revenue_value': return this.formatPeso(p.revenue_price * p.stock)
+                    case 'stock_total_value':   return this.formatPeso(p.total_price * p.stock)
+                    default: return '—'
+                }
+            },
 
-        colStyle(p, key) {
-            if (key === 'stock') {
-                if (p.stock === 0) return 'color:var(--color-error);font-weight:600'
-                if (p.stock <= p.low_reorder_threshold) return 'color:var(--color-warning);font-weight:600'
-            }
-            if (['unit_cost','unit_revenue','bundle_cost','bundle_revenue',
-                 'stock_cost_value','stock_revenue_value'].includes(key)) {
+            colStyle(p, key) {
+                if (key === 'stock') {
+                    if (p.stock === 0) return 'color:var(--color-error);font-weight:600'
+                    if (p.stock <= p.low_reorder_threshold) return 'color:var(--color-warning);font-weight:600'
+                }
+                if (['unit_cost','unit_revenue','bundle_cost','bundle_revenue','stock_cost_value','stock_revenue_value'].includes(key))
+                    return 'color:var(--color-txt-secondary)'
+                if (['unit_price','bundle_price','stock_total_value'].includes(key))
+                    return 'color:var(--color-txt-primary);font-weight:600'
                 return 'color:var(--color-txt-secondary)'
-            }
-            if (['unit_price','bundle_price','stock_total_value'].includes(key)) {
-                return 'color:var(--color-txt-primary);font-weight:600'
-            }
-            return 'color:var(--color-txt-secondary)'
-        },
+            },
 
-        isNumericCol(key) {
-            return ['unit_cost','unit_revenue','unit_price','bundle_cost','bundle_revenue',
-                    'bundle_price','stock_cost_value','stock_revenue_value','stock_total_value',
-                    'stock','low_stock_threshold','units_per_bundle'].includes(key)
-        },
+            // ── misc helpers ──────────────────────────────────────
+            titleCase(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : '' },
+            formatPeso(val) {
+                return '₱' + parseFloat(val).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            },
 
-        // ── existing helpers ──────────────────────────────
-        titleCase(str) {
-            return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''
-        },
+            openDetail(product) { this.selectedProduct = product; this.mobileDetailOpen = true },
+            closeDetail()       { this.mobileDetailOpen = false; setTimeout(() => this.selectedProduct = null, 300) },
 
-        openDetail(product) {
-            this.selectedProduct  = product
-            this.mobileDetailOpen = true
-        },
+            get categories() {
+                const seen = new Set()
+                return this.rows
+                    .map(r => ({ id: r.category_id, name: r.category_name }))
+                    .filter(c => c.name && c.name !== '—' && !seen.has(c.id) && seen.add(c.id))
+            },
 
-        closeDetail() {
-            this.mobileDetailOpen = false
-            setTimeout(() => this.selectedProduct = null, 300)
-        },
+            get lowStockCount() { return this.rows.filter(r => r.stock > 0 && r.stock <= r.low_reorder_threshold && r.status === 'active').length },
+            get noStockCount()  { return this.rows.filter(r => r.stock === 0 && r.status === 'active').length },
 
-        get categories() {
-            const seen = new Set()
-            return this.rows
-                .map(r => ({ id: r.category_id, name: r.category_name }))
-                .filter(c => c.name && c.name !== '—' && !seen.has(c.id) && seen.add(c.id))
-        },
+            get activeFilterCount() {
+                let n = 0
+                if (this.filterStatus !== 'active')                              n++
+                if (this.filterCategory !== '' && this.filterCategory !== 'all') n++
+                if (this.filterLowStock)                                          n++
+                if (this.filterNoStock)                                           n++
+                if (this.sortOrder !== '')                                        n++
+                return n
+            },
 
-        get lowStockCount() {
-            return this.rows.filter(r =>
-                r.stock > 0 && r.stock <= r.low_reorder_threshold && r.status === 'active'
-            ).length
-        },
+            resetFilters() {
+                this.filterStatus = 'active'; this.filterCategory = ''
+                this.filterLowStock = false;  this.filterNoStock = false
+                this.sortOrder = '';          this.resetPage()
+            },
 
-        get noStockCount() {
-            return this.rows.filter(r => r.stock === 0 && r.status === 'active').length
-        },
-
-        get totalInventoryValue() {
-            return this.filtered.reduce((sum, p) => sum + (p.total_price * p.stock), 0)
-        },
-
-        formatPeso(val) {
-            return '₱' + parseFloat(val).toLocaleString('en-PH', {
-                minimumFractionDigits: 2, maximumFractionDigits: 2
-            })
-        },
-
-        get activeFilterCount() {
-            let n = 0
-            if (this.filterStatus !== 'active')                              n++
-            if (this.filterCategory !== '' && this.filterCategory !== 'all') n++
-            if (this.filterLowStock)                                          n++
-            if (this.filterNoStock)                                           n++
-            if (this.sortOrder !== '')                                        n++
-            return n
-        },
-
-        resetFilters() {
-            this.filterStatus   = 'active'
-            this.filterCategory = ''
-            this.filterLowStock = false
-            this.filterNoStock  = false
-            this.sortOrder      = ''
-            this.resetPage()
-        },
-
-        get filtered() {
-            const q         = this.search.toLowerCase()
-            const catFilter = this.filterCategory.trim().toLowerCase()
-
-            let result = this.rows.filter(r => {
-                const matchSearch   = q === '' ||
-                                      r.product_name.toLowerCase().includes(q) ||
-                                      r.category_name.toLowerCase().includes(q) ||
-                                      r.product_id.toLowerCase().includes(q)
-                const matchStatus   = this.filterStatus === 'all' || r.status === this.filterStatus
-                const matchCategory = catFilter === '' || catFilter === 'all' ||
-                                      r.category_name.toLowerCase().includes(catFilter)
-                const stockFilterActive = this.filterLowStock || this.filterNoStock
-                const matchStockStatus  = !stockFilterActive || (
-                    (this.filterLowStock && r.stock > 0 && r.stock <= r.low_reorder_threshold && r.status === 'active') ||
-                    (this.filterNoStock  && r.stock === 0 && r.status === 'active')
-                )
-                return matchSearch && matchStatus && matchCategory && matchStockStatus
-            })
-
-            if (this.sortOrder === 'asc')  result.sort((a, b) => a.product_name.localeCompare(b.product_name))
-            if (this.sortOrder === 'desc') result.sort((a, b) => b.product_name.localeCompare(a.product_name))
-            return result
-        },
-
-        get paginated() {
-            const start = (this.page - 1) * this.perPage
-            return this.filtered.slice(start, start + this.perPage)
-        },
-
-        get totalPages() {
-            return Math.max(1, Math.ceil(this.filtered.length / this.perPage))
-        },
-
-        resetPage() { this.page = 1 },
-
-        // ── select mode ───────────────────────────────────
-        toggleSelectMode() {
-            this.selectMode = !this.selectMode
-            if (!this.selectMode) this.selectedIds = []
-        },
-        isSelected(id) { return this.selectedIds.includes(id) },
-        toggleItem(id) {
-            const idx = this.selectedIds.indexOf(id)
-            if (idx === -1) this.selectedIds.push(id)
-            else            this.selectedIds.splice(idx, 1)
-        },
-        togglePageAll() {
-            const ids = this.paginated.map(p => p.product_id)
-            const allOn = ids.every(id => this.selectedIds.includes(id))
-            if (allOn) this.selectedIds = this.selectedIds.filter(id => !ids.includes(id))
-            else ids.forEach(id => { if (!this.selectedIds.includes(id)) this.selectedIds.push(id) })
-        },
-        get pageAllSelected() {
-            const ids = this.paginated.map(p => p.product_id)
-            return ids.length > 0 && ids.every(id => this.selectedIds.includes(id))
-        },
-        goToAdjust() {
-            if (this.selectedIds.length === 0) return
-            window.location.href = '/inventory/adjust?ids=' + this.selectedIds.join(',')
-        },
-        async archiveSelected() {
-            if (this.selectedIds.length === 0) return
-            const res = await fetch('/inventory/bulk/status-update', {
-                method:  'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken':  document.querySelector('[name=csrf_token]').value,
-                },
-                body: JSON.stringify({ product_ids: this.selectedIds, status: 'archived' })
-            })
-            if (res.ok) {
-                this.selectedIds.forEach(id => {
-                    const row = this.rows.find(r => r.product_id === id)
-                    if (row) row.status = 'archived'
+            get filtered() {
+                const q         = this.search.toLowerCase()
+                const catFilter = this.filterCategory.trim().toLowerCase()
+                let result = this.rows.filter(r => {
+                    const matchSearch   = q === '' || r.product_name.toLowerCase().includes(q) || r.category_name.toLowerCase().includes(q) || r.product_id.toLowerCase().includes(q)
+                    const matchStatus   = this.filterStatus === 'all' || r.status === this.filterStatus
+                    const matchCategory = catFilter === '' || catFilter === 'all' || r.category_name.toLowerCase().includes(catFilter)
+                    const stockActive   = this.filterLowStock || this.filterNoStock
+                    const matchStock    = !stockActive || (
+                        (this.filterLowStock && r.stock > 0 && r.stock <= r.low_reorder_threshold && r.status === 'active') ||
+                        (this.filterNoStock  && r.stock === 0 && r.status === 'active')
+                    )
+                    return matchSearch && matchStatus && matchCategory && matchStock
                 })
-                this.selectedIds        = []
-                this.selectMode         = false
-                this.confirmArchiveOpen = false
-            }
-        },
-        async unarchiveSelected() {
-            if (this.selectedIds.length === 0) return
-            const res = await fetch('/inventory/bulk/status-update', {
-                method:  'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken':  document.querySelector('[name=csrf_token]').value,
-                },
-                body: JSON.stringify({ product_ids: this.selectedIds, status: 'active' })
-            })
-            if (res.ok) {
-                this.selectedIds.forEach(id => {
-                    const row = this.rows.find(r => r.product_id === id)
-                    if (row) row.status = 'active'
-                })
-                this.selectedIds = []
-                this.selectMode  = false
-            }
-        },
-        get anySelectedArchived() {
-            return this.selectedIds.some(id => {
-                const row = this.rows.find(r => r.product_id === id)
-                return row && row.status === 'archived'
-            })
-        },
-        get anySelectedActive() {
-            return this.selectedIds.some(id => {
-                const row = this.rows.find(r => r.product_id === id)
-                return row && row.status === 'active'
-            })
+                if (this.sortOrder === 'asc')  result.sort((a, b) => a.product_name.localeCompare(b.product_name))
+                if (this.sortOrder === 'desc') result.sort((a, b) => b.product_name.localeCompare(a.product_name))
+                return result
+            },
+
+            get paginated()   { const s = (this.page - 1) * this.perPage; return this.filtered.slice(s, s + this.perPage) },
+            get totalPages()  { return Math.max(1, Math.ceil(this.filtered.length / this.perPage)) },
+            resetPage()       { this.page = 1 },
+
+            // ── select mode ───────────────────────────────────────
+            toggleSelectMode() { this.selectMode = !this.selectMode; if (!this.selectMode) this.selectedIds = [] },
+            isSelected(id)     { return this.selectedIds.includes(id) },
+            toggleItem(id)     { const i = this.selectedIds.indexOf(id); if (i === -1) this.selectedIds.push(id); else this.selectedIds.splice(i, 1) },
+            togglePageAll() {
+                const ids = this.paginated.map(p => p.product_id)
+                const allOn = ids.every(id => this.selectedIds.includes(id))
+                if (allOn) this.selectedIds = this.selectedIds.filter(id => !ids.includes(id))
+                else ids.forEach(id => { if (!this.selectedIds.includes(id)) this.selectedIds.push(id) })
+            },
+            get pageAllSelected() { const ids = this.paginated.map(p => p.product_id); return ids.length > 0 && ids.every(id => this.selectedIds.includes(id)) },
+            goToAdjust()          { if (this.selectedIds.length) window.location.href = '/inventory/adjust?ids=' + this.selectedIds.join(',') },
+            get anySelectedArchived() { return this.selectedIds.some(id => { const r = this.rows.find(r => r.product_id === id); return r && r.status === 'archived' }) },
+            get anySelectedActive()   { return this.selectedIds.some(id => { const r = this.rows.find(r => r.product_id === id); return r && r.status === 'active'   }) },
         }
     }
-}
 </script>
 
-<div x-data="inventoryData()"
-x-init="loadColumnPreferences()"
-class="space-y-5">
+<div x-data="inventoryData()" x-init="loadColumnPreferences()" class="space-y-5">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     {# ── Header ── #}
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-xl font-bold tracking-tight"
-                style="color: var(--color-txt-primary);">Inventory</h1>
-            <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
+            <h1 class="text-xl font-bold tracking-tight" style="color:var(--color-txt-primary);">Inventory</h1>
+            <p class="text-sm mt-0.5" style="color:var(--color-txt-muted);">
                 <span x-text="filtered.length"></span> of {{ products | length }} products
             </p>
         </div>
-
         <div class="flex items-center gap-2">
-
-            {# ── Select toggle ── #}
             <button @click="toggleSelectMode()"
                     class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
                     :style="selectMode
-                        ? 'border:1px solid var(--color-accent);color:var(--color-accent);background-color:color-mix(in srgb,var(--color-accent) 8%,transparent)'
-                        : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface)'"
-                    onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                <span class="material-symbols-outlined text-[17px]"
-                    x-text="selectMode ? 'cancel' : 'check_box_outline_blank'"></span>
+                        ? 'border:1px solid var(--color-accent);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 8%,transparent)'
+                        : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface)'"
+                    onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                <span class="material-symbols-outlined text-[17px]" x-text="selectMode ? 'cancel' : 'check_box_outline_blank'"></span>
                 <span class="hidden sm:inline" x-text="selectMode ? 'Cancel Select' : 'Select'"></span>
             </button>
-
-            {# ── Stock-In ── #}
             <a href="{{ url_for('stocking.stock_in') }}"
-            title="Stock-In"
-            class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
-            style="border: 1px solid var(--color-primary); color: var(--color-primary);"
-            onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-primary) 8%,transparent)'"
-            onmouseout="this.style.backgroundColor='transparent'">
+               class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
+               style="border:1px solid var(--color-primary);color:var(--color-primary);"
+               onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-primary) 8%,transparent)'"
+               onmouseout="this.style.backgroundColor='transparent'">
                 <span class="material-symbols-outlined text-[17px]">inventory_2</span>
                 <span class="hidden sm:inline">Stock-In</span>
             </a>
-
-            {# ── Add Product ── #}
             <template x-if="canManage">
                 <a href="{{ url_for('inventory.add') }}"
-                class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
-                style="background-color: var(--color-primary); color: var(--color-bg);"
-                onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
-                onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                   class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
+                   style="background:var(--color-primary);color:var(--color-bg);"
+                   onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
                     <span class="material-symbols-outlined text-[17px]">post_add</span>
                     <span class="hidden sm:inline">Add Product</span>
                 </a>
@@ -503,413 +370,220 @@ class="space-y-5">
         </div>
     </div>
 
-    {# ── Search + Filter button ── #}
+    {# ── Search + Filters + Columns ── #}
     <div class="flex gap-3">
-
-        {# Search bar #}
         <div class="relative flex-1">
-            <span class="material-symbols-outlined text-[18px]
-                         absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style="color: var(--color-txt-muted);">search</span>
-            <input type="text"
-                   x-model="search"
-                   @input="resetPage()"
-                   placeholder="Search by name, product ID, or category..."
+            <span class="material-symbols-outlined text-[18px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:var(--color-txt-muted);">search</span>
+            <input type="text" x-model="search" @input="resetPage()"
+                   placeholder="Search by name, ID, or category…"
                    class="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none transition"
-                   style="border: 1px solid var(--color-border);
-                          background-color: var(--color-surface);
-                          color: var(--color-txt-primary);"
-                   onfocus="this.style.borderColor='var(--color-accent)';
-                            this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                   onblur="this.style.borderColor='var(--color-border)';
-                           this.style.boxShadow='none'">
+                   style="border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-txt-primary);"
+                   onfocus="this.style.borderColor='var(--color-accent)';this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                   onblur="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
         </div>
-
-        {# Filter button #}
         <button @click="filterModalOpen = true"
                 class="relative flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
                 :style="activeFilterCount > 0
-                    ? 'border:1px solid var(--color-accent);color:var(--color-accent);background-color:color-mix(in srgb,var(--color-accent) 8%,transparent)'
-                    : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface)'">
+                    ? 'border:1px solid var(--color-accent);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 8%,transparent)'
+                    : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface)'">
             <span class="material-symbols-outlined text-[17px]">tune</span>
             <span class="hidden sm:inline">Filters</span>
             <template x-if="activeFilterCount > 0">
-                <span class="flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold leading-none"
-                      style="background-color: var(--color-accent); color: var(--color-bg);"
-                      x-text="activeFilterCount"></span>
+                <span class="w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
+                      style="background:var(--color-accent);color:var(--color-bg);" x-text="activeFilterCount"></span>
             </template>
         </button>
-
-        {# Columns button #}
         <button @click="columnPickerOpen = true"
-                class="relative flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
-                style="border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface)">
+                class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
+                style="border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface)">
             <span class="material-symbols-outlined text-[17px]">view_column</span>
             <span class="hidden sm:inline">Columns</span>
         </button>
     </div>
 
+
     {# ══════════════════════════════════════════════
        FILTER MODAL
     ══════════════════════════════════════════════ #}
-
-    <div x-show="filterModalOpen"
-         x-transition:enter="transition-opacity duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         @click="filterModalOpen = false"
+    <div x-show="filterModalOpen" @click="filterModalOpen=false"
          class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+         x-transition:enter="transition-opacity duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          style="display:none;"></div>
-
-    <div x-show="filterModalOpen"
-         x-transition:enter="transition-all duration-200 ease-out"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100"
-         x-transition:leave="transition-all duration-150 ease-in"
-         x-transition:leave-start="opacity-100 scale-100"
-         x-transition:leave-end="opacity-0 scale-95"
-         @click.outside="filterModalOpen = false"
+    <div x-show="filterModalOpen" @click.outside="filterModalOpen=false"
          class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
-         style="top:50%;left:50%;transform:translate(-50%,-50%);
-                background-color: var(--color-surface);
-                border: 1px solid var(--color-border);
-                display:none;">
-
-        <div class="flex items-center justify-between px-5 py-4"
-             style="border-bottom: 1px solid var(--color-border);">
-            <h2 class="text-base font-semibold" style="color: var(--color-txt-primary);">Filters &amp; Sort</h2>
-            <button @click="filterModalOpen = false"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                    style="color: var(--color-txt-muted);"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
+         style="top:50%;left:50%;transform:translate(-50%,-50%);background:var(--color-surface);border:1px solid var(--color-border);display:none;"
+         x-transition:enter="transition-all duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition-all duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+        <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid var(--color-border);">
+            <h2 class="text-base font-semibold" style="color:var(--color-txt-primary);">Filters &amp; Sort</h2>
+            <button @click="filterModalOpen=false" class="w-8 h-8 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
-
         <div class="px-5 py-5 space-y-5">
-
             <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">Category</label>
+                <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Category</label>
                 <datalist id="category-list">
-                    <template x-for="cat in categories" :key="cat.id">
-                        <option :value="titleCase(cat.name)"></option>
-                    </template>
+                    <template x-for="cat in categories" :key="cat.id"><option :value="titleCase(cat.name)"></option></template>
                 </datalist>
                 <div class="relative">
-                    <span class="material-symbols-outlined text-[16px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                          style="color: var(--color-txt-muted);">category</span>
-                    <input type="text"
-                           list="category-list"
-                           x-model="filterCategory"
-                           @input="resetPage()"
-                           @change="resetPage()"
-                           placeholder="All categories…"
+                    <span class="material-symbols-outlined text-[16px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color:var(--color-txt-muted);">category</span>
+                    <input type="text" list="category-list" x-model="filterCategory" @input="resetPage()" placeholder="All categories…"
                            class="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none transition"
-                           style="border: 1px solid var(--color-border);
-                                  background-color: var(--color-surface-alt);
-                                  color: var(--color-txt-primary);"
+                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);"
                            onfocus="this.style.borderColor='var(--color-accent)';this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                            onblur="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
                 </div>
             </div>
-
             <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">Status</label>
+                <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Status</label>
                 <div class="flex gap-2">
                     <template x-for="opt in [{val:'active',label:'Active'},{val:'archived',label:'Archived'},{val:'all',label:'All'}]" :key="opt.val">
-                        <button @click="filterStatus = opt.val; resetPage()"
-                                class="flex-1 py-2 rounded-lg text-sm font-medium transition"
-                                :style="filterStatus === opt.val
-                                    ? 'background-color:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)'
-                                    : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface-alt)'"
-                                x-text="opt.label">
-                        </button>
+                        <button @click="filterStatus=opt.val;resetPage()" class="flex-1 py-2 rounded-lg text-sm font-medium transition"
+                                :style="filterStatus===opt.val ? 'background:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'"
+                                x-text="opt.label"></button>
                     </template>
                 </div>
             </div>
-
             <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">Stock Status</label>
+                <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Stock Status</label>
                 <div class="flex flex-col gap-2">
-                    <button @click="filterLowStock = !filterLowStock; resetPage()"
-                            class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition"
-                            :style="filterLowStock
-                                ? 'background-color:color-mix(in srgb,var(--color-warning) 12%,transparent);border:1px solid var(--color-warning);color:var(--color-warning)'
-                                : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface-alt)'">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[16px]">warning</span>
-                            <span>Low Stock</span>
-                        </div>
+                    <button @click="filterLowStock=!filterLowStock;resetPage()" class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition"
+                            :style="filterLowStock ? 'background:color-mix(in srgb,var(--color-warning) 12%,transparent);border:1px solid var(--color-warning);color:var(--color-warning)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
+                        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">warning</span><span>Low Stock</span></div>
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                              :style="filterLowStock
-                                  ? 'background-color:var(--color-warning);color:var(--color-bg)'
-                                  : 'background-color:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'"
+                              :style="filterLowStock ? 'background:var(--color-warning);color:var(--color-bg)' : 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'"
                               x-text="lowStockCount + ' items'"></span>
                     </button>
-                    <button @click="filterNoStock = !filterNoStock; resetPage()"
-                            class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition"
-                            :style="filterNoStock
-                                ? 'background-color:color-mix(in srgb,var(--color-error) 10%,transparent);border:1px solid var(--color-error);color:var(--color-error)'
-                                : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface-alt)'">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[16px]">remove_shopping_cart</span>
-                            <span>No Stock</span>
-                        </div>
+                    <button @click="filterNoStock=!filterNoStock;resetPage()" class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition"
+                            :style="filterNoStock ? 'background:color-mix(in srgb,var(--color-error) 10%,transparent);border:1px solid var(--color-error);color:var(--color-error)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
+                        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">remove_shopping_cart</span><span>No Stock</span></div>
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                              :style="filterNoStock
-                                  ? 'background-color:var(--color-error);color:var(--color-bg)'
-                                  : 'background-color:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                              :style="filterNoStock ? 'background:var(--color-error);color:var(--color-bg)' : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
                               x-text="noStockCount + ' items'"></span>
                     </button>
                 </div>
             </div>
-
             <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color: var(--color-txt-muted);">Sort by Name</label>
+                <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Sort by Name</label>
                 <div class="flex gap-2">
                     <template x-for="opt in [{val:'asc',label:'A → Z',icon:'arrow_downward'},{val:'desc',label:'Z → A',icon:'arrow_upward'}]" :key="opt.val">
-                        <button @click="sortOrder = (sortOrder === opt.val ? '' : opt.val); resetPage()"
-                                class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
-                                :style="sortOrder === opt.val
-                                    ? 'background-color:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)'
-                                    : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface-alt)'">
-                            <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span>
-                            <span x-text="opt.label"></span>
+                        <button @click="sortOrder=(sortOrder===opt.val?'':opt.val);resetPage()" class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
+                                :style="sortOrder===opt.val ? 'background:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
+                            <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span><span x-text="opt.label"></span>
                         </button>
                     </template>
                 </div>
             </div>
         </div>
-
-        <div class="flex items-center gap-3 px-5 py-4"
-             style="border-top: 1px solid var(--color-border);">
-            <button @click="resetFilters()"
-                    class="flex-1 py-2 rounded-lg text-sm font-medium transition"
-                    style="border: 1px solid var(--color-border);
-                           color: var(--color-txt-secondary);
-                           background-color: var(--color-surface-alt);"
-                    onmouseover="this.style.borderColor='var(--color-txt-muted)'"
-                    onmouseout="this.style.borderColor='var(--color-border)'">
-                Reset all
-            </button>
-            <button @click="filterModalOpen = false"
-                    class="flex-1 py-2 rounded-lg text-sm font-semibold transition"
-                    style="background-color: var(--color-primary); color: var(--color-bg);"
-                    onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
-                    onmouseout="this.style.backgroundColor='var(--color-primary)'">
-                Apply
-            </button>
+        <div class="flex gap-3 px-5 py-4" style="border-top:1px solid var(--color-border);">
+            <button @click="resetFilters()" class="flex-1 py-2 rounded-lg text-sm font-medium transition" style="border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt);">Reset all</button>
+            <button @click="filterModalOpen=false" class="flex-1 py-2 rounded-lg text-sm font-semibold" style="background:var(--color-primary);color:var(--color-bg);">Apply</button>
         </div>
     </div>
 
+
     {# ══════════════════════════════════════════════
-    COLUMN PICKER MODAL
+       COLUMN PICKER MODAL
     ══════════════════════════════════════════════ #}
-
-    <div x-show="columnPickerOpen"
-        x-transition:enter="transition-opacity duration-200"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        x-transition:leave="transition-opacity duration-150"
-        x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0"
-        @click="columnPickerOpen = false"
-        class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
-        style="display:none;"></div>
-
-    <div x-show="columnPickerOpen"
-        x-transition:enter="transition-all duration-200 ease-out"
-        x-transition:enter-start="opacity-0 scale-95"
-        x-transition:enter-end="opacity-100 scale-100"
-        x-transition:leave="transition-all duration-150 ease-in"
-        x-transition:leave-start="opacity-100 scale-100"
-        x-transition:leave-end="opacity-0 scale-95"
-        @click.outside="columnPickerOpen = false"
-        class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
-        style="top:50%;left:50%;transform:translate(-50%,-50%);
-                background-color:var(--color-surface);
-                border:1px solid var(--color-border);
-                display:none;">
-
-        <div class="flex items-center justify-between px-5 py-4"
-            style="border-bottom:1px solid var(--color-border);">
+    <div x-show="columnPickerOpen" @click="columnPickerOpen=false"
+         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+         x-transition:enter="transition-opacity duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         style="display:none;"></div>
+    <div x-show="columnPickerOpen" @click.outside="columnPickerOpen=false"
+         class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+         style="top:50%;left:50%;transform:translate(-50%,-50%);background:var(--color-surface);border:1px solid var(--color-border);display:none;"
+         x-transition:enter="transition-all duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition-all duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+        <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid var(--color-border);">
             <h2 class="text-base font-semibold" style="color:var(--color-txt-primary);">Columns</h2>
-            <button @click="columnPickerOpen = false"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-                    style="color:var(--color-txt-muted);"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
+            <button @click="columnPickerOpen=false" class="w-8 h-8 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
-
         <div class="overflow-y-auto" style="max-height:60vh;">
             <template x-for="group in columnGroups" :key="group.name">
                 <div>
-                    <div class="px-5 py-2 text-[11px] font-bold uppercase tracking-wider"
-                        style="color:var(--color-txt-muted);
-                                background-color:var(--color-surface-alt);
-                                border-bottom:1px solid var(--color-border);"
-                        x-text="group.name"></div>
+                    <div class="px-5 py-2 text-[11px] font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);background:var(--color-surface-alt);border-bottom:1px solid var(--color-border);" x-text="group.name"></div>
                     <template x-for="col in group.cols" :key="col.key">
-                        <button @click="toggleColumn(col.key)"
-                                class="w-full flex items-center justify-between px-5 py-3 text-left transition"
-                                style="border-bottom:1px solid var(--color-border);"
-                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                                onmouseout="this.style.backgroundColor='transparent'">
+                        <button @click="toggleColumn(col.key)" class="w-full flex items-center justify-between px-5 py-3 text-left transition" style="border-bottom:1px solid var(--color-border);"
+                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
                             <span class="text-sm font-medium" style="color:var(--color-txt-primary);" x-text="col.label"></span>
-                            <span class="w-9 h-5 rounded-full relative shrink-0 transition-colors"
-                                :style="isVisible(col.key) ? 'background-color:var(--color-accent)' : 'background-color:var(--color-border-strong)'">
-                                <span class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all"
-                                    :style="isVisible(col.key) ? 'left:1.125rem' : 'left:0.125rem'"></span>
+                            <span class="w-9 h-5 rounded-full relative shrink-0 transition-colors" :style="isVisible(col.key) ? 'background:var(--color-accent)' : 'background:var(--color-border-strong)'">
+                                <span class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all" :style="isVisible(col.key) ? 'left:1.125rem' : 'left:0.125rem'"></span>
                             </span>
                         </button>
                     </template>
                 </div>
             </template>
         </div>
-
-        <div class="flex items-center gap-3 px-5 py-4"
-            style="border-top:1px solid var(--color-border);">
-            <button @click="resetColumnsToDefault()"
-                    class="flex-1 py-2 rounded-lg text-sm font-medium transition"
-                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);background-color:var(--color-surface-alt);"
-                    onmouseover="this.style.borderColor='var(--color-txt-muted)'"
-                    onmouseout="this.style.borderColor='var(--color-border)'">
-                Reset to default
-            </button>
-            <button @click="saveColumnPreferences(); columnPickerOpen = false"
-                    class="flex-1 py-2 rounded-lg text-sm font-semibold transition"
-                    style="background-color:var(--color-primary);color:var(--color-bg);"
-                    onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
-                    onmouseout="this.style.backgroundColor='var(--color-primary)'">
-                Apply
-            </button>
+        <div class="flex gap-3 px-5 py-4" style="border-top:1px solid var(--color-border);">
+            <button @click="resetColumnsToDefault()" class="flex-1 py-2 rounded-lg text-sm font-medium transition" style="border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt);">Reset to default</button>
+            <button @click="saveColumnPreferences();columnPickerOpen=false" class="flex-1 py-2 rounded-lg text-sm font-semibold" style="background:var(--color-primary);color:var(--color-bg);">Apply</button>
         </div>
     </div>
+
 
     {# ══════════════════════════════════════════════
        BULK THRESHOLD MODAL
     ══════════════════════════════════════════════ #}
-
-    <div x-show="thresholdModalOpen"
-         x-transition:enter="transition-opacity duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         @click="thresholdModalOpen = false"
+    <div x-show="thresholdModalOpen" @click="thresholdModalOpen=false"
          class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+         x-transition:enter="transition-opacity duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          style="display:none;"></div>
-
-    <div x-show="thresholdModalOpen"
-         x-transition:enter="transition-all duration-200 ease-out"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100"
-         x-transition:leave="transition-all duration-150 ease-in"
-         x-transition:leave-start="opacity-100 scale-100"
-         x-transition:leave-end="opacity-0 scale-95"
-         @click.outside="thresholdModalOpen = false"
-         @keydown.escape.window="thresholdModalOpen = false"
-         class="fixed z-50 w-full max-w-sm shadow-2xl overflow-visible"
-        style="top:50%;left:50%;transform:translate(-50%,-50%);
-            border-radius:1rem;
-            background-color:var(--color-surface);
-            border:1px solid var(--color-border);
-            display:none;">
-
-        <div class="flex items-center justify-between px-5 py-4"
-            style="border-bottom:1px solid var(--color-border);">
+    <div x-show="thresholdModalOpen" @click.outside="thresholdModalOpen=false" @keydown.escape.window="thresholdModalOpen=false"
+         class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+         style="top:50%;left:50%;transform:translate(-50%,-50%);background:var(--color-surface);border:1px solid var(--color-border);display:none;"
+         x-transition:enter="transition-all duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition-all duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+        <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid var(--color-border);">
             <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                    style="background:color-mix(in srgb,var(--color-info) 12%,transparent);">
-                    <span class="material-symbols-outlined text-[17px]"
-                        style="color:var(--color-info);">info</span>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:color-mix(in srgb,var(--color-info) 12%,transparent);">
+                    <span class="material-symbols-outlined text-[17px]" style="color:var(--color-info);">info</span>
                 </div>
-                <h2 class="text-base font-semibold" style="color:var(--color-txt-primary);">
-                    Set Low Stock Threshold
-                </h2>
+                <h2 class="text-base font-semibold" style="color:var(--color-txt-primary);">Set Low Stock Threshold</h2>
             </div>
-            <button @click="thresholdModalOpen = false"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-                    style="color:var(--color-txt-muted);"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
+            <button @click="thresholdModalOpen=false" class="w-8 h-8 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
-
         <div class="px-5 py-5 space-y-4">
             <p class="text-sm" style="color:var(--color-txt-muted);">
-                Apply a single low-stock threshold to
-                <span class="font-semibold" style="color:var(--color-txt-primary);"
-                      x-text="selectedIds.length + ' selected product' + (selectedIds.length === 1 ? '' : 's')"></span>.
-                A warning badge will appear whenever stock falls at or below this value.
+                Apply threshold to <span class="font-semibold" style="color:var(--color-txt-primary);" x-text="selectedIds.length + ' selected product' + (selectedIds.length===1?'':'s')"></span>.
             </p>
-
             <div class="space-y-1.5">
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                       style="color:var(--color-txt-muted);">New Threshold (units)</label>
+                <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">New Threshold (units)</label>
                 <div class="flex items-center gap-2">
-                    <button @click="if(parseInt(thresholdInput) > 0) thresholdInput = String(parseInt(thresholdInput) - 1)"
+                    <button @click="if(parseInt(thresholdInput)>0) thresholdInput=String(parseInt(thresholdInput)-1)"
                             class="w-10 h-10 rounded-lg flex items-center justify-center transition shrink-0"
-                            style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-muted);"
-                            onmouseover="this.style.borderColor='var(--color-accent)'"
-                            onmouseout="this.style.borderColor='var(--color-border)'">
+                            style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-muted);">
                         <span class="material-symbols-outlined text-[16px]">remove</span>
                     </button>
-                    <input type="number"
-                           x-model="thresholdInput"
-                           min="0"
-                           placeholder="e.g. 10"
-                           @keydown.enter="submitBulkThreshold()"
-                           @focus="$event.target.select()"
+                    <input type="number" x-model="thresholdInput" min="0" placeholder="e.g. 10" @keydown.enter="submitBulkThreshold()" @focus="$event.target.select()"
                            class="flex-1 px-4 py-2.5 rounded-lg text-sm text-center font-bold focus:outline-none transition"
                            style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);"
                            onfocus="this.style.borderColor='var(--color-accent)';this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                            onblur="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
-                    <button @click="thresholdInput = String((parseInt(thresholdInput) || 0) + 1)"
+                    <button @click="thresholdInput=String((parseInt(thresholdInput)||0)+1)"
                             class="w-10 h-10 rounded-lg flex items-center justify-center transition shrink-0"
-                            style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-muted);"
-                            onmouseover="this.style.borderColor='var(--color-accent)'"
-                            onmouseout="this.style.borderColor='var(--color-border)'">
+                            style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-muted);">
                         <span class="material-symbols-outlined text-[16px]">add</span>
                     </button>
                 </div>
             </div>
-
-            <div x-show="thresholdError"
-                 class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
-                 style="background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error);">
-                <span class="material-symbols-outlined text-[15px]">error</span>
-                <span x-text="thresholdError"></span>
+            <div x-show="thresholdError" class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm" style="background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error);">
+                <span class="material-symbols-outlined text-[15px]">error</span><span x-text="thresholdError"></span>
             </div>
         </div>
-
-        <div class="flex items-center gap-3 px-5 py-4"
-             style="border-top:1px solid var(--color-border);">
-            <button @click="thresholdModalOpen = false"
-                    class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
-                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
-                Cancel
-            </button>
-            <button @click="submitBulkThreshold()"
-                    :disabled="thresholdSubmitting || thresholdInput === ''"
-                    class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                    style="background-color:var(--color-info);color:#fff;"
-                    onmouseover="if(!this.disabled) this.style.opacity='0.85'"
-                    onmouseout="this.style.opacity='1'">
+        <div class="flex gap-3 px-5 py-4" style="border-top:1px solid var(--color-border);">
+            <button @click="thresholdModalOpen=false" class="flex-1 py-2.5 rounded-xl text-sm font-medium transition" style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
+            <button @click="submitBulkThreshold()" :disabled="thresholdSubmitting||thresholdInput===''"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
+                    style="background:var(--color-info);color:#fff;">
                 <span x-show="thresholdSubmitting" class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
                 <span x-show="!thresholdSubmitting" class="material-symbols-outlined text-[16px]">check</span>
                 <span x-text="thresholdSubmitting ? 'Applying…' : 'Apply to All'"></span>
@@ -917,223 +591,98 @@ class="space-y-5">
         </div>
     </div>
 
+
     {# ══════════════════════════════════════════════
        BULK CATEGORY MODAL
     ══════════════════════════════════════════════ #}
-
-    <div x-show="categoryModalOpen"
-         x-transition:enter="transition-opacity duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         @click="categoryModalOpen = false"
+    <div x-show="categoryModalOpen" @click="categoryModalOpen=false"
          class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+         x-transition:enter="transition-opacity duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          style="display:none;"></div>
-
-    <div x-show="categoryModalOpen"
-         x-transition:enter="transition-all duration-200 ease-out"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100"
-         x-transition:leave="transition-all duration-150 ease-in"
-         x-transition:leave-start="opacity-100 scale-100"
-         x-transition:leave-end="opacity-0 scale-95"
-         @click.outside="categoryModalOpen = false"
-         @keydown.escape.window="categoryModalOpen = false"
-class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-visible"
-
-         style="top:50%;left:50%;transform:translate(-50%,-50%);
-                background-color:var(--color-surface);
-                border:1px solid var(--color-border);
-                display:none;">
-
-        {# Header #}
-        <div class="flex items-center justify-between px-5 py-4"
-             style="border-bottom:1px solid var(--color-border);">
+    <div x-show="categoryModalOpen" @click.outside="categoryModalOpen=false" @keydown.escape.window="categoryModalOpen=false"
+         class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-visible"
+         style="top:50%;left:50%;transform:translate(-50%,-50%);background:var(--color-surface);border:1px solid var(--color-border);display:none;"
+         x-transition:enter="transition-all duration-200 ease-out" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition-all duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95">
+        <div class="flex items-center justify-between px-5 py-4" style="border-bottom:1px solid var(--color-border);">
             <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                     style="background:color-mix(in srgb,var(--color-accent) 12%,transparent);">
-                    <span class="material-symbols-outlined text-[17px]"
-                          style="color:var(--color-accent);">category</span>
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:color-mix(in srgb,var(--color-accent) 12%,transparent);">
+                    <span class="material-symbols-outlined text-[17px]" style="color:var(--color-accent);">category</span>
                 </div>
-                <h2 class="text-base font-semibold" style="color:var(--color-txt-primary);">
-                    Assign Category
-                </h2>
+                <h2 class="text-base font-semibold" style="color:var(--color-txt-primary);">Assign Category</h2>
             </div>
-            <button @click="categoryModalOpen = false"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-                    style="color:var(--color-txt-muted);"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
+            <button @click="categoryModalOpen=false" class="w-8 h-8 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
-
-        {# Body #}
         <div class="px-5 py-5 space-y-4">
             <p class="text-sm" style="color:var(--color-txt-muted);">
-                Move
-                <span class="font-semibold" style="color:var(--color-txt-primary);"
-                    x-text="selectedIds.length + ' selected product' + (selectedIds.length === 1 ? '' : 's')"></span>
-                to a new category. This will overwrite their current category.
+                Move <span class="font-semibold" style="color:var(--color-txt-primary);" x-text="selectedIds.length + ' selected product' + (selectedIds.length===1?'':'s')"></span> to a new category.
             </p>
-
-            {# Category searchable select #}
             <div class="space-y-1.5"
-                x-data="{
-                    catQuery: '',
-                    catOpen: false,
-                    get filtered() {
-                        const q = this.catQuery.trim().toLowerCase();
-                        return q ? categories.filter(c => c.name.toLowerCase().includes(q)) : categories;
-                    },
-                    get selectedLabel() {
-                        if (!categorySelectedId) return '';
-                        const found = categories.find(c => String(c.id) === categorySelectedId);
-                        return found ? titleCase(found.name) : '';
-                    },
-                    selectCat(cat) {
-                        categorySelectedId = String(cat.id);
-                        this.catQuery = titleCase(cat.name);
-                        this.catOpen = false;
-                    },
-                    clear() {
-                        categorySelectedId = '';
-                        this.catQuery = '';
-                        this.$refs.catInput.focus();
-                    }
-                }"
-                @click.outside="catOpen = false">
-
-                <label class="text-xs font-semibold uppercase tracking-wider"
-                    style="color:var(--color-txt-muted);">Select Category</label>
-
-                {# Input wrapper #}
+                 x-data="{
+                     catQuery:'', catOpen:false,
+                     get filtered() { const q=this.catQuery.trim().toLowerCase(); return q?categories.filter(c=>c.name.toLowerCase().includes(q)):categories },
+                     get selectedLabel() { if(!categorySelectedId) return ''; const f=categories.find(c=>String(c.id)===categorySelectedId); return f?titleCase(f.name):'' },
+                     selectCat(cat) { categorySelectedId=String(cat.id); this.catQuery=titleCase(cat.name); this.catOpen=false },
+                     clear() { categorySelectedId=''; this.catQuery=''; this.$refs.catInput.focus() }
+                 }" @click.outside="catOpen=false">
+                <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Select Category</label>
                 <div class="relative">
                     <div class="flex items-center gap-2 px-3 py-2.5 rounded-xl transition"
-                        style="border:1px solid var(--color-border); background:var(--color-surface);"
-                        :style="catOpen ? 'border-color:var(--color-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--color-accent) 15%,transparent)' : ''">
-
-                        <span class="material-symbols-outlined text-[16px] shrink-0"
-                            style="color:var(--color-txt-muted);">search</span>
-
-                        <input x-ref="catInput"
-                            type="text"
-                            x-model="catQuery"
-                            @focus="catOpen = true"
-                            @input="catOpen = true; categorySelectedId = ''"
-                            @keydown.escape="catOpen = false; $el.blur()"
-                            @keydown.arrow-down.prevent="catOpen = true"
-                            placeholder="Search category…"
-                            autocomplete="off"
-                            class="flex-1 bg-transparent text-sm outline-none"
-                            style="color:var(--color-txt-primary);">
-
-                        {# Clear button — shown when something is typed or selected #}
-                        <button x-show="catQuery"
-                                @click.stop="clear()"
-                                class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition"
-                                style="color:var(--color-txt-muted);"
-                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                                onmouseout="this.style.backgroundColor='transparent'">
+                         style="border:1px solid var(--color-border);background:var(--color-surface);"
+                         :style="catOpen ? 'border-color:var(--color-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--color-accent) 15%,transparent)' : ''">
+                        <span class="material-symbols-outlined text-[16px] shrink-0" style="color:var(--color-txt-muted);">search</span>
+                        <input x-ref="catInput" type="text" x-model="catQuery" @focus="catOpen=true" @input="catOpen=true;categorySelectedId=''"
+                               @keydown.escape="catOpen=false;$el.blur()" placeholder="Search category…" autocomplete="off"
+                               class="flex-1 bg-transparent text-sm outline-none" style="color:var(--color-txt-primary);">
+                        <button x-show="catQuery" @click.stop="clear()" class="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style="color:var(--color-txt-muted);">
                             <span class="material-symbols-outlined text-[14px]">close</span>
                         </button>
-
-                        <button @click.stop="catOpen = !catOpen; $refs.catInput.focus()"
-                                class="w-5 h-5 flex items-center justify-center shrink-0 transition"
-                                style="color:var(--color-txt-muted);">
-                            <span class="material-symbols-outlined text-[16px]"
-                                :style="catOpen ? 'transform:rotate(180deg)' : ''"
-                                style="transition:transform 150ms ease;">expand_more</span>
+                        <button @click.stop="catOpen=!catOpen;$refs.catInput.focus()" class="w-5 h-5 flex items-center justify-center shrink-0" style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[16px]" :style="catOpen?'transform:rotate(180deg)':''">expand_more</span>
                         </button>
                     </div>
-
-                    {# Dropdown #}
-                    <div x-show="catOpen"
-                        x-transition:enter="transition-all duration-150 ease-out"
-                        x-transition:enter-start="opacity-0 -translate-y-1"
-                        x-transition:enter-end="opacity-100 translate-y-0"
-                        x-transition:leave="transition-all duration-100 ease-in"
-                        x-transition:leave-start="opacity-100 translate-y-0"
-                        x-transition:leave-end="opacity-0 -translate-y-1"
-                        class="absolute z-10 w-full mt-1.5 rounded-xl shadow-lg"
-                        style="border:1px solid var(--color-border); background:var(--color-surface); max-height:280px; overflow-y:auto; border-radius:0.75rem;">
-
-                        {# Empty state #}
-                        <template x-if="filtered.length === 0">
-                            <div class="px-4 py-6 text-center text-sm"
-                                style="color:var(--color-txt-muted);">
+                    <div x-show="catOpen" class="absolute z-10 w-full mt-1.5 rounded-xl shadow-lg"
+                         style="border:1px solid var(--color-border);background:var(--color-surface);max-height:280px;overflow-y:auto;"
+                         x-transition:enter="transition-all duration-150 ease-out" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+                        <template x-if="filtered.length===0">
+                            <div class="px-4 py-6 text-center text-sm" style="color:var(--color-txt-muted);">
                                 <span class="material-symbols-outlined text-[28px] block mb-1" style="opacity:.4;">search_off</span>
                                 No categories match "<span x-text="catQuery"></span>"
                             </div>
                         </template>
-
-                        {# Options #}
                         <template x-for="cat in filtered" :key="cat.id">
-                            <button @click.stop="selectCat(cat)"
-                                    class="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition"
-                                    :style="categorySelectedId === String(cat.id)
-                                        ? 'background:color-mix(in srgb,var(--color-accent) 10%,transparent);'
-                                        : ''"
-                                    onmouseover="if(this.dataset.sel!=='true') this.style.backgroundColor='var(--color-surface-alt)'"
-                                    onmouseout="if(this.dataset.sel!=='true') this.style.backgroundColor=''"
-                                    :data-sel="categorySelectedId === String(cat.id)">
-
+                            <button @click.stop="selectCat(cat)" class="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition"
+                                    :style="categorySelectedId===String(cat.id) ? 'background:color-mix(in srgb,var(--color-accent) 10%,transparent)' : ''"
+                                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor=''">
                                 <div class="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
-                                    :style="categorySelectedId === String(cat.id)
-                                        ? 'background:var(--color-accent);color:var(--color-bg)'
-                                        : 'background:var(--color-surface-alt);color:var(--color-txt-muted)'">
+                                     :style="categorySelectedId===String(cat.id) ? 'background:var(--color-accent);color:var(--color-bg)' : 'background:var(--color-surface-alt);color:var(--color-txt-muted)'">
                                     <span class="material-symbols-outlined text-[13px]">category</span>
                                 </div>
-
-                                <span class="flex-1 font-medium"
-                                    :style="categorySelectedId === String(cat.id)
-                                        ? 'color:var(--color-accent)'
-                                        : 'color:var(--color-txt-primary)'"
-                                    x-text="titleCase(cat.name)"></span>
-
-                                <span x-show="categorySelectedId === String(cat.id)"
-                                    class="material-symbols-outlined text-[16px]"
-                                    style="color:var(--color-accent);">check</span>
+                                <span class="flex-1 font-medium" :style="categorySelectedId===String(cat.id)?'color:var(--color-accent)':'color:var(--color-txt-primary)'" x-text="titleCase(cat.name)"></span>
+                                <span x-show="categorySelectedId===String(cat.id)" class="material-symbols-outlined text-[16px]" style="color:var(--color-accent);">check</span>
                             </button>
                         </template>
                     </div>
                 </div>
-
-                {# Selected badge #}
-                <div x-show="categorySelectedId && selectedLabel"
-                    class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium"
-                    style="background:color-mix(in srgb,var(--color-accent) 10%,transparent); color:var(--color-accent);">
+                <div x-show="categorySelectedId&&selectedLabel" class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium mt-1.5"
+                     style="background:color-mix(in srgb,var(--color-accent) 10%,transparent);color:var(--color-accent);">
                     <span class="material-symbols-outlined text-[14px]">check_circle</span>
                     Selected: <span x-text="selectedLabel" class="font-semibold"></span>
                 </div>
             </div>
-
-            {# Inline error #}
-            <div x-show="categoryError"
-                class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
-                style="background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error);">
-                <span class="material-symbols-outlined text-[15px]">error</span>
-                <span x-text="categoryError"></span>
+            <div x-show="categoryError" class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm" style="background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error);">
+                <span class="material-symbols-outlined text-[15px]">error</span><span x-text="categoryError"></span>
             </div>
         </div>
-         {# Footer #}
-        <div class="flex items-center gap-3 px-5 py-4"
-            style="border-top:1px solid var(--color-border);">
-            <button @click="categoryModalOpen = false"
-                    class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
-                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
-                Cancel
-            </button>
-            <button @click="submitBulkCategory()"
-                    :disabled="categorySubmitting || !categorySelectedId"
-                    class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                    style="background-color:var(--color-accent);color:var(--color-bg);"
-                    onmouseover="if(!this.disabled) this.style.opacity='0.85'"
-                    onmouseout="this.style.opacity='1'">
+        <div class="flex gap-3 px-5 py-4" style="border-top:1px solid var(--color-border);">
+            <button @click="categoryModalOpen=false" class="flex-1 py-2.5 rounded-xl text-sm font-medium transition" style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
+            <button @click="submitBulkCategory()" :disabled="categorySubmitting||!categorySelectedId"
+                    class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
+                    style="background:var(--color-accent);color:var(--color-bg);">
                 <span x-show="categorySubmitting" class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
                 <span x-show="!categorySubmitting" class="material-symbols-outlined text-[16px]">check</span>
                 <span x-text="categorySubmitting ? 'Applying…' : 'Apply to All'"></span>
@@ -1141,115 +690,75 @@ class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-visible"
         </div>
     </div>
 
+
     {# ══════════════════════════════════════════════
        DESKTOP TABLE
     ══════════════════════════════════════════════ #}
-
-    <div class="hidden sm:block rounded-xl overflow-x-auto"
-        style="border:1px solid var(--color-border);"
-        x-show="columnsLoaded">
-
+    <div class="hidden sm:block rounded-xl overflow-x-auto" style="border:1px solid var(--color-border);" x-show="columnsLoaded">
         <table class="w-full text-sm">
             <thead>
-                <tr style="background-color:var(--color-surface-alt);
-                        border-bottom:1px solid var(--color-border);">
+                <tr style="background:var(--color-surface-alt);border-bottom:1px solid var(--color-border);">
                     <th x-show="selectMode" class="px-3 py-3 w-10">
-                        <button @click="togglePageAll()"
-                                class="w-5 h-5 rounded flex items-center justify-center transition"
-                                :style="pageAllSelected
-                                    ? 'background:var(--color-accent);color:var(--color-bg)'
-                                    : 'border:1.5px solid var(--color-border-strong);color:transparent'">
+                        <button @click="togglePageAll()" class="w-5 h-5 rounded flex items-center justify-center transition"
+                                :style="pageAllSelected ? 'background:var(--color-accent);color:var(--color-bg)' : 'border:1.5px solid var(--color-border-strong);color:transparent'">
                             <span class="material-symbols-outlined text-[13px]">check</span>
                         </button>
                     </th>
-                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                        style="color:var(--color-txt-muted);">Item Name</th>
-                    <template x-for="col in columnDefs.filter(c => isVisible(c.key))" :key="col.key">
-                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                            style="color:var(--color-txt-muted);"
-                            x-text="col.label"></th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Item Name</th>
+                    <template x-for="col in columnDefs.filter(c=>isVisible(c.key))" :key="col.key">
+                        <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);" x-text="col.label"></th>
                     </template>
-                    <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                        style="color:var(--color-txt-muted);">Actions</th>
+                    <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Actions</th>
                 </tr>
             </thead>
-            <tbody style="background-color:var(--color-surface);">
-
-                <template x-if="filtered.length === 0">
+            <tbody style="background:var(--color-surface);">
+                <template x-if="filtered.length===0">
                     <tr>
-                        <td :colspan="visibleColumns.length + 3"
-                            class="px-4 py-14 text-center"
-                            style="color:var(--color-txt-muted);">
-                            <span class="material-symbols-outlined text-[40px] block mb-2"
-                                style="color:var(--color-border-strong);">inventory_2</span>
+                        <td :colspan="visibleColumns.length+3" class="px-4 py-14 text-center" style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[40px] block mb-2" style="color:var(--color-border-strong);">inventory_2</span>
                             No products match your search.
                         </td>
                     </tr>
                 </template>
-
-                <template x-for="(p, index) in paginated" :key="p.product_id">
-                    <tr style="border-top:1px solid var(--color-border);"
-                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                        onmouseout="this.style.backgroundColor='transparent'">
-
+                <template x-for="p in paginated" :key="p.product_id">
+                    <tr style="border-top:1px solid var(--color-border);" onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
                         <td x-show="selectMode" class="px-3 py-3 w-10">
-                            <button @click="toggleItem(p.product_id)"
-                                    class="w-5 h-5 rounded flex items-center justify-center transition"
-                                    :style="isSelected(p.product_id)
-                                        ? 'background:var(--color-accent);color:var(--color-bg)'
-                                        : 'border:1.5px solid var(--color-border-strong);color:transparent'">
+                            <button @click="toggleItem(p.product_id)" class="w-5 h-5 rounded flex items-center justify-center transition"
+                                    :style="isSelected(p.product_id) ? 'background:var(--color-accent);color:var(--color-bg)' : 'border:1.5px solid var(--color-border-strong);color:transparent'">
                                 <span class="material-symbols-outlined text-[13px]">check</span>
                             </button>
                         </td>
-
-                        <td class="px-4 py-3 font-medium"
-                            style="color:var(--color-txt-primary);">
+                        <td class="px-4 py-3 font-medium" style="color:var(--color-txt-primary);">
                             <span x-text="titleCase(p.product_name)"></span>
-                            <template x-if="p.stock === 0 && p.status === 'active'">
-                                <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                                    style="background:color-mix(in srgb,var(--color-error) 12%,transparent);
-                                            color:var(--color-error);">No Stock</span>
+                            <template x-if="p.stock===0&&p.status==='active'">
+                                <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold" style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);">No Stock</span>
                             </template>
-                            <template x-if="p.stock > 0 && p.stock <= p.low_reorder_threshold && p.status === 'active'">
-                                <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                                    style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
-                                            color:var(--color-warning);">Low Stock</span>
+                            <template x-if="p.stock>0&&p.stock<=p.low_reorder_threshold&&p.status==='active'">
+                                <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold" style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning);">Low Stock</span>
                             </template>
                         </td>
-
-                        <template x-for="col in columnDefs.filter(c => isVisible(c.key))" :key="col.key">
-                            <td class="px-4 py-3 tabular-nums text-left"
-                                :style="colStyle(p, col.key)"
-                                x-text="colValue(p, col.key)">
-                            </td>
+                        <template x-for="col in columnDefs.filter(c=>isVisible(c.key))" :key="col.key">
+                            <td class="px-4 py-3 tabular-nums" :style="colStyle(p,col.key)" x-text="colValue(p,col.key)"></td>
                         </template>
-
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-1">
-                                <template x-if="p.status !== 'archived'">
+                                <template x-if="p.status!=='archived'">
                                     <div class="flex items-center gap-1">
-                                        <a :href="`/inventory/${p.product_id}/edit`"
-                                           title="Edit"
-                                           class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                                        <a :href="`/inventory/${p.product_id}/edit`" title="Edit"
+                                           class="w-8 h-8 rounded-lg flex items-center justify-center transition"
                                            style="color:var(--color-txt-muted);"
                                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-accent)'"
                                            onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
-                                            {% if current_user.role == 'stocking' %}
-                                            <span class="material-symbols-outlined text-[18px]">tune</span>
-                                            {% else %}
-                                            <span class="material-symbols-outlined text-[18px]">edit</span>
-                                            {% endif %}
+                                            <span class="material-symbols-outlined text-[18px]">{{ 'tune' if current_user.role == 'stocking' else 'edit' }}</span>
                                         </a>
                                         <template x-if="canManage">
-                                            <button @click='$dispatch("confirm", {
-                                                        title:   "Archive Product",
-                                                        message: `Archive "${titleCase(p.product_name)}"? It will be hidden from the POS.`,
-                                                        action:  `/inventory/${p.product_id}/status_update`,
-                                                        fields:  [{ name: "status", value: "archived" }]
-                                                    })'
-                                                    title="Archive"
-                                                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                                                    style="color:var(--color-txt-muted);"
+                                            <button @click="$dispatch('confirm',{
+                                                        title:'Archive Product',
+                                                        message:`Archive \"${titleCase(p.product_name)}\"? It will be hidden from the POS.`,
+                                                        action:`/inventory/${p.product_id}/status_update`,
+                                                        fields:[{name:'status',value:'archived'}]
+                                                    })" title="Archive"
+                                                    class="w-8 h-8 rounded-lg flex items-center justify-center transition" style="color:var(--color-txt-muted);"
                                                     onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-error)'"
                                                     onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
                                                 <span class="material-symbols-outlined text-[18px]">archive</span>
@@ -1257,30 +766,26 @@ class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-visible"
                                         </template>
                                     </div>
                                 </template>
-                                <template x-if="p.status === 'archived' && canManage">
+                                <template x-if="p.status==='archived'&&canManage">
                                     <div class="flex items-center gap-1">
-                                        <button @click='$dispatch("confirm", {
-                                                    title:   "Restore Product",
-                                                    message: `Restore "${titleCase(p.product_name)}" to active?`,
-                                                    action:  `/inventory/${p.product_id}/status_update`,
-                                                    fields:  [{ name: "status", value: "active" }]
-                                                })'
-                                                title="Restore"
-                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                                                style="color:var(--color-txt-muted);"
+                                        <button @click="$dispatch('confirm',{
+                                                    title:'Restore Product',
+                                                    message:`Restore \"${titleCase(p.product_name)}\" to active?`,
+                                                    action:`/inventory/${p.product_id}/status_update`,
+                                                    fields:[{name:'status',value:'active'}]
+                                                })" title="Restore"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition" style="color:var(--color-txt-muted);"
                                                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-success)'"
                                                 onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">unarchive</span>
                                         </button>
-                                        <button @click='$dispatch("confirm", {
-                                                    title:   "Delete Product",
-                                                    message: `Permanently delete "${titleCase(p.product_name)}"? This cannot be undone.`,
-                                                    action:  `/inventory/${p.product_id}/delete`,
-                                                    fields:  []
-                                                })'
-                                                title="Delete permanently"
-                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                                                style="color:var(--color-txt-muted);"
+                                        <button @click="$dispatch('confirm',{
+                                                    title:'Delete Product',
+                                                    message:`Permanently delete \"${titleCase(p.product_name)}\"? This cannot be undone.`,
+                                                    action:`/inventory/${p.product_id}/delete`,
+                                                    fields:[]
+                                                })" title="Delete permanently"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition" style="color:var(--color-txt-muted);"
                                                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-error)'"
                                                 onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
                                             <span class="material-symbols-outlined text-[18px]">delete_forever</span>
@@ -1291,614 +796,395 @@ class="fixed z-50 w-full max-w-sm rounded-2xl shadow-2xl overflow-visible"
                         </td>
                     </tr>
                 </template>
-
             </tbody>
         </table>
     </div>
+
 
     {# ══════════════════════════════════════════════
        MOBILE CARD LIST
     ══════════════════════════════════════════════ #}
     <div class="sm:hidden space-y-2">
-
-        <template x-if="filtered.length === 0">
-            <div class="rounded-xl py-14 text-center"
-                 style="border: 1px solid var(--color-border); background-color: var(--color-surface);">
-                <span class="material-symbols-outlined text-[40px] block mb-2"
-                      style="color: var(--color-border-strong);">inventory_2</span>
-                <p class="text-sm" style="color: var(--color-txt-muted);">No products match your search.</p>
+        <template x-if="filtered.length===0">
+            <div class="rounded-xl py-14 text-center" style="border:1px solid var(--color-border);background:var(--color-surface);">
+                <span class="material-symbols-outlined text-[40px] block mb-2" style="color:var(--color-border-strong);">inventory_2</span>
+                <p class="text-sm" style="color:var(--color-txt-muted);">No products match your search.</p>
             </div>
         </template>
-
-        <template x-for="(p, index) in paginated" :key="p.product_id">
-           <button @click="selectMode ? toggleItem(p.product_id) : openDetail(p)"
-                class="w-full text-left rounded-xl px-4 py-3 transition-colors flex items-center justify-between"
-                :style="selectMode && isSelected(p.product_id)
-                    ? 'border:1.5px solid var(--color-accent);background-color:color-mix(in srgb,var(--color-accent) 6%,transparent)'
-                    : 'border:1px solid var(--color-border);background-color:var(--color-surface)'"
-                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                onmouseout="this.style.backgroundColor='var(--color-surface)'">
-
+        <template x-for="p in paginated" :key="p.product_id">
+            <button @click="selectMode ? toggleItem(p.product_id) : openDetail(p)"
+                    class="w-full text-left rounded-xl px-4 py-3 transition flex items-center justify-between"
+                    :style="selectMode&&isSelected(p.product_id) ? 'border:1.5px solid var(--color-accent);background:color-mix(in srgb,var(--color-accent) 6%,transparent)' : 'border:1px solid var(--color-border);background:var(--color-surface)'"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='var(--color-surface)'">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <p class="text-sm font-semibold truncate"
-                           style="color: var(--color-txt-primary);"
-                           x-text="titleCase(p.product_name)"></p>
-                        <template x-if="p.stock === 0 && p.status === 'active'">
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0"
-                                  style="background:color-mix(in srgb,var(--color-error) 12%,transparent);
-                                         color:var(--color-error);">No Stock</span>
+                        <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);" x-text="titleCase(p.product_name)"></p>
+                        <template x-if="p.stock===0&&p.status==='active'">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0" style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);">No Stock</span>
                         </template>
-                        <template x-if="p.stock > 0 && p.stock <= p.low_reorder_threshold && p.status === 'active'">
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0"
-                                  style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
-                                         color:var(--color-warning);">Low Stock</span>
+                        <template x-if="p.stock>0&&p.stock<=p.low_reorder_threshold&&p.status==='active'">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold shrink-0" style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning);">Low Stock</span>
                         </template>
                     </div>
                     <div class="flex items-center gap-3 mt-1">
-                        <span class="font-mono text-xs"
-                              style="color: var(--color-txt-muted);"
-                              x-text="p.product_id"></span>
+                        <span class="font-mono text-xs" style="color:var(--color-txt-muted);" x-text="p.product_id"></span>
                         <span class="text-xs"
-                              :style="p.stock === 0
-                                  ? 'color:var(--color-error);font-weight:600'
-                                  : p.stock <= p.low_reorder_threshold
-                                      ? 'color:var(--color-warning);font-weight:600'
-                                      : 'color:var(--color-txt-muted)'"
-                              x-text="p.stock + ' units'"></span>
+                              :style="p.stock===0 ? 'color:var(--color-error);font-weight:600' : p.stock<=p.low_reorder_threshold ? 'color:var(--color-warning);font-weight:600' : 'color:var(--color-txt-muted)'"
+                              x-text="p.stock+' units'"></span>
                     </div>
                 </div>
-
-                <div class="flex items-center gap-2 shrink-0">
-                    <span class="material-symbols-outlined text-[18px] shrink-0"
-                          style="color: var(--color-txt-muted);">chevron_right</span>
-                </div>
+                <span class="material-symbols-outlined text-[18px] shrink-0" style="color:var(--color-txt-muted);">chevron_right</span>
             </button>
         </template>
     </div>
 
+
     {# ── Pagination ── #}
-    <div class="flex items-center justify-between text-sm"
-         x-show="filtered.length > perPage">
-        <p style="color: var(--color-txt-muted);">
-            Showing
-            <span x-text="Math.min((page - 1) * perPage + 1, filtered.length)"></span>–<span
-            x-text="Math.min(page * perPage, filtered.length)"></span>
+    <div class="flex items-center justify-between text-sm" x-show="filtered.length>perPage">
+        <p style="color:var(--color-txt-muted);">
+            Showing <span x-text="Math.min((page-1)*perPage+1,filtered.length)"></span>–<span x-text="Math.min(page*perPage,filtered.length)"></span>
             of <span x-text="filtered.length"></span>
         </p>
         <div class="flex items-center gap-1">
-            <button @click="page = Math.max(1, page - 1)"
-                    :disabled="page === 1"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors
-                           disabled:opacity-40 disabled:cursor-not-allowed"
-                    style="border: 1px solid var(--color-border); color: var(--color-txt-secondary);"
-                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
+            <button @click="page=Math.max(1,page-1)" :disabled="page===1"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-40"
+                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
                 <span class="material-symbols-outlined text-[18px]">chevron_left</span>
             </button>
             <template x-for="pg in totalPages" :key="pg">
-                <button @click="page = pg"
-                        class="w-8 h-8 rounded-lg text-sm font-medium transition-colors"
-                        :style="page === pg
-                            ? 'background-color:var(--color-primary);color:var(--color-bg)'
-                            : 'color:var(--color-txt-secondary)'"
-                        onmouseover="if(this.style.color !== 'var(--color-bg)') this.style.backgroundColor='var(--color-surface-alt)'"
-                        onmouseout="if(this.style.color !== 'var(--color-bg)') this.style.backgroundColor='transparent'"
-                        x-text="pg">
-                </button>
+                <button @click="page=pg" class="w-8 h-8 rounded-lg text-sm font-medium transition"
+                        :style="page===pg ? 'background:var(--color-primary);color:var(--color-bg)' : 'color:var(--color-txt-secondary)'"
+                        onmouseover="if(this.style.color!=='var(--color-bg)') this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="if(this.style.color!=='var(--color-bg)') this.style.backgroundColor='transparent'"
+                        x-text="pg"></button>
             </template>
-            <button @click="page = Math.min(totalPages, page + 1)"
-                    :disabled="page === totalPages"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors
-                           disabled:opacity-40 disabled:cursor-not-allowed"
-                    style="border: 1px solid var(--color-border); color: var(--color-txt-secondary);"
-                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
+            <button @click="page=Math.min(totalPages,page+1)" :disabled="page===totalPages"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-40"
+                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
                 <span class="material-symbols-outlined text-[18px]">chevron_right</span>
             </button>
         </div>
     </div>
 
+
     {# ══════════════════════════════════════════════
        MOBILE DETAIL BOTTOM SHEET
     ══════════════════════════════════════════════ #}
-
+    <div x-show="mobileDetailOpen" @click="closeDetail()"
+         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] sm:hidden"
+         x-transition:enter="transition-opacity duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
     <div x-show="mobileDetailOpen"
-         x-transition:enter="transition-opacity duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         @click="closeDetail()"
-         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] sm:hidden"></div>
-
-    <div x-show="mobileDetailOpen"
-         x-transition:enter="transition-transform duration-300 ease-out"
-         x-transition:enter-start="translate-y-full"
-         x-transition:enter-end="translate-y-0"
-         x-transition:leave="transition-transform duration-250 ease-in"
-         x-transition:leave-start="translate-y-0"
-         x-transition:leave-end="translate-y-full"
-         class="fixed bottom-0 left-0 right-0 z-50 sm:hidden
-                rounded-t-2xl shadow-2xl overflow-hidden"
-         style="background-color: var(--color-surface); border-top: 1px solid var(--color-border);">
-
+         class="fixed bottom-0 left-0 right-0 z-50 sm:hidden rounded-t-2xl shadow-2xl overflow-hidden"
+         style="background:var(--color-surface);border-top:1px solid var(--color-border);"
+         x-transition:enter="transition-transform duration-300 ease-out" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition-transform duration-250 ease-in" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
         <template x-if="selectedProduct">
             <div>
                 <div class="flex justify-center pt-3 pb-1">
-                    <div class="w-10 h-1 rounded-full"
-                         style="background-color: var(--color-border-strong);"></div>
+                    <div class="w-10 h-1 rounded-full" style="background:var(--color-border-strong);"></div>
                 </div>
-
-                <div class="flex items-start gap-3 px-5 py-4"
-                     style="border-bottom: 1px solid var(--color-border);">
-                    <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                         style="background-color: var(--color-surface-alt); border: 1px solid var(--color-border);">
-                        <span class="material-symbols-outlined text-[22px]"
-                              style="color: var(--color-txt-muted);">inventory_2</span>
+                <div class="flex items-start gap-3 px-5 py-4" style="border-bottom:1px solid var(--color-border);">
+                    <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:var(--color-surface-alt);border:1px solid var(--color-border);">
+                        <span class="material-symbols-outlined text-[22px]" style="color:var(--color-txt-muted);">inventory_2</span>
                     </div>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <p class="font-semibold text-base"
-                               style="color: var(--color-txt-primary);"
-                               x-text="titleCase(selectedProduct.product_name)"></p>
-                            <template x-if="selectedProduct.stock === 0 && selectedProduct.status === 'active'">
-                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                                      style="background:color-mix(in srgb,var(--color-error) 12%,transparent);
-                                             color:var(--color-error);">No Stock</span>
+                            <p class="font-semibold text-base" style="color:var(--color-txt-primary);" x-text="titleCase(selectedProduct.product_name)"></p>
+                            <template x-if="selectedProduct.stock===0&&selectedProduct.status==='active'">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold" style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);">No Stock</span>
                             </template>
-                            <template x-if="selectedProduct.stock > 0 && selectedProduct.stock <= selectedProduct.low_reorder_threshold && selectedProduct.status === 'active'">
-                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                                      style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);
-                                             color:var(--color-warning);">Low Stock</span>
+                            <template x-if="selectedProduct.stock>0&&selectedProduct.stock<=selectedProduct.low_reorder_threshold&&selectedProduct.status==='active'">
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold" style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning);">Low Stock</span>
                             </template>
                         </div>
-                        <p class="font-mono text-xs mt-0.5"
-                           style="color: var(--color-txt-muted);"
-                           x-text="selectedProduct.product_id"></p>
+                        <p class="font-mono text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="selectedProduct.product_id"></p>
                     </div>
-                    <button @click="closeDetail()"
-                            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors"
-                            style="color: var(--color-txt-muted);"
-                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                            onmouseout="this.style.backgroundColor='transparent'">
+                    <button @click="closeDetail()" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="color:var(--color-txt-muted);">
                         <span class="material-symbols-outlined text-[20px]">close</span>
                     </button>
                 </div>
-
-                <div class="grid grid-cols-3"
-                    style="border-bottom: 1px solid var(--color-border);">
-                    <template x-for="col in columnDefs.filter(c => isVisible(c.key))" :key="col.key">
-                        <div class="flex flex-col items-center py-3 px-2 gap-0.5"
-                            style="border-right: 1px solid var(--color-border);
-                                    border-bottom: 1px solid var(--color-border);">
-                            <p class="text-xs text-center"
-                               style="color: var(--color-txt-muted);"
-                               x-text="col.label"></p>
-                            <p class="text-sm font-bold tabular-nums text-center"
-                               :style="colStyle(selectedProduct, col.key)"
-                               x-text="colValue(selectedProduct, col.key)"></p>
+                <div class="grid grid-cols-3" style="border-bottom:1px solid var(--color-border);">
+                    <template x-for="col in columnDefs.filter(c=>isVisible(c.key))" :key="col.key">
+                        <div class="flex flex-col items-center py-3 px-2 gap-0.5" style="border-right:1px solid var(--color-border);border-bottom:1px solid var(--color-border);">
+                            <p class="text-xs text-center" style="color:var(--color-txt-muted);" x-text="col.label"></p>
+                            <p class="text-sm font-bold tabular-nums text-center" :style="colStyle(selectedProduct,col.key)" x-text="colValue(selectedProduct,col.key)"></p>
                         </div>
                     </template>
                 </div>
-
-                <div class="px-5 py-3 flex flex-wrap gap-x-5 gap-y-1 text-xs"
-                     style="border-bottom: 1px solid var(--color-border);">
-                    <span style="color: var(--color-txt-muted);">
-                        Category:
-                        <span style="color: var(--color-txt-secondary);"
-                              x-text="titleCase(selectedProduct.category_name)"></span>
-                    </span>
+                <div class="px-5 py-3 flex flex-wrap gap-x-5 gap-y-1 text-xs" style="border-bottom:1px solid var(--color-border);">
+                    <span style="color:var(--color-txt-muted);">Category: <span style="color:var(--color-txt-secondary);" x-text="titleCase(selectedProduct.category_name)"></span></span>
                     <template x-if="selectedProduct.bundle_id">
-                        <span style="color: var(--color-txt-muted);">
-                            Bundle:
-                            <span style="color: var(--color-txt-secondary);"
-                                  x-text="selectedProduct.bundle_name"></span>
-                        </span>
+                        <span style="color:var(--color-txt-muted);">Bundle: <span style="color:var(--color-txt-secondary);" x-text="selectedProduct.bundle_name"></span></span>
                     </template>
-                    <span style="color: var(--color-txt-muted);">
-                        Status:
-                        <span :style="selectedProduct.status === 'active'
-                                  ? 'color:var(--color-success)'
-                                  : 'color:var(--color-txt-muted)'"
-                              x-text="titleCase(selectedProduct.status)"></span>
+                    <span style="color:var(--color-txt-muted);">Status:
+                        <span :style="selectedProduct.status==='active' ? 'color:var(--color-success)' : 'color:var(--color-txt-muted)'" x-text="titleCase(selectedProduct.status)"></span>
                     </span>
                 </div>
-
                 <div class="px-4 py-4 space-y-2 pb-8">
-
                     <template x-if="!canManage">
                         <a :href="`/inventory/${selectedProduct.product_id}/edit`"
-                           class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
-                           style="border: 1px solid var(--color-border); color: var(--color-accent); background-color: color-mix(in srgb,var(--color-accent) 8%,transparent);">
-                            <span class="material-symbols-outlined text-[20px]">edit</span>
-                            Adjust Stock
+                           class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                           style="border:1px solid var(--color-border);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 8%,transparent);">
+                            <span class="material-symbols-outlined text-[20px]">tune</span> Adjust Stock
                         </a>
                     </template>
-
-                    <template x-if="canManage && selectedProduct.status !== 'archived'">
+                    <template x-if="canManage&&selectedProduct.status!=='archived'">
                         <div class="space-y-2">
                             <a :href="`/inventory/${selectedProduct.product_id}/edit`"
-                               class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
-                               style="border: 1px solid var(--color-border); color: var(--color-accent); background-color: color-mix(in srgb,var(--color-accent) 8%,transparent);">
-                                <span class="material-symbols-outlined text-[20px]">edit</span>
-                                Edit Product
+                               class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                               style="border:1px solid var(--color-border);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">edit</span> Edit Product
                             </a>
-                            <button @click='closeDetail(); $dispatch("confirm", {
-                                        title:   "Archive Product",
-                                        message: `Archive "${titleCase(selectedProduct.product_name)}"? It will be hidden from the POS.`,
-                                        action:  `/inventory/${selectedProduct.product_id}/status_update`,
-                                        fields:  [{ name: "status", value: "archived" }]
-                                    })'
-                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
-                                    style="border: 1px solid var(--color-border); color: var(--color-error); background-color: color-mix(in srgb,var(--color-error) 8%,transparent);">
-                                <span class="material-symbols-outlined text-[20px]">archive</span>
-                                Archive Product
+                            <button @click="closeDetail();$dispatch('confirm',{
+                                        title:'Archive Product',
+                                        message:`Archive \"${titleCase(selectedProduct.product_name)}\"? It will be hidden from the POS.`,
+                                        action:`/inventory/${selectedProduct.product_id}/status_update`,
+                                        fields:[{name:'status',value:'archived'}]
+                                    })"
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                                    style="border:1px solid var(--color-border);color:var(--color-error);background:color-mix(in srgb,var(--color-error) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">archive</span> Archive Product
                             </button>
                         </div>
                     </template>
-
-                    <template x-if="canManage && selectedProduct.status === 'archived'">
+                    <template x-if="canManage&&selectedProduct.status==='archived'">
                         <div class="space-y-2">
-                            <button @click='closeDetail(); $dispatch("confirm", {
-                                        title:   "Restore Product",
-                                        message: `Restore "${titleCase(selectedProduct.product_name)}" to active?`,
-                                        action:  `/inventory/${selectedProduct.product_id}/status_update`,
-                                        fields:  [{ name: "status", value: "active" }]
-                                    })'
-                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
-                                    style="border: 1px solid var(--color-border); color: var(--color-success); background-color: color-mix(in srgb,var(--color-success) 8%,transparent);">
-                                <span class="material-symbols-outlined text-[20px]">unarchive</span>
-                                Restore Product
+                            <button @click="closeDetail();$dispatch('confirm',{
+                                        title:'Restore Product',
+                                        message:`Restore \"${titleCase(selectedProduct.product_name)}\" to active?`,
+                                        action:`/inventory/${selectedProduct.product_id}/status_update`,
+                                        fields:[{name:'status',value:'active'}]
+                                    })"
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                                    style="border:1px solid var(--color-border);color:var(--color-success);background:color-mix(in srgb,var(--color-success) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">unarchive</span> Restore Product
                             </button>
-                            <button @click='closeDetail(); $dispatch("confirm", {
-                                        title:   "Delete Product",
-                                        message: `Permanently delete "${titleCase(selectedProduct.product_name)}"? This cannot be undone.`,
-                                        action:  `/inventory/${selectedProduct.product_id}/delete`,
-                                        fields:  []
-                                    })'
-                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
-                                    style="border: 1px solid var(--color-border); color: var(--color-error); background-color: color-mix(in srgb,var(--color-error) 8%,transparent);">
-                                <span class="material-symbols-outlined text-[20px]">delete_forever</span>
-                                Delete Permanently
+                            <button @click="closeDetail();$dispatch('confirm',{
+                                        title:'Delete Product',
+                                        message:`Permanently delete \"${titleCase(selectedProduct.product_name)}\"? This cannot be undone.`,
+                                        action:`/inventory/${selectedProduct.product_id}/delete`,
+                                        fields:[]
+                                    })"
+                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                                    style="border:1px solid var(--color-border);color:var(--color-error);background:color-mix(in srgb,var(--color-error) 8%,transparent);">
+                                <span class="material-symbols-outlined text-[20px]">delete_forever</span> Delete Permanently
                             </button>
                         </div>
                     </template>
-
                 </div>
             </div>
         </template>
     </div>
 
+
     {# ══════════════════════════════════════════════
-       DESKTOP FLOATING ACTION BAR (sm+)
-       Shown when items are selected on desktop
+       DESKTOP FLOATING ACTION BAR
     ══════════════════════════════════════════════ #}
-    <div x-show="selectMode && selectedIds.length > 0"
-         x-transition:enter="transition-all duration-200 ease-out"
-         x-transition:enter-start="opacity-0 translate-y-4"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition-all duration-150 ease-in"
-         x-transition:leave-start="opacity-100 translate-y-0"
-         x-transition:leave-end="opacity-0 translate-y-4"
-         class="hidden sm:flex fixed bottom-6 left-1/2 z-40 -translate-x-1/2
-                items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl"
-         style="background-color:var(--color-surface);
-                border:1px solid var(--color-border);
-                backdrop-filter:blur(12px);
-                white-space:nowrap;">
-
-        {# count badge #}
-        <span class="flex items-center gap-1.5 text-sm font-semibold pr-3"
-              style="color:var(--color-txt-primary);border-right:1px solid var(--color-border);">
-            <span class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold"
-                  style="background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent);"
-                  x-text="selectedIds.length"></span>
-            <span x-text="selectedIds.length === 1 ? 'item selected' : 'items selected'"></span>
+    <div x-show="selectMode&&selectedIds.length>0"
+         class="hidden sm:flex fixed bottom-6 left-1/2 z-40 -translate-x-1/2 items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl"
+         style="background:var(--color-surface);border:1px solid var(--color-border);backdrop-filter:blur(12px);white-space:nowrap;"
+         x-transition:enter="transition-all duration-200 ease-out" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition-all duration-150 ease-in" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-4">
+        <span class="flex items-center gap-1.5 text-sm font-semibold pr-3" style="color:var(--color-txt-primary);border-right:1px solid var(--color-border);">
+            <span class="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold" style="background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent);" x-text="selectedIds.length"></span>
+            <span x-text="selectedIds.length===1?'item selected':'items selected'"></span>
         </span>
-
-        {# Adjust #}
-        <button @click="goToAdjust()"
-                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
-                style="background-color:var(--color-primary);color:var(--color-bg);"
-                onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
-                onmouseout="this.style.backgroundColor='var(--color-primary)'">
-            <span class="material-symbols-outlined text-[16px]">tune</span>
-            Adjust
+        <button @click="goToAdjust()" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
+                style="background:var(--color-primary);color:var(--color-bg);"
+                onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+            <span class="material-symbols-outlined text-[16px]">tune</span> Adjust
         </button>
-
-        {# Assign Category — admin / superadmin only #}
         <template x-if="canManage">
-            <button @click="openCategoryModal()"
-                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
-                    style="border:1px solid color-mix(in srgb,var(--color-accent) 50%,transparent);
-                           background:color-mix(in srgb,var(--color-accent) 10%,transparent);
-                           color:var(--color-accent);"
-                    onmouseover="this.style.background='color-mix(in srgb,var(--color-accent) 18%,transparent)'"
-                    onmouseout="this.style.background='color-mix(in srgb,var(--color-accent) 10%,transparent)'">
-                <span class="material-symbols-outlined text-[16px]">category</span>
-                Category
+            <button @click="openCategoryModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
+                    style="border:1px solid color-mix(in srgb,var(--color-accent) 50%,transparent);background:color-mix(in srgb,var(--color-accent) 10%,transparent);color:var(--color-accent);"
+                    onmouseover="this.style.background='color-mix(in srgb,var(--color-accent) 18%,transparent)'" onmouseout="this.style.background='color-mix(in srgb,var(--color-accent) 10%,transparent)'">
+                <span class="material-symbols-outlined text-[16px]">category</span> Category
             </button>
         </template>
-
-        {# Set Threshold — admin / superadmin only #}
         <template x-if="canManage">
-            <button @click="openThresholdModal()"
-                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
-                    style="border:1px solid color-mix(in srgb,var(--color-info) 50%,transparent);
-                           background:color-mix(in srgb,var(--color-info) 10%,transparent);
-                           color:var(--color-info);"
-                    onmouseover="this.style.background='color-mix(in srgb,var(--color-info) 18%,transparent)'"
-                    onmouseout="this.style.background='color-mix(in srgb,var(--color-info) 10%,transparent)'">
-                <span class="material-symbols-outlined text-[16px]">info</span>
-                Threshold
+            <button @click="openThresholdModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
+                    style="border:1px solid color-mix(in srgb,var(--color-info) 50%,transparent);background:color-mix(in srgb,var(--color-info) 10%,transparent);color:var(--color-info);"
+                    onmouseover="this.style.background='color-mix(in srgb,var(--color-info) 18%,transparent)'" onmouseout="this.style.background='color-mix(in srgb,var(--color-info) 10%,transparent)'">
+                <span class="material-symbols-outlined text-[16px]">info</span> Threshold
             </button>
         </template>
-
-        {# Archive — admin / superadmin only #}
-        <template x-if="canManage && anySelectedActive">
-            <button @click="confirmArchiveOpen = true"
+        {# Archive bulk — uses global confirm modal #}
+        <template x-if="canManage&&anySelectedActive">
+            <button @click="bulkArchiveConfirm = true"
                     class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
-                    style="background-color:var(--color-error);color:#fff;"
-                    onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                <span class="material-symbols-outlined text-[16px]">archive</span>
-                Archive
+                    style="background:var(--color-error);color:#fff;"
+                    onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                <span class="material-symbols-outlined text-[16px]">archive</span> Archive
             </button>
         </template>
-
-        {# Unarchive — admin / superadmin only #}
-        <template x-if="canManage && anySelectedArchived">
-            <button @click="unarchiveSelected()"
+        {# Unarchive bulk — uses global confirm modal #}
+        <template x-if="canManage&&anySelectedArchived">
+            <button @click="bulkUnarchiveConfirm = true"
                     class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
-                    style="background-color:var(--color-success);color:#fff;"
-                    onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                <span class="material-symbols-outlined text-[16px]">unarchive</span>
-                Unarchive
+                    style="background:var(--color-success);color:#fff;"
+                    onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                <span class="material-symbols-outlined text-[16px]">unarchive</span> Unarchive
             </button>
         </template>
-
-        {# Deselect all #}
-        <button @click="selectedIds = []"
-                class="w-8 h-8 rounded-xl flex items-center justify-center transition"
-                style="color:var(--color-txt-muted);"
-                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                onmouseout="this.style.backgroundColor='transparent'"
-                title="Clear selection">
+        <button @click="selectedIds=[]" class="w-8 h-8 rounded-xl flex items-center justify-center transition" style="color:var(--color-txt-muted);"
+                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'" title="Clear selection">
             <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
     </div>
 
+
     {# ══════════════════════════════════════════════
        MOBILE SELECTION BAR + ACTION SHEET
-       Replaces the cropped pill on small screens
     ══════════════════════════════════════════════ #}
-
-    {# Compact sticky bar (mobile only) #}
-    <div x-show="selectMode && selectedIds.length > 0"
-         x-transition:enter="transition-all duration-200 ease-out"
-         x-transition:enter-start="opacity-0 translate-y-full"
-         x-transition:enter-end="opacity-100 translate-y-0"
-         x-transition:leave="transition-all duration-150 ease-in"
-         x-transition:leave-start="opacity-100 translate-y-0"
-         x-transition:leave-end="opacity-0 translate-y-full"
+    <div x-show="selectMode&&selectedIds.length>0"
          class="sm:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center gap-3 px-4 py-3"
-         style="background-color:var(--color-surface);
-                border-top:1px solid var(--color-border);
-                backdrop-filter:blur(12px);">
-
-        {# Count pill #}
+         style="background:var(--color-surface);border-top:1px solid var(--color-border);backdrop-filter:blur(12px);"
+         x-transition:enter="transition-all duration-200 ease-out" x-transition:enter-start="opacity-0 translate-y-full" x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition-all duration-150 ease-in" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 translate-y-full">
         <div class="flex items-center gap-2 min-w-0">
-            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
-                  style="background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent);"
-                  x-text="selectedIds.length"></span>
-            <span class="text-sm font-semibold truncate"
-                  style="color:var(--color-txt-primary);"
-                  x-text="selectedIds.length === 1 ? '1 item selected' : selectedIds.length + ' items selected'"></span>
+            <span class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0" style="background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent);" x-text="selectedIds.length"></span>
+            <span class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);" x-text="selectedIds.length===1?'1 item selected':selectedIds.length+' items selected'"></span>
         </div>
-
         <div class="flex items-center gap-2 ml-auto shrink-0">
-            {# Clear selection #}
-            <button @click="selectedIds = []"
-                    class="w-9 h-9 rounded-xl flex items-center justify-center transition"
-                    style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
+            <button @click="selectedIds=[]" class="w-9 h-9 rounded-xl flex items-center justify-center transition" style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
                 <span class="material-symbols-outlined text-[18px]">close</span>
             </button>
-
-            {# Actions button → opens sheet #}
-            <button @click="bulkActionSheetOpen = true"
-                    class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition"
-                    style="background-color:var(--color-primary);color:var(--color-bg);">
-                <span class="material-symbols-outlined text-[17px]">bolt</span>
-                Actions
+            <button @click="bulkActionSheetOpen=true" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold" style="background:var(--color-primary);color:var(--color-bg);">
+                <span class="material-symbols-outlined text-[17px]">bolt</span> Actions
             </button>
         </div>
     </div>
 
-    {# Mobile bulk action sheet backdrop #}
-    <div x-show="bulkActionSheetOpen"
-         x-transition:enter="transition-opacity duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         @click="bulkActionSheetOpen = false"
+    <div x-show="bulkActionSheetOpen" @click="bulkActionSheetOpen=false"
          class="sm:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+         x-transition:enter="transition-opacity duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          style="display:none;"></div>
-
-    {# Mobile bulk action sheet panel #}
     <div x-show="bulkActionSheetOpen"
-         x-transition:enter="transition-transform duration-300 ease-out"
-         x-transition:enter-start="translate-y-full"
-         x-transition:enter-end="translate-y-0"
-         x-transition:leave="transition-transform duration-200 ease-in"
-         x-transition:leave-start="translate-y-0"
-         x-transition:leave-end="translate-y-full"
          class="sm:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl shadow-2xl"
-         style="background-color:var(--color-surface);
-                border-top:1px solid var(--color-border);">
-
-        {# Drag handle #}
-        <div class="flex justify-center pt-3 pb-1">
-            <div class="w-10 h-1 rounded-full" style="background-color:var(--color-border-strong);"></div>
-        </div>
-
-        {# Sheet header #}
-        <div class="flex items-center justify-between px-5 py-3"
-             style="border-bottom:1px solid var(--color-border);">
+         style="background:var(--color-surface);border-top:1px solid var(--color-border);"
+         x-transition:enter="transition-transform duration-300 ease-out" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition-transform duration-200 ease-in" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+        <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1 rounded-full" style="background:var(--color-border-strong);"></div></div>
+        <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid var(--color-border);">
             <div>
                 <p class="text-sm font-bold" style="color:var(--color-txt-primary);">Bulk Actions</p>
-                <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
-                   x-text="selectedIds.length + ' product' + (selectedIds.length === 1 ? '' : 's') + ' selected'"></p>
+                <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="selectedIds.length+' product'+(selectedIds.length===1?'':'s')+' selected'"></p>
             </div>
-            <button @click="bulkActionSheetOpen = false"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-                    style="color:var(--color-txt-muted);"
-                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                    onmouseout="this.style.backgroundColor='transparent'">
+            <button @click="bulkActionSheetOpen=false" class="w-8 h-8 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
-
-        {# Action list #}
         <div class="px-4 py-3 space-y-2 pb-10">
-
-            {# Adjust Stock — all roles #}
-            <button @click="bulkActionSheetOpen = false; goToAdjust()"
-                    class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
-                    style="background:color-mix(in srgb,var(--color-primary) 8%,transparent);
-                           border:1px solid color-mix(in srgb,var(--color-primary) 25%,transparent);"
-                    onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                     style="background:var(--color-primary);color:var(--color-bg);">
+            {# Adjust #}
+            <button @click="bulkActionSheetOpen=false;goToAdjust()" class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
+                    style="background:color-mix(in srgb,var(--color-primary) 8%,transparent);border:1px solid color-mix(in srgb,var(--color-primary) 25%,transparent);">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-primary);color:var(--color-bg);">
                     <span class="material-symbols-outlined text-[18px]">tune</span>
                 </div>
-                <div class="text-left">
-                    <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Adjust Stock</p>
-                    <p class="text-xs" style="color:var(--color-txt-muted);">Update quantities for selected items</p>
-                </div>
-                <span class="material-symbols-outlined text-[18px] ml-auto"
-                      style="color:var(--color-txt-muted);">chevron_right</span>
+                <div class="text-left"><p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Adjust Stock</p><p class="text-xs" style="color:var(--color-txt-muted);">Update quantities for selected items</p></div>
+                <span class="material-symbols-outlined text-[18px] ml-auto" style="color:var(--color-txt-muted);">chevron_right</span>
             </button>
-
-            {# Assign Category — admin / superadmin only #}
+            {# Category #}
             <template x-if="canManage">
-                <button @click="openCategoryModal()"
-                        class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
-                        style="background:color-mix(in srgb,var(--color-accent) 8%,transparent);
-                               border:1px solid color-mix(in srgb,var(--color-accent) 25%,transparent);"
-                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                         style="background:var(--color-accent);color:var(--color-bg);">
+                <button @click="openCategoryModal()" class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
+                        style="background:color-mix(in srgb,var(--color-accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--color-accent) 25%,transparent);">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-accent);color:var(--color-bg);">
                         <span class="material-symbols-outlined text-[18px]">category</span>
                     </div>
-                    <div class="text-left">
-                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Assign Category</p>
-                        <p class="text-xs" style="color:var(--color-txt-muted);">Move items to a different category</p>
-                    </div>
-                    <span class="material-symbols-outlined text-[18px] ml-auto"
-                          style="color:var(--color-txt-muted);">chevron_right</span>
+                    <div class="text-left"><p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Assign Category</p><p class="text-xs" style="color:var(--color-txt-muted);">Move items to a different category</p></div>
+                    <span class="material-symbols-outlined text-[18px] ml-auto" style="color:var(--color-txt-muted);">chevron_right</span>
                 </button>
             </template>
-
-            {# Set Threshold — admin / superadmin only #}
+            {# Threshold #}
             <template x-if="canManage">
-                <button @click="openThresholdModal()"
-                        class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
-                        style="background:color-mix(in srgb,var(--color-info) 8%,transparent);
-                               border:1px solid color-mix(in srgb,var(--color-info) 25%,transparent);"
-                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                         style="background:var(--color-info);color:#fff;">
+                <button @click="openThresholdModal()" class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
+                        style="background:color-mix(in srgb,var(--color-info) 8%,transparent);border:1px solid color-mix(in srgb,var(--color-info) 25%,transparent);">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-info);color:#fff;">
                         <span class="material-symbols-outlined text-[18px]">info</span>
                     </div>
-                    <div class="text-left">
-                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Set Low Stock Threshold</p>
-                        <p class="text-xs" style="color:var(--color-txt-muted);">Apply a threshold to selected items</p>
-                    </div>
-                    <span class="material-symbols-outlined text-[18px] ml-auto"
-                          style="color:var(--color-txt-muted);">chevron_right</span>
+                    <div class="text-left"><p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Set Low Stock Threshold</p><p class="text-xs" style="color:var(--color-txt-muted);">Apply a threshold to selected items</p></div>
+                    <span class="material-symbols-outlined text-[18px] ml-auto" style="color:var(--color-txt-muted);">chevron_right</span>
                 </button>
             </template>
-
-            {# Archive — admin / superadmin, active items only #}
-            <template x-if="canManage && anySelectedActive">
-                <button @click="bulkActionSheetOpen = false; confirmArchiveOpen = true"
+            {# Archive — confirm modal #}
+            <template x-if="canManage&&anySelectedActive">
+                <button @click="bulkActionSheetOpen=false; bulkArchiveConfirm=true"
                         class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
-                        style="background:color-mix(in srgb,var(--color-error) 8%,transparent);
-                               border:1px solid color-mix(in srgb,var(--color-error) 25%,transparent);"
-                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                         style="background:var(--color-error);color:#fff;">
+                        style="background:color-mix(in srgb,var(--color-error) 8%,transparent);border:1px solid color-mix(in srgb,var(--color-error) 25%,transparent);">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-error);color:#fff;">
                         <span class="material-symbols-outlined text-[18px]">archive</span>
                     </div>
-                    <div class="text-left">
-                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Archive Selected</p>
-                        <p class="text-xs" style="color:var(--color-txt-muted);">Hide items from the POS</p>
-                    </div>
-                    <span class="material-symbols-outlined text-[18px] ml-auto"
-                          style="color:var(--color-txt-muted);">chevron_right</span>
+                    <div class="text-left"><p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Archive Selected</p><p class="text-xs" style="color:var(--color-txt-muted);">Hide items from the POS</p></div>
+                    <span class="material-symbols-outlined text-[18px] ml-auto" style="color:var(--color-txt-muted);">chevron_right</span>
                 </button>
             </template>
-
-            {# Unarchive — admin / superadmin, archived items only #}
-            <template x-if="canManage && anySelectedArchived">
-                <button @click="bulkActionSheetOpen = false; unarchiveSelected()"
+            {# Unarchive — confirm modal #}
+            <template x-if="canManage&&anySelectedArchived">
+                <button @click="bulkActionSheetOpen=false; bulkUnarchiveConfirm=true"
                         class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
-                        style="background:color-mix(in srgb,var(--color-success) 8%,transparent);
-                               border:1px solid color-mix(in srgb,var(--color-success) 25%,transparent);"
-                        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                         style="background:var(--color-success);color:#fff;">
+                        style="background:color-mix(in srgb,var(--color-success) 8%,transparent);border:1px solid color-mix(in srgb,var(--color-success) 25%,transparent);">
+                    <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-success);color:#fff;">
                         <span class="material-symbols-outlined text-[18px]">unarchive</span>
                     </div>
-                    <div class="text-left">
-                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Restore Selected</p>
-                        <p class="text-xs" style="color:var(--color-txt-muted);">Make items active again</p>
-                    </div>
-                    <span class="material-symbols-outlined text-[18px] ml-auto"
-                          style="color:var(--color-txt-muted);">chevron_right</span>
+                    <div class="text-left"><p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Restore Selected</p><p class="text-xs" style="color:var(--color-txt-muted);">Make items active again</p></div>
+                    <span class="material-symbols-outlined text-[18px] ml-auto" style="color:var(--color-txt-muted);">chevron_right</span>
                 </button>
             </template>
-
         </div>
     </div>
-
-    {# ── Archive confirm modal ── #}
-    <template x-if="confirmArchiveOpen">
+        {# ── Bulk Archive Confirm ── #}
+    <template x-if="bulkArchiveConfirm">
         <div class="fixed inset-0 z-50 flex items-center justify-center px-4"
-             style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);">
+             style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);">
             <div class="w-full max-w-sm rounded-2xl p-7 text-center"
-                 style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                 style="background:var(--color-surface);border:1px solid var(--color-border);">
                 <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
                      style="background:color-mix(in srgb,var(--color-error) 12%,transparent);">
-                    <span class="material-symbols-outlined text-[24px]"
-                          style="color:var(--color-error);">archive</span>
+                    <span class="material-symbols-outlined text-[24px]" style="color:var(--color-error);">archive</span>
                 </div>
-                <h2 class="text-lg font-bold mb-2" style="color:var(--color-txt-primary);">
-                    Archive Selected?
-                </h2>
-                <p class="text-sm mb-7" style="color:var(--color-txt-muted);">
-                    Archive <span x-text="selectedIds.length"></span> product(s)?
-                    They will be hidden from the POS.
-                </p>
+                <h2 class="text-lg font-bold mb-2" style="color:var(--color-txt-primary);">Archive Selected?</h2>
+                <p class="text-sm mb-7" style="color:var(--color-txt-muted);"
+                   x-text="`Archive ${selectedIds.length} product(s)? They will be hidden from the POS.`"></p>
                 <div class="flex gap-3">
-                    <button @click="confirmArchiveOpen = false"
+                    <button @click="bulkArchiveConfirm = false"
                             class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
-                            style="border:1px solid var(--color-border); color:var(--color-txt-secondary);"
+                            style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
                             onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                            onmouseout="this.style.backgroundColor='transparent'">
-                        Cancel
-                    </button>
-                    <button @click="archiveSelected()"
-                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
-                            style="background-color:var(--color-error); color:#fff;"
-                            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-                        Yes, Archive
-                    </button>
+                            onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
+                    <button @click="bulkArchiveConfirm = false; archiveSelected()"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                            style="background:var(--color-error);color:#fff;">Yes, Archive</button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    {# ── Bulk Unarchive Confirm ── #}
+    <template x-if="bulkUnarchiveConfirm">
+        <div class="fixed inset-0 z-50 flex items-center justify-center px-4"
+             style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);">
+            <div class="w-full max-w-sm rounded-2xl p-7 text-center"
+                 style="background:var(--color-surface);border:1px solid var(--color-border);">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+                     style="background:color-mix(in srgb,var(--color-success) 12%,transparent);">
+                    <span class="material-symbols-outlined text-[24px]" style="color:var(--color-success);">unarchive</span>
+                </div>
+                <h2 class="text-lg font-bold mb-2" style="color:var(--color-txt-primary);">Restore Selected?</h2>
+                <p class="text-sm mb-7" style="color:var(--color-txt-muted);"
+                   x-text="`Restore ${selectedIds.length} product(s) to active?`"></p>
+                <div class="flex gap-3">
+                    <button @click="bulkUnarchiveConfirm = false"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                            style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
+                    <button @click="bulkUnarchiveConfirm = false; unarchiveSelected()"
+                            class="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                            style="background:var(--color-success);color:#fff;">Yes, Restore</button>
                 </div>
             </div>
         </div>
