@@ -70,8 +70,9 @@ def login():
             return redirect(url_for("auth.account_activation", user_id=user.user_id))
 
         login_user(user)
-        audit("LOGIN", "Auth", f"{user.first_name} logged in", user_id=user.user_id)
-        db.session.commit()
+        if current_user.role != "superadmin":
+            audit("LOGIN", "Auth", f"{user.first_name} logged in", user_id=user.user_id)
+            db.session.commit()
         try:
             if user.role == "superadmin":
                 return redirect(url_for("admin.dashboard"))
@@ -158,9 +159,10 @@ def account_activation(user_id):
 
 @auth_bp.route("/logout", methods=["GET", "POST"])
 @login_required
-def logout():
-    audit("LOGOUT", "Auth", f"{current_user.first_name} logged out", user_id=current_user.user_id)
-    db.session.commit()
+def logout():        
+    if current_user.role != "superadmin":
+        audit("LOGOUT", "Auth", f"{current_user.first_name} logged out", user_id=current_user.user_id)
+        db.session.commit()
     logout_user()
     flash("You have been signed out.", "info")
     return redirect(url_for("auth.login"))

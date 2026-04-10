@@ -257,7 +257,7 @@ def review_request(request_id):
 
 @admin_bp.route("/audit_logs")
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def audit_logs():
     from sqlalchemy import distinct
  
@@ -357,7 +357,7 @@ def audit_logs():
 
 @admin_bp.route("/audit_logs/export")
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def export_audit_logs():
     """Download filtered audit log as a formatted Excel file."""
     import openpyxl
@@ -705,7 +705,7 @@ def _build_report_data(date_from, date_to):
 
 @admin_bp.route("/audit_logs/<int:log_id>")
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def audit_log_detail(log_id):
     """Return a single audit log entry as JSON for the detail modal."""
     log = AuditLog.query.get_or_404(log_id)
@@ -739,7 +739,7 @@ def audit_log_detail(log_id):
  
 @admin_bp.route("/reports")
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def reports():
     
     date_from, date_to, date_from_str, date_to_str = _parse_date_range()
@@ -773,7 +773,7 @@ def reports():
  
 @admin_bp.route("/reports/pdf")
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def export_report_pdf():
     """Render a print-ready PDF for the current tab + date range."""
     from weasyprint import HTML
@@ -806,7 +806,7 @@ def export_report_pdf():
  
 @admin_bp.route("/reports/export")
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def export_report():
     """Download the selected report tab as a formatted Excel workbook."""
     import openpyxl

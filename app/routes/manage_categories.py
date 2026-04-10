@@ -161,7 +161,7 @@ def status_update(category_id):
 
 @manage_categories_bp.route("/<int:category_id>/delete", methods=["POST"])
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def delete(category_id):
     category = Category.get_by_id(category_id)
     if not category:

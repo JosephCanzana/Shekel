@@ -591,7 +591,7 @@ def review(detail_id):
 
 @defects_bp.route("/detail/<int:detail_id>/update", methods=["POST"])
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def update_review(detail_id):
     detail = DefectDetail.query.get_or_404(detail_id)
 

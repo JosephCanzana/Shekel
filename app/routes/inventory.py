@@ -441,9 +441,6 @@ def status_update(product_id):
 @login_required
 @role_required("superadmin", "admin")
 def delete(product_id):
-    if current_user.role == "admin":
-        flash("Co-admin can't delete a product", "info")
-        return redirect(url_for("inventory.index"))
     product = get_product(product_id)
     if not product:
         flash("Product not found.", "danger")
@@ -644,7 +641,7 @@ def bulk_status_update():
 
 @inventory_bp.route("/bulk/delete", methods=["POST"])
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def bulk_delete():
     from app.models.sale_detail   import SaleDetail
     from app.models.defect_detail import DefectDetail
