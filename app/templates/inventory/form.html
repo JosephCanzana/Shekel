@@ -268,33 +268,35 @@ const CATEGORY_THRESHOLDS = {{ category_thresholds | tojson }};
                     </p>
                 </div>
 
-                {# Category #}
-                <div class="space-y-1.5">
-                    <label class="text-xs font-semibold uppercase tracking-wider"
-                           style="color: var(--color-txt-muted);">
-                        Category
-                        <span class="normal-case font-normal ml-1"
-                              style="color: var(--color-txt-muted);">(optional)</span>
-                    </label>
-                    <select name="category_id"
-                            @change="onCategoryChange($event.target.value)"
-                            class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
-                            style="border: 1px solid var(--color-border);
-                                   background-color: var(--color-surface-alt);
-                                   color: var(--color-txt-primary);"
-                            onfocus="this.style.borderColor='var(--color-accent)';
-                                     this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
-                            onblur="this.style.borderColor='var(--color-border)';
-                                    this.style.boxShadow='none'">
-                        <option value="">No category</option>
-                        {% for cat in categories %}
-                        <option value="{{ cat.category_id }}"
-                                {{ 'selected' if product is defined and product.category_id == cat.category_id }}>
-                            {{ cat.category_name | capitalize }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
+        {# Category #}
+        <div class="space-y-1.5">
+            <label class="text-xs font-semibold uppercase tracking-wider"
+                style="color: var(--color-txt-muted);">
+                Category
+                <span class="normal-case font-normal ml-1"
+                    style="color: var(--color-txt-muted);">(optional)</span>
+            </label>
+            <input
+                type="text"
+                name="category_name"
+                list="category-list"
+                placeholder="Type or select a category..."
+                class="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                style="border: 1px solid var(--color-border);
+                    background-color: var(--color-surface-alt);
+                    color: var(--color-txt-primary);"
+                onfocus="this.style.borderColor='var(--color-accent)';
+                        this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                onblur="this.style.borderColor='var(--color-border)';
+                        this.style.boxShadow='none'"
+                value="{{ (categories | selectattr('category_id', 'equalto', product.category_id) | first).category_name | capitalize if product is defined and product.category_id else '' }}">
+
+            <datalist id="category-list">
+                {% for cat in categories %}
+                    <option value="{{ cat.category_name | capitalize }}">
+                {% endfor %}
+            </datalist>
+        </div>
 
             </div>
 

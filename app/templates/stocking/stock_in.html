@@ -266,7 +266,21 @@
         } catch(e) { console.error('Token refresh failed') }
     }
 
-}" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">
+}" x-init="
+    $nextTick(() => $refs.searchField && $refs.searchField.focus());
+    window.addEventListener('keydown', (e) => {
+        const tag = document.activeElement.tagName;
+        const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+        if (e.key === 'F2' || (e.key === '/' && !isTyping)) {
+            e.preventDefault();
+            let visibleField = null;
+            document.querySelectorAll('input[x-ref=searchField]').forEach(f => {
+                if (f.offsetParent !== null) visibleField = f;
+            });
+            if (visibleField) { visibleField.focus(); visibleField.select(); }
+        }
+    });
+">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" id="stockin_token" value="{{ stockin_token }}">

@@ -259,6 +259,18 @@
 
 }" x-init="
     $nextTick(() => $refs.searchField && $refs.searchField.focus());
+    window.addEventListener('keydown', (e) => {
+        const tag = document.activeElement.tagName;
+        const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+        if (e.key === 'F2' || (e.key === '/' && !isTyping)) {
+            e.preventDefault();
+            let visibleField = null;
+            document.querySelectorAll('input[x-ref=searchField]').forEach(f => {
+                if (f.offsetParent !== null) visibleField = f;
+            });
+            if (visibleField) { visibleField.focus(); visibleField.select(); }
+        }
+    });
 ">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -407,6 +419,12 @@
                                 <span x-show="searching" class="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
                             </button>
                         </div>
+                        <span class="text-[10px] flex items-center gap-1" style="color:var(--color-txt-muted);">
+                            <kbd class="px-1 py-0.5 rounded text-[10px]" style="border:1px solid var(--color-border); background:var(--color-surface-alt);">F2</kbd>
+                            <span>or</span>
+                            <kbd class="px-1 py-0.5 rounded text-[10px]" style="border:1px solid var(--color-border); background:var(--color-surface-alt);">/</kbd>
+                            to focus
+                        </span>
                         <template x-if="suggestions.length > 0">
                             <div class="absolute left-0 right-10 mt-1 rounded-xl overflow-hidden z-20 shadow-lg"
                                  style="background-color:var(--color-surface); border:1px solid var(--color-border);">
