@@ -19,13 +19,44 @@ stocking_bp = Blueprint("stocking", __name__, url_prefix="/stocking")
 @login_required
 @role_required("stocking")
 def dashboard():
+    from app.routes.admin import (
+        _build_report_data,
+        _build_chart_data,
+        _paginate_list,
+        _parse_date_range,
+    )
+    import json
+
+    date_from, date_to, date_from_str, date_to_str = _parse_date_range()
+
+    active_tab = request.args.get("tab", "inventory")
+    if active_tab not in ("inventory", "stock", "defects"):
+        active_tab = "inventory"
+
+    page = request.args.get("page", 1, type=int)
+
+    data       = _build_report_data(date_from, date_to)
+    chart_json = json.dumps(_build_chart_data(data))
+
+    if active_tab == "stock":
+        detail = _paginate_list(data["stock"]["rows"], page)
+    elif active_tab == "defects":
+        detail = _paginate_list(data["defects"]["rows"], page)
+    else:
+        detail = _paginate_list(data["inventory"]["rows"], page)
+
     return render_template(
         "stocking/dashboard.html",
-        time_of_day      = get_time_of_day(),
-        stats            = get_stocking_stats(),
-        low_stock_items  = get_low_stock_items(),
-        recent_stockins  = get_recent_stockins(),
-        defects          = get_defects(),
+        time_of_day     = get_time_of_day(),
+        stats           = get_stocking_stats(),
+        low_stock_items = get_low_stock_items(),
+        defects         = get_defects(),
+        data            = data,
+        detail          = detail,
+        chart_json      = chart_json,
+        active_tab      = active_tab,
+        date_from       = date_from_str,
+        date_to         = date_to_str,
     )
 
 
