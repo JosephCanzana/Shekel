@@ -36,6 +36,10 @@ def index():
 @role_required("superadmin", "admin")
 def add():
     categories = get_active_categories()
+    categories_json = [
+    {"category_id": c.category_id, "category_name": c.category_name}
+    for c in categories
+]
 
     if request.method == "POST":
         try:
@@ -97,7 +101,19 @@ def add():
             cost_price    = float(cost_price)
             revenue_price = float(revenue_price)
             total_price = round(cost_price + revenue_price, 2)
-            category_id   = int(category_id) if category_id else None
+            # resolve category from datalist name input
+            from app.models.category import Category
+            category_name_input = request.form.get("category_name", "").strip()
+            category_obj = Category.query.filter(
+                Category.category_name.ilike(category_name_input)
+            ).first() if category_name_input else None
+
+            # validate — if they typed something but it doesn't match any category
+            if category_name_input and not category_obj:
+                flash(f'"{category_name_input}" is not a valid category. Please select from the list.', "danger")
+                return redirect(url_for("inventory.add"))
+
+            category_id = category_obj.category_id if category_obj else None
 
             has_bundle = any([bundle_id, bundle_name, bundle_count])
             if has_bundle:
@@ -161,6 +177,7 @@ def add():
 
     return render_template("inventory/form.html",
                              categories=categories,
+                             categories_json=categories_json,
                              category_thresholds=get_category_thresholds(),
                              can_manage=True)
 
@@ -175,6 +192,11 @@ def edit(product_id):
     if not product:
         flash("Product not found.", "danger")
         return redirect(url_for("inventory.index"))
+    
+    categories_json = [
+        {"category_id": c.category_id, "category_name": c.category_name}
+        for c in categories
+    ]
 
     if request.method == "POST":
         try:
@@ -236,24 +258,35 @@ def edit(product_id):
 
             # ── admin / co-admin: full edit ───────────────────────────────────────
             product_id_new = request.form.get("product_id", "").strip()
-            product_name  = request.form.get("product_name",  "").strip()
-            category_id   = request.form.get("category_id",   "").strip()
-            cost_price    = request.form.get("cost_price",    "").strip()
-            revenue_price = request.form.get("revenue_price", "").strip()
-            low_reorder   = request.form.get("low_reorder_threshold", "").strip()
-            status        = request.form.get("status", product.status).strip()
-            bundle_id     = request.form.get("bundle_id",    "").strip()
-            bundle_count  = request.form.get("bundle_count", "").strip()
-            bundle_name   = request.form.get("bundle_name",  f"{bundle_count}/pack").strip()
+            product_name   = request.form.get("product_name",  "").strip()
+            cost_price     = request.form.get("cost_price",    "").strip()
+            revenue_price  = request.form.get("revenue_price", "").strip()
+            low_reorder    = request.form.get("low_reorder_threshold", "").strip()
+            status         = request.form.get("status", product.status).strip()
+            bundle_id      = request.form.get("bundle_id",    "").strip()
+            bundle_count   = request.form.get("bundle_count", "").strip()
+            bundle_name    = request.form.get("bundle_name",  f"{bundle_count}/pack").strip()
+
+            # resolve category from datalist name input
+            from app.models.category import Category
+            category_name_input = request.form.get("category_name", "").strip()
+            category_obj = Category.query.filter(
+                Category.category_name.ilike(category_name_input)
+            ).first() if category_name_input else None
+
+            # validate — if they typed something but it doesn't match any category
+            if category_name_input and not category_obj:
+                flash(f'"{category_name_input}" is not a valid category. Please select from the list.', "danger")
+                return redirect(url_for("inventory.edit", product_id=product_id))  # or inventory.add
+
+            category_id = category_obj.category_id if category_obj else None
+            
 
             if not bundle_count:
                 bundle_name = ""
 
-            if not low_reorder and category_id:
-                from app.models.category import Category
-                cat = Category.query.get(int(category_id))
-                if cat:
-                    low_reorder = str(cat.default_low_stock_threshold)
+            if not low_reorder and category_obj:
+                low_reorder = str(category_obj.default_low_stock_threshold)
     
             if not all([product_id_new, product_name, cost_price, revenue_price, low_reorder]):
                 flash("Name, prices, and low stock threshold are required.", "danger")
@@ -280,6 +313,10 @@ def edit(product_id):
                     raise ValueError
             except ValueError:
                 flash("Low stock threshold must be a positive whole number.", "danger")
+                return redirect(url_for("inventory.edit", product_id=product_id))
+
+            if not product_id_new:
+                flash("Product barcode/ID is required.", "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
 
             id_changing = product_id_new != product_id
@@ -340,7 +377,7 @@ def edit(product_id):
                 product = db.session.get(Product, product_id_new)
 
             product.product_name          = product_name.lower()
-            product.category_id           = int(category_id) if category_id else None
+            product.category_id = category_id
             product.cost_price            = cost_price
             product.revenue_price         = revenue_price
             product.total_price         = total_price
@@ -407,6 +444,7 @@ def edit(product_id):
     return render_template("inventory/form.html",
                              product=product,
                              categories=categories,
+                             categories_json=categories_json,
                              category_thresholds=get_category_thresholds(),
                              can_manage=can_manage)
 

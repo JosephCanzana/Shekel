@@ -36,7 +36,7 @@ class AuditLog(BaseModel):
         ),
         nullable=False,
     )
-    reference_id    = db.Column(db.Integer, nullable=True)
+    reference_id    = db.Column(db.String(100), nullable=True)
     reference_table = db.Column(db.String(50), nullable=True)
     description     = db.Column(db.Text, nullable=False)
     action_datetime = db.Column(
