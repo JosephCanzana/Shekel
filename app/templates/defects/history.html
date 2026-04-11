@@ -7,7 +7,8 @@
     mobileDetailOpen: false,
     selectedRow:      null,
     openDetail(row) { this.selectedRow = row; this.mobileDetailOpen = true },
-    closeDetail() { this.mobileDetailOpen = false; setTimeout(() => this.selectedRow = null, 300) }
+    closeDetail() { this.mobileDetailOpen = false; setTimeout(() => this.selectedRow = null, 300) },
+    fmt(n) { return '₱' + parseFloat(n).toFixed(2) },
 }" class="flex flex-col gap-4" style="margin-top:-17px;">
 
     {# ── toolbar ── #}
@@ -269,30 +270,69 @@
                 </span>
 
                 {# Customer compensation #}
-                <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
-                      style="{% if detail.customer_compensation == 'none' %}
-                                 background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
-                             {% elif detail.customer_compensation in ('exchange_same','exchange_different') %}
-                                 background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)
-                             {% else %}
-                                 background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)
-                             {% endif %}">
-                    {{ CUSTOMER_COMP_LABELS[detail.customer_compensation] }}
-                </span>
+                <div class="flex flex-col gap-1">
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                          style="{% if detail.customer_compensation == 'none' %}
+                                     background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
+                                 {% elif detail.customer_compensation in ('exchange_same','exchange_different') %}
+                                     background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)
+                                 {% else %}
+                                     background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)
+                                 {% endif %}">
+                        {{ CUSTOMER_COMP_LABELS[detail.customer_compensation] }}
+                    </span>
+                    {% if detail.customer_compensation == 'exchange_different' and detail.exchange_product %}
+                    <span class="text-[10px] flex items-center gap-0.5" style="color:var(--color-info);">
+                        <span class="material-symbols-outlined text-[10px]">swap_horiz</span>
+                        {{ detail.exchange_product.product_name.capitalize() }}
+                        {% if detail.price_difference is not none %}
+                            {% if detail.price_difference == 0 %}
+                                · equal
+                            {% elif detail.price_difference > 0 %}
+                                · cust +{{ '₱%.2f' | format(detail.price_difference) }}
+                            {% else %}
+                                · store {{ '₱%.2f' | format(detail.price_difference) }}
+                            {% endif %}
+                        {% else %}
+                            · swap
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                </div>
 
                 {# Supplier compensation #}
-                <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
-                      style="{% if detail.supplier_compensation == 'pending' %}
-                                 background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
-                             {% elif detail.supplier_compensation == 'loss' %}
-                                 background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
-                             {% elif detail.supplier_compensation == 'none' %}
-                                 background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
-                             {% else %}
-                                 background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)
-                             {% endif %}">
-                    {{ SUPPLIER_COMP_LABELS[detail.supplier_compensation] }}
-                </span>
+                <div class="flex flex-col gap-1">
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
+                          style="{% if detail.supplier_compensation == 'pending' %}
+                                     background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
+                                 {% elif detail.supplier_compensation == 'loss' %}
+                                     background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
+                                 {% elif detail.supplier_compensation == 'none' %}
+                                     background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted)
+                                 {% else %}
+                                     background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)
+                                 {% endif %}">
+                        {{ SUPPLIER_COMP_LABELS[detail.supplier_compensation] }}
+                    </span>
+                    {% if detail.supplier_compensation == 'different_item' and detail.exchange_product %}
+                    <span class="text-[10px] flex items-center gap-0.5" style="color:var(--color-success);">
+                        <span class="material-symbols-outlined text-[10px]">swap_horiz</span>
+                        {{ detail.exchange_product.product_name.capitalize() }}
+                        {% if detail.price_difference is not none %}
+                            {% if detail.price_difference == 0 %}
+                                · equal
+                            {% elif detail.price_difference > 0 %}
+                                · supp +{{ '₱%.2f' | format(detail.price_difference) }}
+                            {% else %}
+                                · absorb {{ '₱%.2f' | format(detail.price_difference) }}
+                            {% endif %}
+                        {% else %}
+                            · swap
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+                      
 
                 <div>
                     <p class="text-sm" style="color:var(--color-txt-secondary);">{{ (user.first_name ~ ' ' ~ user.last_name) | title }}</p>
@@ -383,7 +423,9 @@
                         reviewed_by:       '{{ ((detail.reviewer.first_name ~ " " ~ detail.reviewer.last_name) | title) if detail.reviewed_by and detail.reviewer else "" }}',
                         reviewed_at:       '{{ detail.reviewed_at.strftime("%b %d, %Y") if detail.reviewed_at else "" }}',
                         rejection_note:    '{{ detail.rejection_note | replace("'", "\\'") if detail.rejection_note else "" }}',
-                        history_url:       '{{ url_for("defects.product_history", product_id=product.product_id) }}'
+                        history_url:       '{{ url_for("defects.product_history", product_id=product.product_id) }}',
+                        exchange_product_name: '{{ detail.exchange_product.product_name.capitalize() if detail.exchange_product else "" }}',
+                        price_difference:      {{ detail.price_difference | float if detail.price_difference is not none else 'null' }}
                     })"
                     class="w-full text-left rounded-xl px-4 py-3 transition"
                     style="border:1px solid var(--color-border); background-color:var(--color-surface);"
@@ -552,17 +594,23 @@
                         <span class="material-symbols-outlined text-[13px]">storefront</span>
                         Customer comp: <span x-text="selectedRow.cust_comp_label" style="color:var(--color-txt-secondary);"></span>
                     </span>
-                    <span class="flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-[13px]">local_shipping</span>
-                        Supplier comp:
-                        <span x-text="selectedRow.sup_comp_label"
-                              :style="selectedRow.sup_comp === 'pending'
-                                      ? 'color:var(--color-warning)'
-                                      : selectedRow.sup_comp === 'loss'
-                                        ? 'color:var(--color-error)'
-                                        : selectedRow.sup_comp === 'none'
-                                          ? 'color:var(--color-txt-muted)'
-                                          : 'color:var(--color-success)'"></span>
+                    <template x-if="selectedRow.exchange_product_name">
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[13px]">swap_horiz</span>
+                            Exchange:
+                            <span style="color:var(--color-info);" x-text="selectedRow.exchange_product_name"></span>
+                            <template x-if="selectedRow.price_difference !== null && selectedRow.price_difference !== undefined">
+                                <span class="font-semibold tabular-nums"
+                                      :style="selectedRow.price_difference > 0 ? 'color:var(--color-warning)' : selectedRow.price_difference < 0 ? 'color:var(--color-success)' : 'color:var(--color-txt-muted)'"
+                                      x-text="selectedRow.price_difference === 0 ? '· equal' : (selectedRow.price_difference > 0 ? '+' : '') + fmt(selectedRow.price_difference)">
+                                </span>
+                            </template>
+                            <template x-if="selectedRow.price_difference === null || selectedRow.price_difference === undefined">
+                                <span style="color:var(--color-txt-muted);">· swap only</span>
+                            </template>
+                        </span>
+                    </template>
+                             
                     </span>
                     <template x-if="selectedRow.reviewed_by">
                         <span class="flex items-center gap-1.5">

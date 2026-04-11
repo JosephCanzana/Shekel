@@ -14,24 +14,20 @@ class DefectDetail(BaseModel):
     )
     quantity = db.Column(db.Integer, nullable=False)
 
-    # ── Origin ───────────────────────────────────────────────────────────────
+    # ── Origin ────────────────────────────────────────────────────────────────
     origin = db.Column(
         db.Enum("in_store", "customer", validate_strings=True),
         nullable=False,
         default="in_store",
     )
 
-    # ── Reason ───────────────────────────────────────────────────────────────
-    # defect + damage merged → damaged
+    # ── Reason ────────────────────────────────────────────────────────────────
     reason = db.Column(
         db.Enum("damaged", "expired", "change_of_mind", validate_strings=True),
         nullable=False,
     )
 
     # ── Workflow status ───────────────────────────────────────────────────────
-    #   submitted → waiting for admin approval (stocking / cashier non-COM logs)
-    #   active    → approved or admin-logged; inventory already adjusted
-    #   rejected  → admin rejected the submission (no inventory change)
     status = db.Column(
         db.Enum("submitted", "active", "rejected", validate_strings=True),
         nullable=False,
@@ -39,14 +35,6 @@ class DefectDetail(BaseModel):
     )
 
     # ── Customer compensation ─────────────────────────────────────────────────
-    #   Only meaningful when origin = customer.
-    #   In-store records always get 'none'.
-    #
-    #   full_refund        → 100% cash back to customer
-    #   partial_refund     → cash refund with price difference handled
-    #   exchange_same      → swap for the identical product
-    #   exchange_different → swap for a different product (price_difference applies)
-    #   none               → not applicable (in-store)
     customer_compensation = db.Column(
         db.Enum(
             "full_refund",
@@ -61,12 +49,6 @@ class DefectDetail(BaseModel):
     )
 
     # ── Supplier compensation ─────────────────────────────────────────────────
-    #   pending        → on watch list, awaiting supplier decision
-    #   loss           → supplier gives nothing; store absorbs cost
-    #   same_item      → supplier replaces with identical item
-    #   different_item → supplier replaces with a different item
-    #   money          → supplier reimburses cash to store
-    #   none           → not applicable (change_of_mind)
     supplier_compensation = db.Column(
         db.Enum(
             "pending",
@@ -81,21 +63,22 @@ class DefectDetail(BaseModel):
         default="pending",
     )
 
-    # ── Exchange details (exchange_different only) ────────────────────────────
+    # ── DEPRECATED — kept for rows created before the Defect_Exchange_Items
+    #    migration. Do NOT write to this column for new records. All new
+    #    exchange_different entries use the Defect_Exchange_Items child table.
+    #    price_difference is also deprecated for the same reason; the computed
+    #    value is sum(exchange_items.price_at_exchange * qty) - subtotal_amount.
     exchange_product_id = db.Column(
         db.String(100),
         db.ForeignKey("Products.product_id", onupdate="CASCADE", ondelete="SET NULL"),
         nullable=True,
     )
-    # Positive  → customer pays more
-    # Negative  → store gives change back
-    # Null/zero → equal value
     price_difference = db.Column(db.Numeric(10, 2), nullable=True)
 
     proposed_supplier_compensation = db.Column(
-    db.Enum("loss", "same_item", "different_item", "money", validate_strings=True),
-    nullable=True,
-)
+        db.Enum("loss", "same_item", "different_item", "money", validate_strings=True),
+        nullable=True,
+    )
 
     # ── Price snapshot ────────────────────────────────────────────────────────
     cost_price_at_defect    = db.Column(db.Numeric(10, 2), nullable=False)
@@ -124,8 +107,35 @@ class DefectDetail(BaseModel):
 
     # ── Relationships ─────────────────────────────────────────────────────────
     defect           = db.relationship("Defect",  back_populates="defect_details", passive_deletes=True)
-    product          = db.relationship("Product", foreign_keys=[product_id],          back_populates="defect_details", passive_deletes=True)
-    exchange_product = db.relationship("Product", foreign_keys=[exchange_product_id])
+    product          = db.relationship("Product", foreign_keys=[product_id], back_populates="defect_details", passive_deletes=True)
+    exchange_product = db.relationship("Product", foreign_keys=[exchange_product_id])  # deprecated
     reviewer         = db.relationship("User",    foreign_keys=[reviewed_by])
-    archiver = db.relationship("User", foreign_keys=[archived_by])
+    archiver         = db.relationship("User",    foreign_keys=[archived_by])
     sale             = db.relationship("Sale",    foreign_keys=[transaction_id])
+
+    # New: one DefectDetail → many DefectExchangeItems
+    exchange_items   = db.relationship(
+        "DefectExchangeItem",
+        back_populates="defect_detail",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # ── Computed helpers ──────────────────────────────────────────────────────
+    @property
+    def computed_price_difference(self):
+        """
+        Sum of (price_at_exchange × quantity) across all exchange items,
+        minus the original subtotal_amount of this detail.
+        Positive  → customer / store pays extra.
+        Negative  → store gives change back.
+        None      → no exchange items recorded.
+        """
+        if not self.exchange_items:
+            return None
+        exchange_total = sum(
+            float(ei.price_at_exchange) * ei.quantity
+            for ei in self.exchange_items
+            if not ei.no_money_exchange
+        )
+        return round(exchange_total - float(self.subtotal_amount), 2)

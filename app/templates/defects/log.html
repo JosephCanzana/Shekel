@@ -18,9 +18,9 @@
   input[type=number] { -moz-appearance: textfield; }
 </style>
 
+{# ── Log type: 'instore' or 'customer' ── #}
 <div x-data="{
 
-    {# ── Log type: 'instore' or 'customer' ── #}
     logType: '{{ 'customer' if current_user.role == 'cashier' else 'instore' }}',
 
     mode:            'manual',
@@ -47,6 +47,58 @@
     mobileTab:       'scan',
     confirmComplete: false,
     confirmCancel:   false,
+
+    // ── Exchange product (exchange_different) ─────────────────────────────
+    exchangeQuery:        '',
+    exchangeSearching:    false,
+    exchangeSuggestions:  [],
+    exchangeProduct:      null,
+    noMoneyExchange:      false,
+
+    get exchangePriceDiff() {
+        if (!this.exchangeProduct || !this.product) return null
+        return parseFloat((this.exchangeProduct.total_price - this.product.total_price).toFixed(2))
+    },
+
+    async fetchExchangeSuggestions() {
+        const q = this.exchangeQuery.trim()
+        if (!q) { this.exchangeSuggestions = []; return }
+        try {
+            const res = await fetch('/defects/api/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json',
+                           'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                body: JSON.stringify({ query: q })
+            })
+            this.exchangeSuggestions = res.ok ? await res.json() : []
+        } catch(e) { this.exchangeSuggestions = [] }
+    },
+
+    async selectExchangeProduct(product_id) {
+        this.exchangeSuggestions = []
+        this.exchangeSearching   = true
+        try {
+            const res  = await fetch('/defects/api/lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json',
+                           'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                body: JSON.stringify({ query: product_id })
+            })
+            const data = await res.json()
+            if (res.ok) {
+                this.exchangeProduct = data
+                this.exchangeQuery   = data.product_name
+            }
+        } catch(e) {}
+        this.exchangeSearching = false
+    },
+
+    clearExchange() {
+        this.exchangeQuery       = ''
+        this.exchangeProduct     = null
+        this.exchangeSuggestions = []
+        this.noMoneyExchange     = false
+    },
 
     isCashier:          {{ 'true' if current_user.role == 'cashier' else 'false' }},
     canSetCompensation: {{ 'true' if can_set_compensation else 'false' }},
@@ -99,6 +151,7 @@
         this.itemCompensation = 'pending'
         this.itemCustomerComp = type === 'customer' ? 'exchange_same' : 'none'
         // clear session TXN when switching away from customer
+        this.clearExchange()
         if (type === 'instore') {
             this.sessionTxn = null; this.sessionTxnInput = ''; this.sessionTxnError = ''
         }
@@ -114,6 +167,7 @@
             if (this.itemCompensation === 'returned') this.itemCompensation = 'pending'
             this.itemCustomerComp = this.logType === 'customer' ? 'full_refund' : 'none'
         }
+        this.clearExchange()
     },
 
     async lookupSessionTxn() {
@@ -232,6 +286,18 @@
         if (this.totalUnits <= 0) { this.panelError = 'Quantity must be at least 1.'; return }
         this.panelError = ''
 
+        // ── Exchange product validation ────────────────────────────────────
+        if (this.itemCustomerComp === 'exchange_different') {
+            if (!this.exchangeProduct) {
+                this.panelError = 'Please select the exchange product.'
+                return
+            }
+            if (this.exchangeProduct.product_id === this.product.product_id) {
+                this.panelError = 'Exchange product must be different from the original item.'
+                return
+            }
+        }
+
         const compensation = this.canSetCompensation ? this.itemCompensation
                            : (this.itemReason === 'change_of_mind' ? 'returned' : 'pending')
 
@@ -303,21 +369,27 @@
             } else {
                     this.items.push({
                         _key: rowKey,
-                        log_type:             this.logType,
-                        product_id:           this.product.product_id,
-                        product_name:         this.product.product_name,
-                        total_price:          this.product.total_price,
-                        cost_price:           this.product.cost_price,
-                        revenue_price:        this.product.revenue_price,
-                        stock:                this.product.stock,
-                        bundle:               this.product.bundle || null,
-                        qty:                  this.totalUnits,
-                        bundleQty:            parseInt(this.bundleQty) || 0,
-                        unitQty:              parseInt(this.unitQty)   || 0,
-                        reason:               this.itemReason,
+                        log_type:              this.logType,
+                        product_id:            this.product.product_id,
+                        product_name:          this.product.product_name,
+                        total_price:           this.product.total_price,
+                        cost_price:            this.product.cost_price,
+                        revenue_price:         this.product.revenue_price,
+                        stock:                 this.product.stock,
+                        bundle:                this.product.bundle || null,
+                        qty:                   this.totalUnits,
+                        bundleQty:             parseInt(this.bundleQty) || 0,
+                        unitQty:               parseInt(this.unitQty)   || 0,
+                        reason:                this.itemReason,
                         compensation,
                         customer_compensation: this.itemCustomerComp,
-                        txn_ref:              this.txnRef.trim(),
+                        txn_ref:               this.txnRef.trim(),
+                        // exchange_different fields
+                        exchange_product_id:   this.itemCustomerComp === 'exchange_different' ? (this.exchangeProduct?.product_id   || null) : null,
+                        exchange_product_name: this.itemCustomerComp === 'exchange_different' ? (this.exchangeProduct?.product_name  || null) : null,
+                        exchange_product_price:this.itemCustomerComp === 'exchange_different' ? (this.exchangeProduct?.total_price   || null) : null,
+                        exchange_price_diff:   this.itemCustomerComp === 'exchange_different' && !this.noMoneyExchange ? this.exchangePriceDiff : null,
+                        no_money_exchange:     this.noMoneyExchange,
                     })
             }
         }
@@ -326,6 +398,7 @@
         this.itemReason = this.logType === 'instore' ? 'damaged' : 'change_of_mind'
         this.itemCompensation = 'pending'
         this.itemCustomerComp = this.logType === 'customer' ? 'exchange_same' : 'none'
+        this.clearExchange()
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
 
@@ -345,13 +418,27 @@
         this.bundleQty = item.bundleQty !== undefined ? item.bundleQty : 0
         this.unitQty   = item.unitQty   !== undefined ? item.unitQty   : item.qty
         this.mobileTab = 'scan'
+        // Restore exchange state
+        if (item.exchange_product_id) {
+            this.exchangeProduct = {
+                product_id:   item.exchange_product_id,
+                product_name: item.exchange_product_name,
+                total_price:  item.exchange_product_price,
+                stock:        0,
+            }
+            this.exchangeQuery    = item.exchange_product_name || ''
+            this.noMoneyExchange  = !!item.no_money_exchange
+        } else {
+            this.clearExchange()
+        }
     },
 
     cancelEdit() {
         this.editingId = null; this.product = null; this.searchQuery = ''
         this.bundleQty = 0; this.unitQty = 1; this.txnRef = ''
-        this.itemReason = this.logType === 'instore' ? 'defect' : 'change_of_mind'
+        this.itemReason = this.logType === 'instore' ? 'damaged' : 'change_of_mind'
         this.itemCompensation = 'pending'; this.panelError = ''
+        this.clearExchange()
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
 
@@ -364,7 +451,7 @@
         this.items = []; this.product = null; this.searchQuery = ''; this.bundleQty = 0
         this.unitQty = 1; this.txnRef = ''; this.editingId = null
         this.globalError = ''; this.panelError = ''; this.confirmCancel = false
-        this.itemReason = this.logType === 'instore' ? 'defect' : 'change_of_mind'
+        this.itemReason = this.logType === 'instore' ? 'damaged' : 'change_of_mind'
         this.itemCompensation = 'pending'
         this.sessionTxn = null; this.sessionTxnInput = ''; this.sessionTxnError = ''
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
@@ -387,6 +474,8 @@
                         customer_compensation: i.customer_compensation || 'none',
                         log_type:              i.log_type,
                         txn_ref:               i.txn_ref || null,
+                        exchange_product_id:   i.exchange_product_id   || null,
+                        price_difference:      i.exchange_price_diff    ?? null,
                     })),
                     defect_token: document.getElementById('defect_token').value
                 })
@@ -512,11 +601,13 @@
                                                 ? 'background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)'
                                                 : 'background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)'"
                                       x-text="compensationLabel(item.compensation)"></span>
-                                {# txn ref if present #}
-                                <template x-if="item.txn_ref">
-                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono"
-                                          style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted);"
-                                          x-text="item.txn_ref"></span>
+                                {# exchange product badge #}
+                                <template x-if="item.exchange_product_name">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"
+                                          style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);">
+                                        <span class="material-symbols-outlined text-[10px]">swap_horiz</span>
+                                        <span x-text="item.exchange_product_name + (item.exchange_price_diff !== null ? ' (' + (item.exchange_price_diff > 0 ? '+' : '') + fmt(item.exchange_price_diff) + ')' : ' (swap)')"></span>
+                                    </span>
                                 </template>
                             </div>
                         </div>
@@ -569,26 +660,34 @@
                     </div>
                 </div>
 
-                {# ── Log type toggle (hidden for cashier — always customer) ── #}
+             {# ── Log type toggle (hidden for cashier — always customer) ── #}
                 {% if current_user.role != 'cashier' %}
                 <div class="shrink-0 px-4 py-2.5 flex items-center gap-2"
-                     style="border-bottom:1px solid var(--color-border); background:color-mix(in srgb,var(--color-surface-alt) 60%,transparent);">
+                    style="border-bottom:1px solid var(--color-border); background:color-mix(in srgb,var(--color-surface-alt) 60%,transparent);">
                     <span class="text-xs font-semibold" style="color:var(--color-txt-muted);">Log Type:</span>
                     <div class="flex items-center rounded-lg p-0.5 gap-0.5"
-                         style="background-color:var(--color-surface); border:1px solid var(--color-border);">
+                        style="background-color:var(--color-surface); border:1px solid var(--color-border);">
                         <button @click="switchLogType('instore')"
                                 class="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition"
                                 :style="logType==='instore' ? 'background:var(--color-info);color:#fff' : 'color:var(--color-txt-muted)'">
                             <span class="material-symbols-outlined text-[13px]">warehouse</span>
                             In-Store
                         </button>
+                        {% if current_user.role in ('superadmin', 'admin') %}
+                        <button @click="switchLogType('customer')"
+                                class="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition"
+                                :style="logType==='customer' ? 'background:var(--color-accent);color:#fff' : 'color:var(--color-txt-muted)'">
+                            <span class="material-symbols-outlined text-[13px]">person_raised_hand</span>
+                            Customer
+                        </button>
+                        {% endif %}
                     </div>
                     <span class="text-xs" style="color:var(--color-txt-muted);"
-                          x-text="mode==='auto' ? 'Auto scan' : 'Manual'"></span>
+                        x-text="mode==='auto' ? 'Auto scan' : 'Manual'"></span>
                 </div>
                 {% else %}
                 <div class="shrink-0 px-4 py-2 flex items-center gap-2"
-                     style="border-bottom:1px solid var(--color-border);
+                    style="border-bottom:1px solid var(--color-border);
                             background:color-mix(in srgb,var(--color-accent) 5%,transparent);">
                     <span class="material-symbols-outlined text-[13px]" style="color:var(--color-accent);">person_raised_hand</span>
                     <span class="text-xs font-semibold" style="color:var(--color-accent);">Customer Return</span>
@@ -893,17 +992,18 @@
                                     Customer Compensation
                                 </label>
                                 <select x-model="itemCustomerComp"
+                                        @change="if(itemCustomerComp !== 'exchange_different') clearExchange()"
                                         class="w-full px-3 py-2 rounded-xl text-sm font-semibold focus:outline-none transition"
                                         style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
                                         onfocus="this.style.borderColor='var(--color-accent)'"
                                         onblur="this.style.borderColor='var(--color-border)'">
                                     <template x-if="itemReason === 'change_of_mind'">
-                                        <template x-for="c in ['exchange_same','exchange_different']" :key="c">
+                                        <template x-for="c in ['full_refund','exchange_different']" :key="c">
                                             <option :value="c" x-text="customerCompLabel(c)"></option>
                                         </template>
                                     </template>
                                     <template x-if="itemReason !== 'change_of_mind'">
-                                        <template x-for="c in ['full_refund','partial_refund','exchange_same','exchange_different']" :key="c">
+                                        <template x-for="c in ['full_refund','exchange_same','exchange_different']" :key="c">
                                             <option :value="c" x-text="customerCompLabel(c)"></option>
                                         </template>
                                     </template>
@@ -911,6 +1011,93 @@
                             </div>
                         </template>
                
+                        {# ── Exchange product sub-panel ── #}
+                        <template x-if="logType === 'customer' && itemCustomerComp === 'exchange_different'">
+                            <div class="mt-3 rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
+                                <div class="px-3 py-2 flex items-center gap-1.5"
+                                     style="background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                                    <span class="material-symbols-outlined text-[13px]" style="color:var(--color-info);">swap_horiz</span>
+                                    <p class="text-xs font-semibold" style="color:var(--color-txt-muted);">Exchange Item</p>
+                                </div>
+                                <div class="p-3 space-y-2">
+                                    {# search #}
+                                    <div class="relative">
+                                        <input type="text" x-model="exchangeQuery"
+                                               @input.debounce.250ms="fetchExchangeSuggestions()"
+                                               @keydown.escape="exchangeSuggestions=[]"
+                                               @blur="setTimeout(()=>exchangeSuggestions=[],150)"
+                                               placeholder="Search exchange product..."
+                                               class="w-full px-3 py-2 rounded-xl text-xs focus:outline-none transition"
+                                               style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                               onfocus="this.style.borderColor='var(--color-accent)'"
+                                               onblur="this.style.borderColor='var(--color-border)'">
+                                        <template x-if="exchangeSuggestions.length > 0">
+                                            <div class="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-30 shadow-lg"
+                                                 style="background:var(--color-surface); border:1px solid var(--color-border);">
+                                                <template x-for="s in exchangeSuggestions" :key="s.product_id">
+                                                    <button @mousedown.prevent="selectExchangeProduct(s.product_id)"
+                                                            class="w-full flex items-center justify-between px-3 py-2 text-xs text-left transition"
+                                                            style="border-top:1px solid var(--color-border);"
+                                                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                                            onmouseout="this.style.backgroundColor='transparent'">
+                                                        <div>
+                                                            <p class="font-medium" style="color:var(--color-txt-primary);" x-text="s.product_name"></p>
+                                                            <p class="font-mono text-[10px]" style="color:var(--color-txt-muted);" x-text="s.product_id"></p>
+                                                        </div>
+                                                        <p class="tabular-nums shrink-0 ml-2 font-semibold" style="color:var(--color-txt-muted);" x-text="fmt(s.total_price)"></p>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <template x-if="exchangeSearching">
+                                            <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                                                <span class="material-symbols-outlined text-[14px] animate-spin" style="color:var(--color-txt-muted);">progress_activity</span>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    {# selected exchange product #}
+                                    <template x-if="exchangeProduct">
+                                        <div class="rounded-lg px-3 py-2 flex items-center justify-between"
+                                             style="background:color-mix(in srgb,var(--color-info) 8%,transparent); border:1px solid color-mix(in srgb,var(--color-info) 20%,transparent);">
+                                            <div>
+                                                <p class="text-xs font-semibold" style="color:var(--color-txt-primary);" x-text="exchangeProduct.product_name"></p>
+                                                <p class="text-[10px]" style="color:var(--color-txt-muted);" x-text="fmt(exchangeProduct.total_price) + ' · ' + exchangeProduct.stock + ' in stock'"></p>
+                                            </div>
+                                            <button @click="clearExchange()"
+                                                    class="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+                                                    style="color:var(--color-txt-muted);">
+                                                <span class="material-symbols-outlined text-[13px]">close</span>
+                                            </button>
+                                        </div>
+                                    </template>
+
+                                    {# price diff #}
+                                    <template x-if="exchangeProduct && product">
+                                        <div class="flex items-center justify-between text-xs px-1">
+                                            <span style="color:var(--color-txt-muted);">Price difference:</span>
+                                            <span class="font-bold tabular-nums"
+                                                  :style="noMoneyExchange ? 'color:var(--color-txt-muted)' :
+                                                          exchangePriceDiff > 0 ? 'color:var(--color-warning)' :
+                                                          exchangePriceDiff < 0 ? 'color:var(--color-success)' : 'color:var(--color-txt-muted)'"
+                                                  x-text="noMoneyExchange ? 'No charge — just swap'
+                                                          : exchangePriceDiff === 0 ? 'Equal value'
+                                                          : exchangePriceDiff > 0
+                                                              ? 'Customer adds ' + fmt(exchangePriceDiff)
+                                                              : 'Store returns ' + fmt(Math.abs(exchangePriceDiff))">
+                                            </span>
+                                        </div>
+                                    </template>
+
+                                    {# no money toggle #}
+                                    <label class="flex items-center gap-2 text-xs cursor-pointer select-none" style="color:var(--color-txt-muted);">
+                                        <input type="checkbox" x-model="noMoneyExchange" class="w-3.5 h-3.5 rounded">
+                                        No money exchange — just swap items
+                                    </label>
+                                </div>
+                            </div>
+                        </template>
+
                         {# change_of_mind info pill #}
                         <template x-if="itemReason === 'change_of_mind'">
                             <div class="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
@@ -1026,13 +1213,21 @@
                     {# log type toggle — hidden for cashier #}
                     {% if current_user.role != 'cashier' %}
                     <div class="flex items-center rounded-lg p-0.5 gap-0.5"
-                         style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
+                        style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
                         <button @click="switchLogType('instore')"
                                 class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition"
                                 :style="logType==='instore' ? 'background:var(--color-info);color:#fff' : 'color:var(--color-txt-muted)'">
                             <span class="material-symbols-outlined text-[12px]">warehouse</span>
                             In-Store
                         </button>
+                        {% if current_user.role in ('superadmin', 'admin') %}
+                        <button @click="switchLogType('customer')"
+                                class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition"
+                                :style="logType==='customer' ? 'background:var(--color-accent);color:#fff' : 'color:var(--color-txt-muted)'">
+                            <span class="material-symbols-outlined text-[12px]">person_raised_hand</span>
+                            Customer
+                        </button>
+                        {% endif %}
                     </div>
                     {% else %}
                     <div class="flex items-center gap-1.5">
@@ -1042,7 +1237,7 @@
                     {% endif %}
                     {# auto/manual toggle #}
                     <div class="flex items-center rounded-lg p-0.5 gap-0.5"
-                         style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
+                        style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
                         <button @click="mode='auto'" class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition"
                                 :style="mode==='auto' ? 'background:var(--color-primary);color:var(--color-bg)' : 'color:var(--color-txt-muted)'">Auto</button>
                         <button @click="mode='manual'" class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition"
@@ -1251,10 +1446,11 @@
                             <div class="px-3 pb-2">
                                 <p class="text-[10px] uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);">Customer Compensation</p>
                                 <select x-model="itemCustomerComp"
+                                        @change="if(itemCustomerComp !== 'exchange_different') clearExchange()"
                                         class="w-full px-2 py-1.5 rounded-xl text-xs font-semibold focus:outline-none"
                                         style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
                                     <template x-if="itemReason === 'change_of_mind'">
-                                        <template x-for="c in ['exchange_same','exchange_different']" :key="c">
+                                        <template x-for="c in ['full_refund','exchange_different']" :key="c">
                                             <option :value="c" x-text="customerCompLabel(c)"></option>
                                         </template>
                                     </template>
@@ -1264,6 +1460,78 @@
                                         </template>
                                     </template>
                                 </select>
+                            </div>
+                        </template>
+
+                        {# ── Exchange product sub-panel (mobile) ── #}
+                        <template x-if="logType === 'customer' && itemCustomerComp === 'exchange_different'">
+                            <div class="mx-3 mb-1 rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
+                                <div class="px-3 py-2 flex items-center gap-1.5"
+                                     style="background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                                    <span class="material-symbols-outlined text-[13px]" style="color:var(--color-info);">swap_horiz</span>
+                                    <p class="text-xs font-semibold" style="color:var(--color-txt-muted);">Exchange Item</p>
+                                </div>
+                                <div class="p-3 space-y-2">
+                                    <div class="relative">
+                                        <input type="text" x-model="exchangeQuery"
+                                               @input.debounce.250ms="fetchExchangeSuggestions()"
+                                               @keydown.escape="exchangeSuggestions=[]"
+                                               @blur="setTimeout(()=>exchangeSuggestions=[],150)"
+                                               placeholder="Search exchange product..."
+                                               class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
+                                               style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary); font-size:16px;"
+                                               onfocus="this.style.borderColor='var(--color-accent)'"
+                                               onblur="this.style.borderColor='var(--color-border)'">
+                                        <template x-if="exchangeSuggestions.length > 0">
+                                            <div class="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-30 shadow-xl"
+                                                 style="background:var(--color-surface); border:1px solid var(--color-border);">
+                                                <template x-for="s in exchangeSuggestions" :key="s.product_id">
+                                                    <button @mousedown.prevent="selectExchangeProduct(s.product_id)"
+                                                            class="w-full flex items-center justify-between px-3 py-3 text-xs text-left transition"
+                                                            style="border-top:1px solid var(--color-border);"
+                                                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                                                            onmouseout="this.style.backgroundColor='transparent'">
+                                                        <div>
+                                                            <p class="font-medium" style="color:var(--color-txt-primary);" x-text="s.product_name"></p>
+                                                            <p class="font-mono text-[10px]" style="color:var(--color-txt-muted);" x-text="s.product_id"></p>
+                                                        </div>
+                                                        <p class="tabular-nums shrink-0 ml-2 font-semibold" style="color:var(--color-txt-secondary);" x-text="fmt(s.total_price)"></p>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <template x-if="exchangeProduct">
+                                        <div class="rounded-lg px-3 py-2 flex items-center justify-between"
+                                             style="background:color-mix(in srgb,var(--color-info) 8%,transparent); border:1px solid color-mix(in srgb,var(--color-info) 20%,transparent);">
+                                            <div>
+                                                <p class="text-xs font-semibold" style="color:var(--color-txt-primary);" x-text="exchangeProduct.product_name"></p>
+                                                <p class="text-[10px]" style="color:var(--color-txt-muted);" x-text="fmt(exchangeProduct.total_price) + ' · ' + exchangeProduct.stock + ' in stock'"></p>
+                                            </div>
+                                            <button @click="clearExchange()" class="w-6 h-6 rounded-md flex items-center justify-center" style="color:var(--color-txt-muted);">
+                                                <span class="material-symbols-outlined text-[13px]">close</span>
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <template x-if="exchangeProduct && product">
+                                        <div class="flex items-center justify-between text-xs px-1">
+                                            <span style="color:var(--color-txt-muted);">Difference:</span>
+                                            <span class="font-bold tabular-nums"
+                                                  :style="noMoneyExchange ? 'color:var(--color-txt-muted)' :
+                                                          exchangePriceDiff > 0 ? 'color:var(--color-warning)' :
+                                                          exchangePriceDiff < 0 ? 'color:var(--color-success)' : 'color:var(--color-txt-muted)'"
+                                                  x-text="noMoneyExchange ? 'No charge'
+                                                          : exchangePriceDiff === 0 ? 'Equal value'
+                                                          : exchangePriceDiff > 0 ? 'Customer adds ' + fmt(exchangePriceDiff)
+                                                          : 'Store returns ' + fmt(Math.abs(exchangePriceDiff))">
+                                            </span>
+                                        </div>
+                                    </template>
+                                    <label class="flex items-center gap-2 text-xs cursor-pointer select-none px-1" style="color:var(--color-txt-muted);">
+                                        <input type="checkbox" x-model="noMoneyExchange" class="w-3.5 h-3.5 rounded">
+                                        No money exchange — just swap
+                                    </label>
+                                </div>
                             </div>
                         </template>
 
@@ -1451,8 +1719,18 @@
                                     <p class="text-sm font-medium truncate" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
                                     <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
                                        x-text="item.log_type + ' · ' + item.reason"></p>
-                                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
-                                       x-text="'Customer: ' + item.cust_comp + ' · Supplier: ' + item.sup_comp"></p>
+                                    <template x-if="item.exchange_product_name">
+                                        <p class="text-xs mt-0.5 flex items-center gap-1" style="color:var(--color-info);">
+                                            <span class="material-symbols-outlined text-[11px]">swap_horiz</span>
+                                            <span x-text="'Exchange: ' + item.exchange_product_name + (item.price_difference !== null ? ' (' + (item.price_difference >= 0 ? '+' : '') + fmt(item.price_difference) + ')' : ' · swap only')"></span>
+                                        </p>
+                                    </template>
+                                    <template x-if="item.exchange_warning">
+                                        <p class="text-xs mt-0.5 flex items-center gap-1" style="color:var(--color-warning);">
+                                            <span class="material-symbols-outlined text-[11px]">warning</span>
+                                            <span x-text="item.exchange_warning"></span>
+                                        </p>
+                                    </template>
                                     <p class="text-xs mt-0.5 font-semibold"
                                        :style="item.status === 'submitted'
                                                ? 'color:var(--color-info)'

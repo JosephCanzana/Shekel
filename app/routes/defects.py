@@ -213,8 +213,34 @@ def index():
     date_from = request.args.get("date_from", "").strip()
     date_to   = request.args.get("date_to",   "").strip()
 
-    # Submitted queue — admin / superadmin only
+    # Submitted queue
     submitted_items = []
+
+    # ── parse dates (admins only use this) ──────────────────────────────────
+    parsed_from = None
+    parsed_to   = None
+
+    if date_from:
+        try:
+            parsed_from = datetime.strptime(date_from, "%Y-%m-%d") - PHT_OFFSET
+        except ValueError:
+            flash("Invalid 'Date From' format.", "error")
+
+    if date_to:
+        try:
+            parsed_to = datetime.strptime(date_to, "%Y-%m-%d").replace(
+                hour=23, minute=59, second=59
+            ) - PHT_OFFSET
+        except ValueError:
+            flash("Invalid 'Date To' format.", "error")
+
+    if parsed_from and parsed_to and parsed_from > parsed_to:
+        flash("'Date From' cannot be later than 'Date To'.", "error")
+        parsed_from = None
+        parsed_to   = None
+
+
+    # ── ADMIN / SUPERADMIN ──────────────────────────────────────────────────
     if is_admin():
         sub_q = (
             db.session.query(DefectDetail, Defect, Product, User)
@@ -226,34 +252,34 @@ def index():
             .filter(Defect.is_archived       == False)
         )
 
-        # ── parse dates ───────────────────────────────────────────────────────
-        parsed_from = None
-        parsed_to   = None
-
-        if date_from:
-            try:
-                parsed_from = datetime.strptime(date_from, "%Y-%m-%d") - PHT_OFFSET
-            except ValueError:
-                flash("Invalid 'Date From' format.", "error")
-
-        if date_to:
-            try:
-                parsed_to = datetime.strptime(date_to, "%Y-%m-%d").replace(
-                    hour=23, minute=59, second=59
-                ) - PHT_OFFSET
-            except ValueError:
-                flash("Invalid 'Date To' format.", "error")
-
-        # ── reject reversed range ─────────────────────────────────────────────
-        if parsed_from and parsed_to and parsed_from > parsed_to:
-            flash("'Date From' cannot be later than 'Date To'.", "error")
-            parsed_from = None
-            parsed_to   = None
-
         if parsed_from:
             sub_q = sub_q.filter(Defect.defect_datetime >= parsed_from)
         if parsed_to:
             sub_q = sub_q.filter(Defect.defect_datetime <= parsed_to)
+
+        if search:
+            sub_q = sub_q.filter(db.or_(
+                Product.product_name.ilike(f"%{search}%"),
+                Product.product_id.ilike(f"%{search}%"),
+            ))
+        if filter_reason:
+            sub_q = sub_q.filter(DefectDetail.reason == filter_reason)
+
+        submitted_items = sub_q.order_by(Defect.defect_datetime.asc()).all()
+
+
+    # ── STOCKING ROLE (only sees their own submitted records) ───────────────
+    elif current_user.role == "stocking":
+        sub_q = (
+            db.session.query(DefectDetail, Defect, Product, User)
+            .join(Defect,  Defect.defect_id   == DefectDetail.defect_id)
+            .join(Product, Product.product_id == DefectDetail.product_id)
+            .join(User,    User.user_id       == Defect.user_id)
+            .filter(DefectDetail.status      == "submitted")
+            .filter(DefectDetail.is_archived == False)
+            .filter(Defect.is_archived       == False)
+            .filter(Defect.user_id           == current_user.user_id)
+        )
 
         if search:
             sub_q = sub_q.filter(db.or_(
@@ -276,18 +302,7 @@ def index():
         .filter(DefectDetail.is_archived           == False)
         .filter(Defect.is_archived                 == False)
     )
-    if date_from:
-        try:
-            sub_q   = sub_q.filter(Defect.defect_datetime >= datetime.strptime(date_from, "%Y-%m-%d"))
-            watch_q = watch_q.filter(Defect.defect_datetime >= datetime.strptime(date_from, "%Y-%m-%d"))
-        except ValueError:
-            pass
-    if date_to:
-        try:
-            sub_q   = sub_q.filter(Defect.defect_datetime < datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59))
-            watch_q = watch_q.filter(Defect.defect_datetime < datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59))
-        except ValueError:
-            pass
+
     if search:
         watch_q = watch_q.filter(db.or_(
             Product.product_name.ilike(f"%{search}%"),
@@ -317,6 +332,7 @@ def index():
         REASON_LABELS=REASON_LABELS,
         SUPPLIER_COMP_LABELS=SUPPLIER_COMP_LABELS,
         STATUS_LABELS=STATUS_LABELS,
+        is_admin=is_admin(),
     )
 
 

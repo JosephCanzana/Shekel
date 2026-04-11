@@ -249,7 +249,7 @@
       <p class="text-2xl font-semibold text-txt-primary">₱{{ "%.2f"|format(data.sales.total_revenue) }}</p>
       {% if data.sales.defect_sales_loss is defined and data.sales.defect_sales_loss > 0 %}
         <p class="text-[10px] text-slate-500 mt-1 flex items-center gap-0.5">
-          ₱{{ "%.2f"|format(data.sales.defect_sales_loss) }} defect deduction
+          - ₱{{ "%.2f"|format(data.sales.defect_sales_loss) }} defect/returns deduction
         </p>
         {% endif %}
     </div>
@@ -287,7 +287,7 @@
       </p>
       {% if data.sales.defect_profit_loss is defined and data.sales.defect_profit_loss > 0 %}
       <p class="text-[10px] text-slate-500 mt-1 flex items-center gap-0.5">
-        - ₱{{ "%.2f"|format(data.sales.defect_profit_loss) }} defect loss
+        - ₱{{ "%.2f"|format(data.sales.defect_profit_loss) }} defect/returns loss
       </p>
       {% endif %}
     </div>

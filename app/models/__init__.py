@@ -8,6 +8,7 @@ from app.models.stock_in import StockIn
 from app.models.sale import Sale
 from app.models.sale_detail import SaleDetail
 from app.models.defect import Defect
+from app.models.defect_exchange_item import DefectExchangeItem
 from app.models.defect_detail import DefectDetail
 from app.models.audit_log import AuditLog
 from app.models.app_settings import AppSettings
