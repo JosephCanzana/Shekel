@@ -6,6 +6,7 @@ class StockIn(BaseModel):
     __tablename__ = "Stock_In"
 
     stockin_id        = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    batch_id          = db.Column(db.Integer, nullable=True, index=True)    
     product_id = db.Column(db.String(100), db.ForeignKey("Products.product_id", onupdate="CASCADE", ondelete="RESTRICT"), nullable=False)
     user_id           = db.Column(db.Integer, db.ForeignKey("Users.user_id"), nullable=False)
     quantity_received = db.Column(db.Integer, nullable=False)

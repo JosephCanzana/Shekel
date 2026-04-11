@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from flask import Blueprint, render_template, request, jsonify, session
 from flask_login import login_required, current_user
 from app.utils.decorator import role_required
@@ -174,6 +175,8 @@ def complete():
     # PATH A — admin / superadmin: direct inventory update (unchanged behaviour)
     # ══════════════════════════════════════════════════════════════════════════
     if is_privileged:
+        last_batch = db.session.query(func.max(StockIn.batch_id)).scalar() or 0
+        batch_id   = last_batch + 1
         received = []
         for item in items:
             product_id = item.get("product_id")
@@ -206,6 +209,7 @@ def complete():
             # log permanent stock-in record
             db.session.add(StockIn(
                 product_id        = product_id,
+                batch_id          = batch_id,
                 user_id           = current_user.user_id,
                 quantity_received = qty,
                 stockin_datetime  = datetime.utcnow(),
@@ -292,7 +296,7 @@ def complete():
         audit(
             "INSERT",
             "Stock_In",
-            f"Stock-in request #{req.request_id} submitted by {current_user.full_name} with {len(items)} items",
+            f"Stock-in request #{req.batch_id} submitted by {current_user.full_name} with {len(items)} items",
             reference_id=req.request_id,
             reference_table="StockAdjustmentRequest",
             user_id=current_user.user_id

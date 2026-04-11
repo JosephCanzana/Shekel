@@ -23,41 +23,56 @@
 
     logType: '{{ 'customer' if current_user.role == 'cashier' else 'instore' }}',
 
-    mode:            'manual',
-    items:           [],
-    editingId:       null,
-    searchQuery:     '',
-    searching:       false,
-    suggestions:     [],
-    product:         null,
-    bundleQty:       0,
-    unitQty:         1,
-    itemReason:      '{{ "damaged" if current_user.role != "cashier" else "change_of_mind" }}',
-    itemCompensation:'pending',
-    itemCustomerComp:'exchange_same',
-    txnRef:          '',
-    sessionTxn:      null,    // { txn_ref, txn_id, cashier, datetime, items: [{product_id, product_name, qty_sold, already_returned, remaining}] }
-    sessionTxnInput: '',
-    sessionTxnError: '',
+    mode:        'manual',
+    items:       [],
+    _itemCounter: 0,
+    editingKey:  null,
+    searchQuery: '',
+    searching:   false,
+    suggestions: [],
+    product:     null,
+    bundleQty:   0,
+    unitQty:     1,
+    itemReason:  '{{ 'damaged' if current_user.role != 'cashier' else 'change_of_mind' }}',
+    itemCustomerComp: '{{ 'exchange_same' if current_user.role == 'cashier' else 'none' }}',
+    itemCompensation: 'pending',
+    txnRef:      '',
+    sessionTxn:  null,
+    sessionTxnInput:   '',
+    sessionTxnError:   '',
     sessionTxnLoading: false,
-    panelError:      '',
-    globalError:     '',
-    showReceipt:     false,
-    receipt:         null,
-    mobileTab:       'scan',
+    panelError:  '',
+    globalError: '',
+    showReceipt: false,
+    receipt:     null,
+    mobileTab:   'scan',
     confirmComplete: false,
     confirmCancel:   false,
+    submitting:  false,
 
-    // ── Exchange product (exchange_different) ─────────────────────────────
-    exchangeQuery:        '',
-    exchangeSearching:    false,
-    exchangeSuggestions:  [],
-    exchangeProduct:      null,
-    noMoneyExchange:      false,
+    isCashier:          {{ 'true' if current_user.role == 'cashier' else 'false' }},
+    canSetCompensation: {{ 'true' if can_set_compensation else 'false' }},
 
-    get exchangePriceDiff() {
-        if (!this.exchangeProduct || !this.product) return null
-        return parseFloat((this.exchangeProduct.total_price - this.product.total_price).toFixed(2))
+    // ── Exchange mini-cart ────────────────────────────────────────────────
+    exchangeItems:       [],
+    exchangeQuery:       '',
+    exchangeSearching:   false,
+    exchangeSuggestions: [],
+    exchangeError:       '',
+
+    get originalSubtotal() {
+        if (!this.product) return 0
+        return parseFloat((this.product.total_price * this.totalUnits).toFixed(2))
+    },
+
+    get exchangeMoneyTotal() {
+        return this.exchangeItems
+            .filter(e => !e.no_money_exchange)
+            .reduce((s, e) => s + e.total_price * e.quantity, 0)
+    },
+
+    get exchangeRemaining() {
+        return parseFloat((this.originalSubtotal - this.exchangeMoneyTotal).toFixed(2))
     },
 
     async fetchExchangeSuggestions() {
@@ -74,9 +89,10 @@
         } catch(e) { this.exchangeSuggestions = [] }
     },
 
-    async selectExchangeProduct(product_id) {
+    async addExchangeItem(product_id) {
         this.exchangeSuggestions = []
-        this.exchangeSearching   = true
+        this.exchangeError = ''
+        this.exchangeSearching = true
         try {
             const res  = await fetch('/defects/api/lookup', {
                 method: 'POST',
@@ -85,25 +101,41 @@
                 body: JSON.stringify({ query: product_id })
             })
             const data = await res.json()
-            if (res.ok) {
-                this.exchangeProduct = data
-                this.exchangeQuery   = data.product_name
+            if (!res.ok) {
+                this.exchangeError = data.error || 'Product not found.'
+            } else {
+                if (this.exchangeItems.find(e => e.product_id === data.product_id)) {
+                    this.exchangeError = `${data.product_name} is already in the exchange list.`
+                } else {
+                    this.exchangeItems.push({
+                        _ekey:            Date.now(),
+                        product_id:        data.product_id,
+                        product_name:      data.product_name,
+                        total_price:       data.total_price,
+                        stock:             data.stock,
+                        quantity:          1,
+                        no_money_exchange: false,
+                    })
+                }
+                this.exchangeQuery = ''
             }
-        } catch(e) {}
+        } catch(e) { this.exchangeError = 'Network error.' }
         this.exchangeSearching = false
     },
 
-    clearExchange() {
-        this.exchangeQuery       = ''
-        this.exchangeProduct     = null
-        this.exchangeSuggestions = []
-        this.noMoneyExchange     = false
+    removeExchangeItem(ekey) {
+        this.exchangeItems = this.exchangeItems.filter(e => e._ekey !== ekey)
+        this.exchangeError = ''
     },
 
-    isCashier:          {{ 'true' if current_user.role == 'cashier' else 'false' }},
-    canSetCompensation: {{ 'true' if can_set_compensation else 'false' }},
+    clearExchange() {
+        this.exchangeItems       = []
+        this.exchangeQuery       = ''
+        this.exchangeSuggestions = []
+        this.exchangeError       = ''
+    },
 
-    {# ── Reason lists by log type ── #}
+    // ── Reason lists ──────────────────────────────────────────────────────
     instoreReasons:  ['damaged', 'expired'],
     customerReasons: ['change_of_mind', 'damaged', 'expired'],
 
@@ -111,33 +143,24 @@
         return this.logType === 'instore' ? this.instoreReasons : this.customerReasons
     },
 
-    get compensationChoices() { return ['pending', 'loss', 'returned'] },
-
     reasonLabel(r) {
-        const m = {
-            damaged:          'Damaged',
-            expired:          'Expired',
-            change_of_mind:   'Change of Mind',
-        }
-        return m[r] || r
+        return { damaged:'Damaged', expired:'Expired', change_of_mind:'Change of Mind' }[r] || r
     },
- 
+
     customerCompLabel(c) {
-        const m = {
+        return {
             full_refund:        'Full Refund',
-            partial_refund:     'Partial Refund',
             exchange_same:      'Exchange – Same Item',
             exchange_different: 'Exchange – Different Item',
             none:               'None',
-        }
-        return m[c] || c
-    },
-    compensationLabel(c) {
-        const m = { pending:'Pending', loss:'Loss', returned:'Returned' }
-        return m[c] || c
+        }[c] || c
     },
 
-    {# ── Switch log type ── #}
+    compensationLabel(c) {
+        return { pending:'Pending', loss:'Loss', returned:'Returned' }[c] || c
+    },
+
+    // ── Switch log type ───────────────────────────────────────────────────
     switchLogType(type) {
         this.logType = type
         this.product = null
@@ -146,11 +169,10 @@
         this.unitQty = 1
         this.txnRef = ''
         this.panelError = ''
-        this.editingId = null
+        this.editingKey = null
         this.itemReason = type === 'instore' ? 'damaged' : 'change_of_mind'
         this.itemCompensation = 'pending'
-        this.itemCustomerComp = type === 'customer' ? 'exchange_same' : 'none'
-        // clear session TXN when switching away from customer
+        this.itemCustomerComp = type === 'customer' ? 'full_refund' : 'none'
         this.clearExchange()
         if (type === 'instore') {
             this.sessionTxn = null; this.sessionTxnInput = ''; this.sessionTxnError = ''
@@ -158,11 +180,10 @@
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
 
-    {# ── Default reason + compensation when log type changes ── #}
     onReasonChange() {
         if (this.itemReason === 'change_of_mind') {
             this.itemCompensation = 'returned'
-            this.itemCustomerComp = 'exchange_same'
+            this.itemCustomerComp = 'full_refund'
         } else {
             if (this.itemCompensation === 'returned') this.itemCompensation = 'pending'
             this.itemCustomerComp = this.logType === 'customer' ? 'full_refund' : 'none'
@@ -170,6 +191,11 @@
         this.clearExchange()
     },
 
+    onCustomerCompChange() {
+        if (this.itemCustomerComp !== 'exchange_different') this.clearExchange()
+    },
+
+    // ── TXN session ───────────────────────────────────────────────────────
     async lookupSessionTxn() {
         const q = this.sessionTxnInput.trim()
         if (!q) return
@@ -183,11 +209,7 @@
             })
             const data = await res.json()
             if (!res.ok) { this.sessionTxnError = data.error || 'Transaction not found.' }
-            else {
-                this.sessionTxn = data
-                // pre-fill txnRef for all items
-                this.txnRef = data.txn_ref
-            }
+            else { this.sessionTxn = data; this.txnRef = data.txn_ref }
         } catch(e) { this.sessionTxnError = 'Network error. Please try again.' }
         this.sessionTxnLoading = false
     },
@@ -195,11 +217,10 @@
     clearSessionTxn() {
         this.sessionTxn = null; this.sessionTxnInput = ''; this.sessionTxnError = ''
         this.txnRef = ''; this.items = []; this.product = null
-        this.searchQuery = ''; this.editingId = null
+        this.searchQuery = ''; this.editingKey = null
+        this.clearExchange()
     },
 
-    // get remaining qty for a product from the session TXN
-    // (accounts for items already added to current session list)
     txnRemaining(product_id) {
         if (!this.sessionTxn) return null
         const txnItem = this.sessionTxn.items.find(i => i.product_id === product_id)
@@ -207,12 +228,13 @@
         const queuedQty = this.items
             .filter(i => i.product_id === product_id && i.log_type === 'customer')
             .reduce((s, i) => s + i.qty, 0)
-        const editingQty = this.editingId
-            ? (this.items.find(i => i._key === this.editingId && i.product_id === product_id)?.qty || 0)
+        const editingQty = this.editingKey
+            ? (this.items.find(i => i._key === this.editingKey && i.product_id === product_id)?.qty || 0)
             : 0
         return Math.max(0, txnItem.remaining - (queuedQty - editingQty))
     },
 
+    // ── Totals ────────────────────────────────────────────────────────────
     get totalUnits() {
         if (!this.product) return 0
         const bc = this.product.bundle ? this.product.bundle.bundle_count : 0
@@ -228,6 +250,7 @@
 
     fmt(n) { return '₱' + parseFloat(n).toFixed(2) },
 
+    // ── Product search ────────────────────────────────────────────────────
     async fetchSuggestions() {
         const q = this.searchQuery.trim()
         if (!q) { this.suggestions = []; return }
@@ -254,7 +277,7 @@
         const q = this.searchQuery.trim()
         if (!q) return
         this.panelError = ''; this.product = null
-        this.bundleQty = 0; this.unitQty = 1; this.searching = true; this.editingId = null
+        this.bundleQty = 0; this.unitQty = 1; this.searching = true; this.editingKey = null
         try {
             const res = await fetch('/defects/api/lookup', {
                 method: 'POST',
@@ -281,49 +304,52 @@
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
 
+    // ── Add item ─────────────────────────────────────────────────────────
     addItem() {
         if (!this.product) return
         if (this.totalUnits <= 0) { this.panelError = 'Quantity must be at least 1.'; return }
         this.panelError = ''
 
-        // ── Exchange product validation ────────────────────────────────────
+        // Exchange validation
         if (this.itemCustomerComp === 'exchange_different') {
-            if (!this.exchangeProduct) {
-                this.panelError = 'Please select the exchange product.'
+            if (this.exchangeItems.length === 0) {
+                this.panelError = 'Please add at least one exchange product.'
                 return
             }
-            if (this.exchangeProduct.product_id === this.product.product_id) {
-                this.panelError = 'Exchange product must be different from the original item.'
+            if (this.exchangeMoneyTotal > this.originalSubtotal + 0.001) {
+                this.panelError = `Exchange total (${this.fmt(this.exchangeMoneyTotal)}) exceeds returned value (${this.fmt(this.originalSubtotal)}).`
                 return
             }
         }
 
-        const compensation = this.canSetCompensation ? this.itemCompensation
-                           : (this.itemReason === 'change_of_mind' ? 'returned' : 'pending')
+        const compensation = this.canSetCompensation
+            ? this.itemCompensation
+            : (this.itemReason === 'change_of_mind' ? 'returned' : 'pending')
 
-        {# stock validation — only for in-store items that deduct from available #}
-        // cashier customer return: validate against session TXN
+        // TXN validation for customer
         if (this.logType === 'customer') {
             if (!this.sessionTxn) {
                 this.panelError = 'Please look up a transaction reference first.'
                 return
             }
-            const txnItem = this.sessionTxn.items.find(i => i.product_id === this.product.product_id)
-            if (!txnItem) {
-                this.panelError = `${this.product.product_name} was not part of ${this.sessionTxn.txn_ref}.`
-                return
-            }
-            const remaining = this.txnRemaining(this.product.product_id)
-            if (this.totalUnits > remaining) {
-                this.panelError = remaining <= 0
-                    ? `No more units of ${this.product.product_name} eligible for return from ${this.sessionTxn.txn_ref}.`
-                    : `Only ${remaining} unit(s) of ${this.product.product_name} eligible for return.`
-                return
+            if (!this.sessionTxn.skipped) {
+                const txnItem = this.sessionTxn.items.find(i => i.product_id === this.product.product_id)
+                if (!txnItem) {
+                    this.panelError = `${this.product.product_name} was not part of ${this.sessionTxn.txn_ref}.`
+                    return
+                }
+                const remaining = this.txnRemaining(this.product.product_id)
+                if (this.totalUnits > remaining) {
+                    this.panelError = remaining <= 0
+                        ? `No more units of ${this.product.product_name} eligible for return from ${this.sessionTxn.txn_ref}.`
+                        : `Only ${remaining} unit(s) of ${this.product.product_name} eligible for return.`
+                    return
+                }
             }
         }
 
-        const isSoldItem = (this.logType === 'customer')
-        if (!isSoldItem && compensation !== 'returned') {
+        // Stock validation for in-store
+        if (this.logType === 'instore' && compensation !== 'returned') {
             if (this.product.stock <= 0) {
                 this.panelError = 'Cannot log — this product has 0 stock available.'
                 return
@@ -333,8 +359,8 @@
                           && i.log_type === 'instore'
                           && i.compensation !== 'returned')
                 .reduce((s, i) => s + i.qty, 0)
-            const editingQty = this.editingId
-                ? (this.items.find(i => i._key === this.editingId)?.qty || 0) : 0
+            const editingQty = this.editingKey
+                ? (this.items.find(i => i._key === this.editingKey)?.qty || 0) : 0
             const remaining = this.product.stock - (alreadyQueued - editingQty)
             if (this.totalUnits > remaining) {
                 this.panelError = remaining <= 0
@@ -344,97 +370,73 @@
             }
         }
 
-        const rowKey = this.product.product_id + '|' + this.itemReason + '|' + this.logType
-
-        if (this.editingId) {
-            const row = this.items.find(i => i._key === this.editingId)
-            if (row) {
-                row.qty = this.totalUnits
-                row.bundleQty = parseInt(this.bundleQty) || 0
-                row.unitQty   = parseInt(this.unitQty)   || 0
-                row.reason = this.itemReason
-                row.compensation = compensation
-                row.txn_ref = this.txnRef.trim()
-                row._key = rowKey
-            }
-            this.editingId = null
-        } else {
-            const existing = this.items.find(i => i._key === rowKey)
-            if (existing) {
-                existing.qty      += this.totalUnits
-                existing.bundleQty = (existing.bundleQty || 0) + (parseInt(this.bundleQty) || 0)
-                existing.unitQty   = (existing.unitQty   || 0) + (parseInt(this.unitQty)   || 0)
-                existing.compensation = compensation
-                if (this.txnRef.trim()) existing.txn_ref = this.txnRef.trim()
-            } else {
-                    this.items.push({
-                        _key: rowKey,
-                        log_type:              this.logType,
-                        product_id:            this.product.product_id,
-                        product_name:          this.product.product_name,
-                        total_price:           this.product.total_price,
-                        cost_price:            this.product.cost_price,
-                        revenue_price:         this.product.revenue_price,
-                        stock:                 this.product.stock,
-                        bundle:                this.product.bundle || null,
-                        qty:                   this.totalUnits,
-                        bundleQty:             parseInt(this.bundleQty) || 0,
-                        unitQty:               parseInt(this.unitQty)   || 0,
-                        reason:                this.itemReason,
-                        compensation,
-                        customer_compensation: this.itemCustomerComp,
-                        txn_ref:               this.txnRef.trim(),
-                        // exchange_different fields
-                        exchange_product_id:   this.itemCustomerComp === 'exchange_different' ? (this.exchangeProduct?.product_id   || null) : null,
-                        exchange_product_name: this.itemCustomerComp === 'exchange_different' ? (this.exchangeProduct?.product_name  || null) : null,
-                        exchange_product_price:this.itemCustomerComp === 'exchange_different' ? (this.exchangeProduct?.total_price   || null) : null,
-                        exchange_price_diff:   this.itemCustomerComp === 'exchange_different' && !this.noMoneyExchange ? this.exchangePriceDiff : null,
-                        no_money_exchange:     this.noMoneyExchange,
-                    })
-            }
+        const newRow = {
+            _key:                  this.editingKey || String(++this._itemCounter),
+            log_type:              this.logType,
+            product_id:            this.product.product_id,
+            product_name:          this.product.product_name,
+            total_price:           this.product.total_price,
+            cost_price:            this.product.cost_price,
+            revenue_price:         this.product.revenue_price,
+            stock:                 this.product.stock,
+            bundle:                this.product.bundle || null,
+            qty:                   this.totalUnits,
+            bundleQty:             parseInt(this.bundleQty) || 0,
+            unitQty:               parseInt(this.unitQty)   || 0,
+            reason:                this.itemReason,
+            compensation,
+            customer_compensation: this.itemCustomerComp,
+            txn_ref:               this.txnRef.trim(),
+            exchange_items:        this.itemCustomerComp === 'exchange_different'
+                ? this.exchangeItems.map(e => ({ ...e }))
+                : [],
         }
+
+        if (this.editingKey) {
+            const idx = this.items.findIndex(i => i._key === this.editingKey)
+            if (idx !== -1) this.items.splice(idx, 1, newRow)
+            this.editingKey = null
+        } else {
+            this.items.push(newRow)
+        }
+
         this.product = null; this.searchQuery = ''; this.bundleQty = 0; this.unitQty = 1
         this.txnRef = ''
         this.itemReason = this.logType === 'instore' ? 'damaged' : 'change_of_mind'
         this.itemCompensation = 'pending'
-        this.itemCustomerComp = this.logType === 'customer' ? 'exchange_same' : 'none'
+        this.itemCustomerComp = this.logType === 'customer' ? 'full_refund' : 'none'
         this.clearExchange()
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
 
     editRow(item) {
-        this.logType   = item.log_type
-        this.editingId = item._key
-        this.searchQuery = item.product_id
-        this.panelError  = ''
-        this.itemReason  = item.reason
-        this.itemCompensation = item.compensation
+        this.logType      = item.log_type
+        this.editingKey   = item._key
+        this.searchQuery  = item.product_id
+        this.panelError   = ''
+        this.itemReason   = item.reason
+        this.itemCompensation  = item.compensation
+        this.itemCustomerComp  = item.customer_compensation
         this.txnRef = item.txn_ref || ''
         this.product = {
-            product_id: item.product_id, product_name: item.product_name,
-            total_price: item.total_price, cost_price: item.cost_price,
-            revenue_price: item.revenue_price, stock: item.stock, bundle: item.bundle || null
+            product_id:    item.product_id,
+            product_name:  item.product_name,
+            total_price:   item.total_price,
+            cost_price:    item.cost_price,
+            revenue_price: item.revenue_price,
+            stock:         item.stock,
+            bundle:        item.bundle || null,
         }
         this.bundleQty = item.bundleQty !== undefined ? item.bundleQty : 0
         this.unitQty   = item.unitQty   !== undefined ? item.unitQty   : item.qty
+        this.exchangeItems = item.exchange_items
+            ? item.exchange_items.map(e => ({ ...e, _ekey: Date.now() + Math.random() }))
+            : []
         this.mobileTab = 'scan'
-        // Restore exchange state
-        if (item.exchange_product_id) {
-            this.exchangeProduct = {
-                product_id:   item.exchange_product_id,
-                product_name: item.exchange_product_name,
-                total_price:  item.exchange_product_price,
-                stock:        0,
-            }
-            this.exchangeQuery    = item.exchange_product_name || ''
-            this.noMoneyExchange  = !!item.no_money_exchange
-        } else {
-            this.clearExchange()
-        }
     },
 
     cancelEdit() {
-        this.editingId = null; this.product = null; this.searchQuery = ''
+        this.editingKey = null; this.product = null; this.searchQuery = ''
         this.bundleQty = 0; this.unitQty = 1; this.txnRef = ''
         this.itemReason = this.logType === 'instore' ? 'damaged' : 'change_of_mind'
         this.itemCompensation = 'pending'; this.panelError = ''
@@ -444,18 +446,20 @@
 
     removeRow(item) {
         this.items = this.items.filter(i => i._key !== item._key)
-        if (this.editingId === item._key) this.cancelEdit()
+        if (this.editingKey === item._key) this.cancelEdit()
     },
 
     cancelAll() {
         this.items = []; this.product = null; this.searchQuery = ''; this.bundleQty = 0
-        this.unitQty = 1; this.txnRef = ''; this.editingId = null
+        this.unitQty = 1; this.txnRef = ''; this.editingKey = null
         this.globalError = ''; this.panelError = ''; this.confirmCancel = false
         this.itemReason = this.logType === 'instore' ? 'damaged' : 'change_of_mind'
         this.itemCompensation = 'pending'
         this.sessionTxn = null; this.sessionTxnInput = ''; this.sessionTxnError = ''
+        this.clearExchange()
         this.$nextTick(() => this.$refs.searchField && this.$refs.searchField.focus())
     },
+
     async completeLog() {
         if (!this.canComplete || this.submitting) return
         this.submitting = true
@@ -464,7 +468,7 @@
             const res = await fetch('/defects/api/complete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                           'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
                 body: JSON.stringify({
                     items: this.items.map(i => ({
                         product_id:            i.product_id,
@@ -474,8 +478,7 @@
                         customer_compensation: i.customer_compensation || 'none',
                         log_type:              i.log_type,
                         txn_ref:               i.txn_ref || null,
-                        exchange_product_id:   i.exchange_product_id   || null,
-                        price_difference:      i.exchange_price_diff    ?? null,
+                        exchange_items:        i.exchange_items || [],
                     })),
                     defect_token: document.getElementById('defect_token').value
                 })
@@ -496,9 +499,7 @@
     },
 
     async closeReceipt() {
-        this.showReceipt = false
-        this.receipt = null
-        this.submitting = false
+        this.showReceipt = false; this.receipt = null; this.submitting = false
         this.cancelAll()
         try {
             const res = await fetch('/defects/api/refresh-token', {
@@ -510,29 +511,10 @@
         } catch(e) { console.error('Token refresh failed') }
     },
 
-}" x-init="
-    $nextTick(() => $refs.searchField && $refs.searchField.focus());
-    window.addEventListener('keydown', (e) => {
-        const tag = document.activeElement.tagName;
-        const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-        if (e.key === 'F2' || (e.key === '/' && !isTyping)) {
-            e.preventDefault();
-            let visibleField = null;
-            document.querySelectorAll('input[x-ref=searchField]').forEach(f => {
-                if (f.offsetParent !== null) visibleField = f;
-            });
-            if (visibleField) { visibleField.focus(); visibleField.select(); }
-        }
-    });
-">
+}" x-init="$nextTick(() => $refs.searchField && $refs.searchField.focus())">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" id="defect_token" value="{{ defect_token }}">
-
-    {# ═══════════════════════════════════
-       SHARED SCAN PANEL MACRO
-       Used in both desktop right panel and mobile scan tab
-    ═══════════════════════════════════ #}
 
     {# ═══════════ DESKTOP LAYOUT ═══════════ #}
     <div class="desktop-layout gap-4"
@@ -587,7 +569,7 @@
                 </template>
                 <template x-for="item in items" :key="item._key">
                     <div class="grid grid-cols-[2.5fr_1fr_1fr_1fr_80px] items-center px-4 py-3"
-                         :style="editingId===item._key
+                         :style="editingKey===item._key
                                  ? 'border-top:1px solid var(--color-border);background:color-mix(in srgb,var(--color-accent) 7%,transparent)'
                                  : 'border-top:1px solid var(--color-border)'">
                         <div>
@@ -615,12 +597,12 @@
                                                 ? 'background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)'
                                                 : 'background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)'"
                                       x-text="compensationLabel(item.compensation)"></span>
-                                {# exchange product badge #}
-                                <template x-if="item.exchange_product_name">
+                                {# PATCH 5 — exchange items badge #}
+                                <template x-if="item.exchange_items && item.exchange_items.length > 0">
                                     <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"
                                           style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);">
                                         <span class="material-symbols-outlined text-[10px]">swap_horiz</span>
-                                        <span x-text="item.exchange_product_name + (item.exchange_price_diff !== null ? ' (' + (item.exchange_price_diff > 0 ? '+' : '') + fmt(item.exchange_price_diff) + ')' : ' (swap)')"></span>
+                                        <span x-text="item.exchange_items.length + ' exchange item' + (item.exchange_items.length > 1 ? 's' : '')"></span>
                                     </span>
                                 </template>
                             </div>
@@ -711,16 +693,13 @@
                 </div>
                 {% endif %}
 
-                {# scrollable middle: search + product details + reason + controls #}
+                {# scrollable middle #}
                 <div class="flex-1 overflow-y-auto min-h-0">
 
-
-                    {# ── Session TXN panel — cashier customer return only ── #}
-                    
+                    {# ── Session TXN panel ── #}
                     <template x-if="logType === 'customer'">
                         <div class="px-4 pt-3 pb-3" style="border-bottom:1px solid var(--color-border);">
 
-                            {# TXN not yet confirmed #}
                             <template x-if="!sessionTxn">
                                 <div>
                                     <label class="text-xs font-bold uppercase tracking-wide mb-1.5 block"
@@ -766,10 +745,8 @@
                                 </div>
                             </template>
 
-                            {# TXN confirmed — show summary + items #}
                             <template x-if="sessionTxn">
                                 <div>
-                                    {# Skipped state — non-cashier chose to log without TXN #}
                                     <template x-if="sessionTxn.skipped">
                                         <div class="flex items-center justify-between">
                                             <p class="text-xs" style="color:var(--color-txt-muted);">
@@ -785,7 +762,6 @@
                                         </div>
                                     </template>
 
-                                    {# Normal confirmed TXN summary #}
                                     <template x-if="!sessionTxn.skipped">
                                         <div>
                                             <div class="flex items-start justify-between gap-2 mb-2">
@@ -828,9 +804,8 @@
 
                         </div>
                     </template>
-                   
 
-                    {# search bar — locked for cashier customer return until TXN confirmed #}
+                    {# search bar #}
                     <div class="px-4 pt-3 pb-2"
                          :style="logType==='customer' && !sessionTxn ? 'opacity:0.4;pointer-events:none' : ''">
                         <div class="relative">
@@ -990,7 +965,7 @@
                                             class="w-full px-3 py-2 rounded-xl text-sm font-semibold focus:outline-none transition"
                                             style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
                                             onfocus="this.style.borderColor='var(--color-accent)'" onblur="this.style.borderColor='var(--color-border)'">
-                                        <template x-for="c in compensationChoices" :key="c">
+                                        <template x-for="c in ['pending','loss','returned']" :key="c">
                                             <option :value="c" x-text="compensationLabel(c)"></option>
                                         </template>
                                     </select>
@@ -999,14 +974,14 @@
                             </template>
                         </div>
 
-                        {# Customer compensation — customer log type only #}
+                        {# Customer compensation — PATCH 2 (desktop) #}
                         <template x-if="logType === 'customer'">
                             <div class="mt-3">
                                 <label class="text-xs font-semibold mb-1.5 block" style="color:var(--color-txt-primary);">
                                     Customer Compensation
                                 </label>
                                 <select x-model="itemCustomerComp"
-                                        @change="if(itemCustomerComp !== 'exchange_different') clearExchange()"
+                                        @change="onCustomerCompChange()"
                                         class="w-full px-3 py-2 rounded-xl text-sm font-semibold focus:outline-none transition"
                                         style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
                                         onfocus="this.style.borderColor='var(--color-accent)'"
@@ -1024,32 +999,91 @@
                                 </select>
                             </div>
                         </template>
-               
-                        {# ── Exchange product sub-panel ── #}
-                        <template x-if="logType === 'customer' && itemCustomerComp === 'exchange_different'">
+
+                        {# ── PATCH 3 — Exchange mini-cart (DESKTOP) ── #}
+                        <template x-if="logType === 'customer' && itemCustomerComp === 'exchange_different' && product">
                             <div class="mt-3 rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
-                                <div class="px-3 py-2 flex items-center gap-1.5"
-                                     style="background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
-                                    <span class="material-symbols-outlined text-[13px]" style="color:var(--color-info);">swap_horiz</span>
-                                    <p class="text-xs font-semibold" style="color:var(--color-txt-muted);">Exchange Item</p>
+
+                                {# header + budget bar #}
+                                <div class="px-3 py-2" style="background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-[13px]" style="color:var(--color-info);">swap_horiz</span>
+                                            <p class="text-xs font-semibold" style="color:var(--color-txt-muted);">Exchange Items</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-[10px] tabular-nums"
+                                               :style="exchangeRemaining < 0 ? 'color:var(--color-error)' : 'color:var(--color-txt-muted)'"
+                                               x-text="'Budget: ' + fmt(originalSubtotal) + ' · Used: ' + fmt(exchangeMoneyTotal)"></p>
+                                            <p class="text-[10px] font-semibold tabular-nums"
+                                               :style="exchangeRemaining < 0 ? 'color:var(--color-error)' : exchangeRemaining === 0 ? 'color:var(--color-txt-muted)' : 'color:var(--color-success)'"
+                                               x-text="exchangeRemaining < 0 ? 'Over by ' + fmt(Math.abs(exchangeRemaining)) : 'Change: ' + fmt(exchangeRemaining)"></p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="p-3 space-y-2">
-                                    {# search #}
+
+                                {# exchange item rows #}
+                                <template x-if="exchangeItems.length > 0">
+                                    <div>
+                                        <template x-for="ei in exchangeItems" :key="ei._ekey">
+                                            <div class="flex items-center gap-2 px-3 py-2" style="border-bottom:1px solid var(--color-border);">
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-xs font-medium truncate" style="color:var(--color-txt-primary);" x-text="ei.product_name"></p>
+                                                    <p class="text-[10px] tabular-nums" style="color:var(--color-txt-muted);"
+                                                       x-text="fmt(ei.total_price) + ' × ' + ei.quantity + ' = ' + fmt(ei.total_price * ei.quantity)"></p>
+                                                    <label class="flex items-center gap-1.5 mt-0.5 cursor-pointer select-none">
+                                                        <input type="checkbox" x-model="ei.no_money_exchange" class="w-3 h-3 rounded">
+                                                        <span class="text-[10px]" style="color:var(--color-txt-muted);">No money — just swap</span>
+                                                    </label>
+                                                </div>
+                                                {# qty stepper #}
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <button @click="if(ei.quantity > 1) ei.quantity--"
+                                                            :disabled="ei.quantity <= 1"
+                                                            class="w-6 h-6 rounded-md flex items-center justify-center disabled:opacity-30"
+                                                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);">
+                                                        <span class="material-symbols-outlined text-[12px]">remove</span>
+                                                    </button>
+                                                    <input type="number" x-model="ei.quantity" min="1"
+                                                           @focus="$event.target.select()"
+                                                           class="w-8 py-0.5 rounded-md text-xs text-center font-bold focus:outline-none"
+                                                           style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                                                    <button @click="ei.quantity++"
+                                                            class="w-6 h-6 rounded-md flex items-center justify-center"
+                                                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);">
+                                                        <span class="material-symbols-outlined text-[12px]">add</span>
+                                                    </button>
+                                                </div>
+                                                <button @click="removeExchangeItem(ei._ekey)"
+                                                        class="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+                                                        style="color:var(--color-error);">
+                                                    <span class="material-symbols-outlined text-[13px]">close</span>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                {# search to add exchange product #}
+                                <div class="p-3 space-y-1.5">
                                     <div class="relative">
                                         <input type="text" x-model="exchangeQuery"
                                                @input.debounce.250ms="fetchExchangeSuggestions()"
                                                @keydown.escape="exchangeSuggestions=[]"
                                                @blur="setTimeout(()=>exchangeSuggestions=[],150)"
-                                               placeholder="Search exchange product..."
-                                               class="w-full px-3 py-2 rounded-xl text-xs focus:outline-none transition"
+                                               placeholder="Add exchange product..."
+                                               class="w-full px-3 py-1.5 rounded-xl text-xs focus:outline-none transition"
                                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
                                                onfocus="this.style.borderColor='var(--color-accent)'"
                                                onblur="this.style.borderColor='var(--color-border)'">
+                                        <template x-if="exchangeSearching">
+                                            <span class="material-symbols-outlined text-[13px] animate-spin absolute right-2 top-1/2 -translate-y-1/2" style="color:var(--color-txt-muted);">progress_activity</span>
+                                        </template>
                                         <template x-if="exchangeSuggestions.length > 0">
                                             <div class="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-30 shadow-lg"
                                                  style="background:var(--color-surface); border:1px solid var(--color-border);">
                                                 <template x-for="s in exchangeSuggestions" :key="s.product_id">
-                                                    <button @mousedown.prevent="selectExchangeProduct(s.product_id)"
+                                                    <button @mousedown.prevent="addExchangeItem(s.product_id)"
                                                             class="w-full flex items-center justify-between px-3 py-2 text-xs text-left transition"
                                                             style="border-top:1px solid var(--color-border);"
                                                             onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -1058,56 +1092,23 @@
                                                             <p class="font-medium" style="color:var(--color-txt-primary);" x-text="s.product_name"></p>
                                                             <p class="font-mono text-[10px]" style="color:var(--color-txt-muted);" x-text="s.product_id"></p>
                                                         </div>
-                                                        <p class="tabular-nums shrink-0 ml-2 font-semibold" style="color:var(--color-txt-muted);" x-text="fmt(s.total_price)"></p>
+                                                        <p class="tabular-nums shrink-0 ml-2 font-semibold" style="color:var(--color-txt-secondary);" x-text="fmt(s.total_price)"></p>
                                                     </button>
                                                 </template>
                                             </div>
                                         </template>
-                                        <template x-if="exchangeSearching">
-                                            <div class="absolute right-3 top-1/2 -translate-y-1/2">
-                                                <span class="material-symbols-outlined text-[14px] animate-spin" style="color:var(--color-txt-muted);">progress_activity</span>
-                                            </div>
-                                        </template>
                                     </div>
-
-                                    {# selected exchange product #}
-                                    <template x-if="exchangeProduct">
-                                        <div class="rounded-lg px-3 py-2 flex items-center justify-between"
-                                             style="background:color-mix(in srgb,var(--color-info) 8%,transparent); border:1px solid color-mix(in srgb,var(--color-info) 20%,transparent);">
-                                            <div>
-                                                <p class="text-xs font-semibold" style="color:var(--color-txt-primary);" x-text="exchangeProduct.product_name"></p>
-                                                <p class="text-[10px]" style="color:var(--color-txt-muted);" x-text="fmt(exchangeProduct.total_price) + ' · ' + exchangeProduct.stock + ' in stock'"></p>
-                                            </div>
-                                            <button @click="clearExchange()"
-                                                    class="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
-                                                    style="color:var(--color-txt-muted);">
-                                                <span class="material-symbols-outlined text-[13px]">close</span>
-                                            </button>
-                                        </div>
+                                    <template x-if="exchangeError">
+                                        <p class="text-[10px] flex items-center gap-1 px-1" style="color:var(--color-error);">
+                                            <span class="material-symbols-outlined text-[11px]">error</span>
+                                            <span x-text="exchangeError"></span>
+                                        </p>
                                     </template>
-
-                                    {# price diff #}
-                                    <template x-if="exchangeProduct && product">
-                                        <div class="flex items-center justify-between text-xs px-1">
-                                            <span style="color:var(--color-txt-muted);">Price difference:</span>
-                                            <span class="font-bold tabular-nums"
-                                                  :style="noMoneyExchange ? 'color:var(--color-txt-muted)' :
-                                                          exchangePriceDiff > 0 ? 'color:var(--color-warning)' :
-                                                          exchangePriceDiff < 0 ? 'color:var(--color-success)' : 'color:var(--color-txt-muted)'"
-                                                  x-text="noMoneyExchange ? 'No charge — just swap'
-                                                          : exchangePriceDiff === 0 ? 'Equal value'
-                                                          : exchangePriceDiff > 0
-                                                              ? 'Customer adds ' + fmt(exchangePriceDiff)
-                                                              : 'Store returns ' + fmt(Math.abs(exchangePriceDiff))">
-                                            </span>
-                                        </div>
+                                    <template x-if="exchangeItems.length === 0">
+                                        <p class="text-[10px] px-1" style="color:var(--color-txt-muted);">
+                                            Search and add one or more products the customer will receive.
+                                        </p>
                                     </template>
-
-                                    {# no money toggle #}
-                                    <label class="flex items-center gap-2 text-xs cursor-pointer select-none" style="color:var(--color-txt-muted);">
-                                        <input type="checkbox" x-model="noMoneyExchange" class="w-3.5 h-3.5 rounded">
-                                        No money exchange — just swap items
-                                    </label>
                                 </div>
                             </div>
                         </template>
@@ -1132,18 +1133,18 @@
                 {# footer: cancel edit + add button #}
                 <div class="shrink-0 flex items-center justify-between px-4 py-3 gap-3"
                      style="border-top:2px solid var(--color-border); background-color:var(--color-surface-alt);">
-                    <button x-show="editingId" @click="cancelEdit()"
+                    <button x-show="editingKey" @click="cancelEdit()"
                             class="text-xs transition px-2 py-1.5 rounded-lg"
                             style="color:var(--color-txt-muted); border:1px solid var(--color-border);"
                             onmouseover="this.style.color='var(--color-error)';this.style.borderColor='var(--color-error)'"
                             onmouseout="this.style.color='var(--color-txt-muted)';this.style.borderColor='var(--color-border)'">Cancel</button>
-                    <div x-show="!editingId"></div>
+                    <div x-show="!editingKey"></div>
                     <button @click="addItem()" :disabled="!product || totalUnits <= 0"
                             class="px-5 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-[.97]"
                             style="background-color:var(--color-success); color:#fff;"
                             onmouseover="if(!this.disabled) this.style.opacity='0.85'"
                             onmouseout="this.style.opacity='1'"
-                            x-text="editingId ? 'Update Item' : 'Add to List'">
+                            x-text="editingKey ? 'Update Item' : 'Add to List'">
                     </button>
                 </div>
             </div>{# /search card #}
@@ -1224,7 +1225,6 @@
                 {# Log type toggle + mode #}
                 <div class="shrink-0 flex items-center justify-between px-4 pt-2.5 pb-2"
                      style="border-bottom:1px solid var(--color-border);">
-                    {# log type toggle — hidden for cashier #}
                     {% if current_user.role != 'cashier' %}
                     <div class="flex items-center rounded-lg p-0.5 gap-0.5"
                         style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
@@ -1249,7 +1249,6 @@
                         <span class="text-xs font-semibold" style="color:var(--color-accent);">Customer Return</span>
                     </div>
                     {% endif %}
-                    {# auto/manual toggle #}
                     <div class="flex items-center rounded-lg p-0.5 gap-0.5"
                         style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
                         <button @click="mode='auto'" class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold transition"
@@ -1259,9 +1258,7 @@
                     </div>
                 </div>
 
-
-                {# ── Session TXN panel — cashier customer return, mobile ── #}
-                
+                {# ── Session TXN panel — mobile ── #}
                 <template x-if="logType === 'customer'">
                     <div class="shrink-0 px-4 py-3" style="border-bottom:1px solid var(--color-border);">
                         <template x-if="!sessionTxn">
@@ -1333,9 +1330,8 @@
                         </template>
                     </div>
                 </template>
-                
 
-                {# Search — locked for cashier customer return until TXN confirmed #}
+                {# Search — mobile #}
                 <div class="shrink-0 px-4 py-3"
                      :style="logType==='customer' && !sessionTxn ? 'opacity:0.4;pointer-events:none' : ''"
                      style="border-bottom:1px solid var(--color-border);">
@@ -1387,7 +1383,7 @@
                     </div>
                 </div>
 
-                {# Product card (only when product selected) #}
+                {# Product card — mobile #}
                 <template x-if="product">
                     <div class="shrink-0 mx-4 mt-3 mb-1 rounded-2xl overflow-hidden" style="border:1px solid var(--color-border);">
                         <div class="flex items-start justify-between gap-3 px-4 py-3"
@@ -1447,7 +1443,7 @@
                                     <select x-model="itemCompensation"
                                             class="w-full px-2 py-1.5 rounded-xl text-xs font-semibold focus:outline-none"
                                             style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
-                                        <template x-for="c in compensationChoices" :key="c">
+                                        <template x-for="c in ['pending','loss','returned']" :key="c">
                                             <option :value="c" x-text="compensationLabel(c)"></option>
                                         </template>
                                     </select>
@@ -1455,12 +1451,12 @@
                             </template>
                         </div>
 
-                        {# Customer compensation — mobile #}
+                        {# Customer compensation — PATCH 2 (mobile) #}
                         <template x-if="logType === 'customer'">
                             <div class="px-3 pb-2">
                                 <p class="text-[10px] uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);">Customer Compensation</p>
                                 <select x-model="itemCustomerComp"
-                                        @change="if(itemCustomerComp !== 'exchange_different') clearExchange()"
+                                        @change="onCustomerCompChange()"
                                         class="w-full px-2 py-1.5 rounded-xl text-xs font-semibold focus:outline-none"
                                         style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
                                     <template x-if="itemReason === 'change_of_mind'">
@@ -1469,7 +1465,7 @@
                                         </template>
                                     </template>
                                     <template x-if="itemReason !== 'change_of_mind'">
-                                        <template x-for="c in ['full_refund','partial_refund','exchange_same','exchange_different']" :key="c">
+                                        <template x-for="c in ['full_refund','exchange_same','exchange_different']" :key="c">
                                             <option :value="c" x-text="customerCompLabel(c)"></option>
                                         </template>
                                     </template>
@@ -1477,30 +1473,85 @@
                             </div>
                         </template>
 
-                        {# ── Exchange product sub-panel (mobile) ── #}
+                        {# ── PATCH 4 — Exchange mini-cart (MOBILE) ── #}
                         <template x-if="logType === 'customer' && itemCustomerComp === 'exchange_different'">
                             <div class="mx-3 mb-1 rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
-                                <div class="px-3 py-2 flex items-center gap-1.5"
-                                     style="background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
-                                    <span class="material-symbols-outlined text-[13px]" style="color:var(--color-info);">swap_horiz</span>
-                                    <p class="text-xs font-semibold" style="color:var(--color-txt-muted);">Exchange Item</p>
+                                <div class="px-3 py-2" style="background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="material-symbols-outlined text-[13px]" style="color:var(--color-info);">swap_horiz</span>
+                                            <p class="text-xs font-semibold" style="color:var(--color-txt-muted);">Exchange Items</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-[10px] tabular-nums"
+                                               :style="exchangeRemaining < 0 ? 'color:var(--color-error)' : 'color:var(--color-txt-muted)'"
+                                               x-text="'Budget: ' + fmt(originalSubtotal) + ' · Used: ' + fmt(exchangeMoneyTotal)"></p>
+                                            <p class="text-[10px] font-semibold tabular-nums"
+                                               :style="exchangeRemaining < 0 ? 'color:var(--color-error)' : exchangeRemaining === 0 ? 'color:var(--color-txt-muted)' : 'color:var(--color-success)'"
+                                               x-text="exchangeRemaining < 0 ? 'Over by ' + fmt(Math.abs(exchangeRemaining)) : 'Change: ' + fmt(exchangeRemaining)"></p>
+                                        </div>
+                                    </div>
                                 </div>
+
+                                <template x-if="exchangeItems.length > 0">
+                                    <div>
+                                        <template x-for="ei in exchangeItems" :key="ei._ekey">
+                                            <div class="flex items-center gap-2 px-3 py-2.5" style="border-bottom:1px solid var(--color-border);">
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-xs font-medium truncate" style="color:var(--color-txt-primary);" x-text="ei.product_name"></p>
+                                                    <p class="text-[10px] tabular-nums" style="color:var(--color-txt-muted);"
+                                                       x-text="fmt(ei.total_price) + ' × ' + ei.quantity + ' = ' + fmt(ei.total_price * ei.quantity)"></p>
+                                                    <label class="flex items-center gap-1.5 mt-0.5 cursor-pointer select-none">
+                                                        <input type="checkbox" x-model="ei.no_money_exchange" class="w-3.5 h-3.5 rounded">
+                                                        <span class="text-[10px]" style="color:var(--color-txt-muted);">No money — just swap</span>
+                                                    </label>
+                                                </div>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <button @click="if(ei.quantity > 1) ei.quantity--"
+                                                            :disabled="ei.quantity <= 1"
+                                                            class="w-7 h-7 rounded-xl flex items-center justify-center disabled:opacity-30"
+                                                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);">
+                                                        <span class="material-symbols-outlined text-[13px]">remove</span>
+                                                    </button>
+                                                    <input type="number" x-model="ei.quantity" min="1"
+                                                           @focus="$event.target.select()"
+                                                           class="w-9 py-1 rounded-xl text-xs text-center font-bold focus:outline-none"
+                                                           style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary); font-size:16px;">
+                                                    <button @click="ei.quantity++"
+                                                            class="w-7 h-7 rounded-xl flex items-center justify-center"
+                                                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);">
+                                                        <span class="material-symbols-outlined text-[13px]">add</span>
+                                                    </button>
+                                                </div>
+                                                <button @click="removeExchangeItem(ei._ekey)"
+                                                        class="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+                                                        style="color:var(--color-error);">
+                                                    <span class="material-symbols-outlined text-[14px]">close</span>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+
                                 <div class="p-3 space-y-2">
                                     <div class="relative">
                                         <input type="text" x-model="exchangeQuery"
                                                @input.debounce.250ms="fetchExchangeSuggestions()"
                                                @keydown.escape="exchangeSuggestions=[]"
                                                @blur="setTimeout(()=>exchangeSuggestions=[],150)"
-                                               placeholder="Search exchange product..."
+                                               placeholder="Add exchange product..."
                                                class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
                                                style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary); font-size:16px;"
                                                onfocus="this.style.borderColor='var(--color-accent)'"
                                                onblur="this.style.borderColor='var(--color-border)'">
+                                        <template x-if="exchangeSearching">
+                                            <span class="material-symbols-outlined text-[14px] animate-spin absolute right-3 top-1/2 -translate-y-1/2" style="color:var(--color-txt-muted);">progress_activity</span>
+                                        </template>
                                         <template x-if="exchangeSuggestions.length > 0">
                                             <div class="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-30 shadow-xl"
                                                  style="background:var(--color-surface); border:1px solid var(--color-border);">
                                                 <template x-for="s in exchangeSuggestions" :key="s.product_id">
-                                                    <button @mousedown.prevent="selectExchangeProduct(s.product_id)"
+                                                    <button @mousedown.prevent="addExchangeItem(s.product_id)"
                                                             class="w-full flex items-center justify-between px-3 py-3 text-xs text-left transition"
                                                             style="border-top:1px solid var(--color-border);"
                                                             onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -1515,43 +1566,24 @@
                                             </div>
                                         </template>
                                     </div>
-                                    <template x-if="exchangeProduct">
-                                        <div class="rounded-lg px-3 py-2 flex items-center justify-between"
-                                             style="background:color-mix(in srgb,var(--color-info) 8%,transparent); border:1px solid color-mix(in srgb,var(--color-info) 20%,transparent);">
-                                            <div>
-                                                <p class="text-xs font-semibold" style="color:var(--color-txt-primary);" x-text="exchangeProduct.product_name"></p>
-                                                <p class="text-[10px]" style="color:var(--color-txt-muted);" x-text="fmt(exchangeProduct.total_price) + ' · ' + exchangeProduct.stock + ' in stock'"></p>
-                                            </div>
-                                            <button @click="clearExchange()" class="w-6 h-6 rounded-md flex items-center justify-center" style="color:var(--color-txt-muted);">
-                                                <span class="material-symbols-outlined text-[13px]">close</span>
-                                            </button>
-                                        </div>
+                                    <template x-if="exchangeError">
+                                        <p class="text-[10px] flex items-center gap-1 px-1" style="color:var(--color-error);">
+                                            <span class="material-symbols-outlined text-[11px]">error</span>
+                                            <span x-text="exchangeError"></span>
+                                        </p>
                                     </template>
-                                    <template x-if="exchangeProduct && product">
-                                        <div class="flex items-center justify-between text-xs px-1">
-                                            <span style="color:var(--color-txt-muted);">Difference:</span>
-                                            <span class="font-bold tabular-nums"
-                                                  :style="noMoneyExchange ? 'color:var(--color-txt-muted)' :
-                                                          exchangePriceDiff > 0 ? 'color:var(--color-warning)' :
-                                                          exchangePriceDiff < 0 ? 'color:var(--color-success)' : 'color:var(--color-txt-muted)'"
-                                                  x-text="noMoneyExchange ? 'No charge'
-                                                          : exchangePriceDiff === 0 ? 'Equal value'
-                                                          : exchangePriceDiff > 0 ? 'Customer adds ' + fmt(exchangePriceDiff)
-                                                          : 'Store returns ' + fmt(Math.abs(exchangePriceDiff))">
-                                            </span>
-                                        </div>
+                                    <template x-if="exchangeItems.length === 0">
+                                        <p class="text-[10px] px-1" style="color:var(--color-txt-muted);">
+                                            Search and add one or more products the customer will receive.
+                                        </p>
                                     </template>
-                                    <label class="flex items-center gap-2 text-xs cursor-pointer select-none px-1" style="color:var(--color-txt-muted);">
-                                        <input type="checkbox" x-model="noMoneyExchange" class="w-3.5 h-3.5 rounded">
-                                        No money exchange — just swap
-                                    </label>
                                 </div>
                             </div>
                         </template>
 
                         {# add / update buttons #}
                         <div class="flex gap-2 px-3 pb-3">
-                            <template x-if="editingId">
+                            <template x-if="editingKey">
                                 <button @click="cancelEdit()"
                                         class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
                                         style="background:color-mix(in srgb,var(--color-error) 10%,transparent); color:var(--color-error); border:1px solid color-mix(in srgb,var(--color-error) 20%,transparent);">
@@ -1561,7 +1593,7 @@
                             <button @click="addItem()" :disabled="!product || totalUnits <= 0"
                                     class="flex-1 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-40 active:scale-[.98]"
                                     style="background-color:var(--color-success); color:#fff;"
-                                    x-text="editingId ? 'Update Item' : 'Add to List'">
+                                    x-text="editingKey ? 'Update Item' : 'Add to List'">
                             </button>
                         </div>
                     </div>
@@ -1590,7 +1622,7 @@
                     </template>
                     <template x-for="item in items" :key="item._key">
                         <div class="flex items-center gap-3 px-4 py-3"
-                             :style="editingId===item._key
+                             :style="editingKey===item._key
                                      ? 'border-bottom:1px solid var(--color-border);background:color-mix(in srgb,var(--color-accent) 6%,transparent)'
                                      : 'border-bottom:1px solid var(--color-border)'">
                             <div class="flex-1 min-w-0">
@@ -1617,6 +1649,14 @@
                                         <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono"
                                               style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted);"
                                               x-text="item.txn_ref"></span>
+                                    </template>
+                                    {# PATCH 5 — mobile exchange badge #}
+                                    <template x-if="item.exchange_items && item.exchange_items.length > 0">
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"
+                                              style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);">
+                                            <span class="material-symbols-outlined text-[10px]">swap_horiz</span>
+                                            <span x-text="item.exchange_items.length + ' exchange item' + (item.exchange_items.length > 1 ? 's' : '')"></span>
+                                        </span>
                                     </template>
                                 </div>
                             </div>
@@ -1705,7 +1745,7 @@
     </div>{# /mobile #}
 
 
-    {# ═══════════ RECEIPT MODAL ═══════════ #}
+    {# ═══════════ RECEIPT MODAL — PATCH 6 ═══════════ #}
     <template x-if="showReceipt && receipt">
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.6);">
             <div class="rounded-2xl w-full max-w-sm flex flex-col max-h-[90vh]"
@@ -1733,17 +1773,25 @@
                                     <p class="text-sm font-medium truncate" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
                                     <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
                                        x-text="item.log_type + ' · ' + item.reason"></p>
-                                    <template x-if="item.exchange_product_name">
-                                        <p class="text-xs mt-0.5 flex items-center gap-1" style="color:var(--color-info);">
-                                            <span class="material-symbols-outlined text-[11px]">swap_horiz</span>
-                                            <span x-text="'Exchange: ' + item.exchange_product_name + (item.price_difference !== null ? ' (' + (item.price_difference >= 0 ? '+' : '') + fmt(item.price_difference) + ')' : ' · swap only')"></span>
-                                        </p>
+                                    {# PATCH 6 — exchange items list #}
+                                    <template x-if="item.exchange_items && item.exchange_items.length > 0">
+                                        <div class="mt-0.5 space-y-0.5">
+                                            <template x-for="ei in item.exchange_items" :key="ei.product_name">
+                                                <p class="text-xs flex items-center gap-1" style="color:var(--color-info);">
+                                                    <span class="material-symbols-outlined text-[11px]">swap_horiz</span>
+                                                    <span x-text="ei.product_name + ' ×' + ei.quantity + (ei.no_money_exchange ? ' (swap)' : ' · ' + fmt(ei.price_at_exchange * ei.quantity))"></span>
+                                                </p>
+                                            </template>
+                                        </div>
                                     </template>
-                                    <template x-if="item.exchange_warning">
-                                        <p class="text-xs mt-0.5 flex items-center gap-1" style="color:var(--color-warning);">
-                                            <span class="material-symbols-outlined text-[11px]">warning</span>
-                                            <span x-text="item.exchange_warning"></span>
-                                        </p>
+                                    {# PATCH 6 — receipt-level warnings #}
+                                    <template x-if="receipt.warnings && receipt.warnings.length > 0">
+                                        <template x-for="w in receipt.warnings" :key="w">
+                                            <p class="text-xs mt-0.5 flex items-center gap-1" style="color:var(--color-warning);">
+                                                <span class="material-symbols-outlined text-[11px]">warning</span>
+                                                <span x-text="w"></span>
+                                            </p>
+                                        </template>
                                     </template>
                                     <p class="text-xs mt-0.5 font-semibold"
                                        :style="item.status === 'submitted'

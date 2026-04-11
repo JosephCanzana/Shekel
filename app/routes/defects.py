@@ -98,6 +98,13 @@ def _apply_inventory_on_activate(detail):
             inv.quantity_available += qty
         else:
             inv.quantity_defective = (inv.quantity_defective or 0) + qty
+
+        if detail.customer_compensation == "exchange_different":
+            for ei in detail.exchange_items:
+                ex_inv = Inventory.query.filter_by(product_id=ei.product_id).first()
+                if ex_inv:
+                    ex_inv.quantity_available -= ei.quantity
+                    ex_inv.last_updated = datetime.utcnow()
     else:
         inv.quantity_available = max(0, inv.quantity_available - qty)
         if detail.supplier_compensation == "pending":
@@ -123,9 +130,16 @@ def _apply_supplier_decision(detail, new_sup_comp):
 
     if new_sup_comp == "loss":
         inv.quantity_defective = max(0, (inv.quantity_defective or 0) - qty)
-    elif new_sup_comp in ("same_item", "different_item"):
+    elif new_sup_comp == "same_item":
         inv.quantity_defective = max(0, (inv.quantity_defective or 0) - qty)
         inv.quantity_available += qty
+    elif new_sup_comp == "different_item":
+        inv.quantity_defective = max(0, (inv.quantity_defective or 0) - qty)
+        for ei in detail.exchange_items:
+            ex_inv = Inventory.query.filter_by(product_id=ei.product_id).first()
+            if ex_inv:
+                ex_inv.quantity_available += ei.quantity
+                ex_inv.last_updated = datetime.utcnow()
     elif new_sup_comp == "money":
         inv.quantity_defective = max(0, (inv.quantity_defective or 0) - qty)
 
@@ -142,9 +156,16 @@ def _undo_supplier_decision(detail, old_sup_comp):
 
     if old_sup_comp == "loss":
         inv.quantity_defective = (inv.quantity_defective or 0) + qty
-    elif old_sup_comp in ("same_item", "different_item"):
+    elif old_sup_comp == "same_item":
         inv.quantity_defective = (inv.quantity_defective or 0) + qty
         inv.quantity_available = max(0, inv.quantity_available - qty)
+    elif old_sup_comp == "different_item":
+        inv.quantity_defective = (inv.quantity_defective or 0) + qty
+        for ei in detail.exchange_items:
+            ex_inv = Inventory.query.filter_by(product_id=ei.product_id).first()
+            if ex_inv:
+                ex_inv.quantity_available = max(0, ex_inv.quantity_available - ei.quantity)
+                ex_inv.last_updated = datetime.utcnow()
     elif old_sup_comp == "money":
         inv.quantity_defective = (inv.quantity_defective or 0) + qty
 
@@ -184,17 +205,31 @@ def _reverse_all_inventory(detail):
             if sc == "pending":
                 inv.quantity_defective = max(0, (inv.quantity_defective or 0) - qty)
             elif sc in ("loss", "money"):
-                pass  # net 0
+                pass
             elif sc in ("same_item", "different_item"):
                 inv.quantity_available = max(0, inv.quantity_available - qty)
+
+        # Undo exchange items — restore stock that was given out
+        if detail.customer_compensation == "exchange_different":
+            for ei in detail.exchange_items:
+                ex_inv = Inventory.query.filter_by(product_id=ei.product_id).first()
+                if ex_inv:
+                    ex_inv.quantity_available += ei.quantity
+                    ex_inv.last_updated = datetime.utcnow()
     else:
         inv.quantity_available += qty
         if sc == "pending":
             inv.quantity_defective = max(0, (inv.quantity_defective or 0) - qty)
         elif sc in ("loss", "money"):
-            pass  # D net 0 already
-        elif sc in ("same_item", "different_item"):
+            pass
+        elif sc == "same_item":
             inv.quantity_available = max(0, inv.quantity_available - qty)
+        elif sc == "different_item":
+            for ei in detail.exchange_items:
+                ex_inv = Inventory.query.filter_by(product_id=ei.product_id).first()
+                if ex_inv:
+                    ex_inv.quantity_available = max(0, ex_inv.quantity_available - ei.quantity)
+                    ex_inv.last_updated = datetime.utcnow()
 
     inv.last_updated = datetime.utcnow()
 
@@ -623,16 +658,52 @@ def update_review(detail_id):
     if new_sup_comp not in VALID_SUPPLIER_COMPS:
         flash("Invalid supplier compensation.", "danger")
         return redirect(request.referrer or url_for("defects.index"))
-
     old_sup_comp = detail.supplier_compensation
 
     if old_sup_comp == new_sup_comp:
         flash("No change made.", "info")
         return redirect(request.referrer or url_for("defects.index"))
 
-    # Undo old effect, apply new effect
+    # ── Validate exchange items for different_item ────────────────────────────
+    new_ei_list = []
+    if new_sup_comp == "different_item":
+        import json as _json
+        raw_ei = request.form.get("exchange_items_json", "")
+        try:
+            new_ei_list = _json.loads(raw_ei) if raw_ei else []
+        except ValueError:
+            new_ei_list = []
+        if not new_ei_list:
+            flash("At least one exchange item is required for Different Item compensation.", "danger")
+            return redirect(request.referrer or url_for("defects.index"))
+
+    # Undo old (uses current exchange_items relationship)
     if old_sup_comp in RESOLVABLE_SUP_COMPS:
         _undo_supplier_decision(detail, old_sup_comp)
+
+    # Swap exchange items BEFORE applying new effect
+    from app.models.defect_exchange_item import DefectExchangeItem
+    DefectExchangeItem.query.filter_by(defect_detail_id=detail.defect_detail_id).delete()
+    db.session.flush()
+
+    if new_sup_comp == "different_item":
+        for ei_data in new_ei_list:
+            ex_pid   = ei_data["product_id"].strip()
+            ex_qty   = int(ei_data.get("quantity", 1))
+            no_money = bool(ei_data.get("no_money_exchange", False))
+            ex_prod  = Product.query.get(ex_pid)
+            ei = DefectExchangeItem(
+                defect_detail_id  = detail.defect_detail_id,
+                product_id        = ex_pid,
+                quantity          = ex_qty,
+                price_at_exchange = float(ex_prod.total_price),
+                no_money_exchange = no_money,
+                override_used     = False,
+            )
+            db.session.add(ei)
+        db.session.flush()
+
+    # Apply new effect (uses updated exchange_items)
     if new_sup_comp in RESOLVABLE_SUP_COMPS:
         _apply_supplier_decision(detail, new_sup_comp)
 
@@ -984,23 +1055,81 @@ def complete():
         elif role == "stocking":
             status = "submitted"
         else:  # cashier
-            # change_of_mind is auto-approved; damaged/expired needs admin review
             status = "active" if (log_type == "customer" and reason == "change_of_mind") else "submitted"
 
         # ── Resolve customer compensation ─────────────────────────────────────
         if log_type == "customer":
             cust_comp = item.get("customer_compensation", "")
             if reason == "change_of_mind":
-                cust_comp = cust_comp if cust_comp in ("exchange_same", "exchange_different") else "exchange_same"
+                cust_comp = cust_comp if cust_comp in ("full_refund", "exchange_different") else "full_refund"
             else:
                 cust_comp = cust_comp if cust_comp in VALID_CUSTOMER_COMPS else "full_refund"
+            # strip out partial_refund — hidden but guard server side too
+            if cust_comp == "partial_refund":
+                cust_comp = "full_refund"
         else:
             cust_comp = "none"
+
+        # ── Validate + resolve exchange items ─────────────────────────────────
+        validated_exchange_items = []
+
+        if cust_comp == "exchange_different":
+            raw_exchange = item.get("exchange_items", [])
+            if not raw_exchange:
+                return jsonify({"error": f'Exchange items required for "{product.product_name.capitalize()}".'}), 400
+
+            original_subtotal = float(product.total_price) * qty
+            exchange_total    = 0.0
+
+            seen_exchange_ids = set()
+            for ei in raw_exchange:
+                ex_pid = (ei.get("product_id") or "").strip()
+                ex_qty = int(ei.get("quantity", 0))
+                no_money = bool(ei.get("no_money_exchange", False))
+
+                if not ex_pid:
+                    return jsonify({"error": "Exchange item missing product ID."}), 400
+                if ex_pid in seen_exchange_ids:
+                    return jsonify({"error": f'Duplicate exchange product "{ex_pid}".'}), 400
+                seen_exchange_ids.add(ex_pid)
+
+                ex_product = Product.query.get(ex_pid)
+                if not ex_product or ex_product.status == "archived":
+                    return jsonify({"error": f'Exchange product "{ex_pid}" not found or archived.'}), 400
+                if ex_qty <= 0:
+                    return jsonify({"error": f'Invalid quantity for exchange product "{ex_product.product_name.capitalize()}".'}), 400
+
+                price_at_exchange = float(ex_product.total_price)
+
+                if not no_money:
+                    exchange_total += price_at_exchange * ex_qty
+
+            # Cap: exchange total must not exceed original subtotal
+            if exchange_total > original_subtotal + 0.001:  # float tolerance
+                return jsonify({"error": (
+                    f'Exchange items total (₱{exchange_total:.2f}) exceeds '
+                    f'original subtotal (₱{original_subtotal:.2f}) for '
+                    f'"{product.product_name.capitalize()}". '
+                    f'Exchange value cannot exceed the returned item value.'
+                )}), 400
+
+            # Re-iterate to build validated list with resolved prices
+            for ei in raw_exchange:
+                ex_pid   = ei["product_id"].strip()
+                ex_qty   = int(ei["quantity"])
+                no_money = bool(ei.get("no_money_exchange", False))
+                ex_prod  = Product.query.get(ex_pid)
+                validated_exchange_items.append({
+                    "product_id":        ex_pid,
+                    "quantity":          ex_qty,
+                    "price_at_exchange": float(ex_prod.total_price),
+                    "no_money_exchange": no_money,
+                })
 
         # ── Resolve supplier compensation ─────────────────────────────────────
         sup_comp = "none" if reason == "change_of_mind" else "pending"
 
-        # ── Stock check — only in-store items going active deduct from available
+        # ── Stock check — in-store active items only ──────────────────────────
         if log_type == "instore" and status == "active":
             stock = product.inventory.quantity_available if product.inventory else 0
             already_queued = sum(
@@ -1014,9 +1143,10 @@ def complete():
             if qty + already_queued > stock:
                 return jsonify({"error": f'"{product.product_name.capitalize()}": only {stock} in stock.'}), 400
 
-        item["_status"]    = status
-        item["_cust_comp"] = cust_comp
-        item["_sup_comp"]  = sup_comp
+        item["_status"]                  = status
+        item["_cust_comp"]               = cust_comp
+        item["_sup_comp"]                = sup_comp
+        item["_validated_exchange_items"] = validated_exchange_items
 
     # ── Build header ──────────────────────────────────────────────────────────
     total_cost    = sum(float(Product.query.get(i["product_id"]).cost_price)    * int(i["qty"]) for i in items)
@@ -1035,6 +1165,8 @@ def complete():
 
     logged = []
     for item in items:
+        from app.models.defect_exchange_item import DefectExchangeItem
+
         product   = Product.query.get(item["product_id"])
         qty       = int(item["qty"])
         reason    = item["reason"]
@@ -1070,21 +1202,61 @@ def complete():
             transaction_id          = txn_ref,
         )
         db.session.add(detail)
+        db.session.flush()  # get detail_id for exchange items
+
+        # ── Save exchange items + flag override ───────────────────────────────
+        exchange_warnings = []
+        for ei_data in item["_validated_exchange_items"]:
+            ex_inv     = Inventory.query.filter_by(product_id=ei_data["product_id"]).first()
+            ex_product = Product.query.get(ei_data["product_id"])
+
+            # Determine override BEFORE inventory is touched (will be applied later)
+            future_stock = (ex_inv.quantity_available - ei_data["quantity"]) if ex_inv else -ei_data["quantity"]
+            override = future_stock < 0
+
+            ei = DefectExchangeItem(
+                defect_detail_id  = detail.defect_detail_id,
+                product_id        = ei_data["product_id"],
+                quantity          = ei_data["quantity"],
+                price_at_exchange = ei_data["price_at_exchange"],
+                no_money_exchange = ei_data["no_money_exchange"],
+                override_used     = override,
+            )
+            db.session.add(ei)
+
+            if override:
+                exchange_warnings.append(
+                    f'Exchange product "{ex_product.product_name.capitalize()}" '
+                    f'will be at {future_stock} units — stock discrepancy flagged.'
+                )
 
         if status == "active":
             _apply_inventory_on_activate(detail)
 
-        logged.append({
-            "product_name": product.product_name.capitalize(),
-            "qty":          qty,
-            "log_type":     "Customer Return" if log_type == "customer" else "In-Store",
-            "reason":       REASON_LABELS[reason],
-            "status":       STATUS_LABELS[status],
-            "cust_comp":    CUSTOMER_COMP_LABELS[cust_comp],
-            "sup_comp":     SUPPLIER_COMP_LABELS[sup_comp],
-            "txn_ref":      f"TXN-{txn_ref:05d}" if txn_ref else None,
-            "new_stock":    max(0, product.inventory.quantity_available if product.inventory else 0),
-        })
+        log_entry = {
+            "product_name":    product.product_name.capitalize(),
+            "qty":             qty,
+            "log_type":        "Customer Return" if log_type == "customer" else "In-Store",
+            "reason":          REASON_LABELS[reason],
+            "status":          STATUS_LABELS[status],
+            "cust_comp":       CUSTOMER_COMP_LABELS[cust_comp],
+            "sup_comp":        SUPPLIER_COMP_LABELS[sup_comp],
+            "txn_ref":         f"TXN-{txn_ref:05d}" if txn_ref else None,
+            "new_stock":       product.inventory.quantity_available if product.inventory else 0,
+            "exchange_items":  [
+                {
+                    "product_name":     Product.query.get(ei["product_id"]).product_name.capitalize(),
+                    "quantity":         ei["quantity"],
+                    "price_at_exchange":ei["price_at_exchange"],
+                    "no_money_exchange":ei["no_money_exchange"],
+                }
+                for ei in item["_validated_exchange_items"]
+            ],
+            "exchange_warnings": exchange_warnings,
+        }
+        logged.append(log_entry)
+
+    all_warnings = [w for e in logged for w in e.get("exchange_warnings", [])]
 
     try:
         audit(
@@ -1106,8 +1278,9 @@ def complete():
         "logged":      logged,
         "total_items": len(logged),
         "total_units": sum(i["qty"] for i in logged),
-        "recorded_by": f"{current_user.first_name} {current_user.last_name}".strip().title() or current_user.username,
+        "recorded_by": f"{current_user.first_name} {current_user.last_name}".strip().title(),
         "datetime":    defect.defect_datetime.strftime("%b %d, %Y %I:%M %p"),
+        "warnings":    all_warnings,
     })
 
 
