@@ -30,6 +30,8 @@
             bulkActionSheetOpen: false,
             bulkArchiveConfirm:   false,
             bulkUnarchiveConfirm: false,
+            filterNoStock:   false,
+            filterNormal:    false,
 
             // ── select mode ───────────────────────────────────────
             selectMode:  false,
@@ -276,6 +278,7 @@
                 if (this.filterCategory !== '' && this.filterCategory !== 'all') n++
                 if (this.filterLowStock)                                          n++
                 if (this.filterNoStock)                                           n++
+                if (this.filterNormal)                                            n++
                 if (this.sortOrder !== '')                                        n++
                 return n
             },
@@ -283,7 +286,8 @@
             resetFilters() {
                 this.filterStatus = 'active'; this.filterCategory = ''
                 this.filterLowStock = false;  this.filterNoStock = false
-                this.sortOrder = '';          this.resetPage()
+                this.filterNormal = false;    this.sortOrder = ''
+                this.resetPage()
             },
 
             get filtered() {
@@ -293,10 +297,11 @@
                     const matchSearch   = q === '' || r.product_name.toLowerCase().includes(q) || r.category_name.toLowerCase().includes(q) || r.product_id.toLowerCase().includes(q)
                     const matchStatus   = this.filterStatus === 'all' || r.status === this.filterStatus
                     const matchCategory = catFilter === '' || catFilter === 'all' || r.category_name.toLowerCase().includes(catFilter)
-                    const stockActive   = this.filterLowStock || this.filterNoStock
+                    const stockActive   = this.filterLowStock || this.filterNoStock || this.filterNormal
                     const matchStock    = !stockActive || (
                         (this.filterLowStock && r.stock > 0 && r.stock <= r.low_reorder_threshold && r.status === 'active') ||
-                        (this.filterNoStock  && r.stock === 0 && r.status === 'active')
+                        (this.filterNoStock  && r.stock === 0 && r.status === 'active') ||
+                        (this.filterNormal   && r.stock > r.low_reorder_threshold && r.status === 'active')
                     )
                     return matchSearch && matchStatus && matchCategory && matchStock
                 })
@@ -304,6 +309,7 @@
                 if (this.sortOrder === 'desc') result.sort((a, b) => b.product_name.localeCompare(a.product_name))
                 return result
             },
+            get normalStockCount() { return this.rows.filter(r => r.stock > r.low_reorder_threshold && r.status === 'active').length },
 
             get paginated()   { const s = (this.page - 1) * this.perPage; return this.filtered.slice(s, s + this.perPage) },
             get totalPages()  { return Math.max(1, Math.ceil(this.filtered.length / this.perPage)) },
@@ -448,19 +454,35 @@
             <div class="space-y-1.5">
                 <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Stock Status</label>
                 <div class="flex flex-col gap-2">
+                    <button @click="filterNormal=!filterNormal;resetPage()" class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition"
+                            :style="filterNormal ? 'background:color-mix(in srgb,var(--color-success) 12%,transparent);border:1px solid var(--color-success);color:var(--color-success)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                            <span>Normal Stock</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                            :style="filterNormal ? 'background:var(--color-success);color:var(--color-bg)' : 'background:color-mix(in srgb,var(--color-success) 15%,transparent);color:var(--color-success)'"
+                            x-text="normalStockCount + ' items'"></span>
+                    </button>
                     <button @click="filterLowStock=!filterLowStock;resetPage()" class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition"
                             :style="filterLowStock ? 'background:color-mix(in srgb,var(--color-warning) 12%,transparent);border:1px solid var(--color-warning);color:var(--color-warning)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
-                        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">warning</span><span>Low Stock</span></div>
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">warning</span>
+                            <span>Low Stock</span>
+                        </div>
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                              :style="filterLowStock ? 'background:var(--color-warning);color:var(--color-bg)' : 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'"
-                              x-text="lowStockCount + ' items'"></span>
+                            :style="filterLowStock ? 'background:var(--color-warning);color:var(--color-bg)' : 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'"
+                            x-text="lowStockCount + ' items'"></span>
                     </button>
                     <button @click="filterNoStock=!filterNoStock;resetPage()" class="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition"
                             :style="filterNoStock ? 'background:color-mix(in srgb,var(--color-error) 10%,transparent);border:1px solid var(--color-error);color:var(--color-error)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
-                        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">remove_shopping_cart</span><span>No Stock</span></div>
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">remove_shopping_cart</span>
+                            <span>No Stock</span>
+                        </div>
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                              :style="filterNoStock ? 'background:var(--color-error);color:var(--color-bg)' : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
-                              x-text="noStockCount + ' items'"></span>
+                            :style="filterNoStock ? 'background:var(--color-error);color:var(--color-bg)' : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                            x-text="noStockCount + ' items'"></span>
                     </button>
                 </div>
             </div>

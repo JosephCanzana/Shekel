@@ -75,6 +75,11 @@
         { value: 'different_item',label: 'Different Item',    icon: 'swap_horiz',     desc: 'Supplier replaces with a different item' },
         { value: 'money',         label: 'Cash Reimbursement',icon: 'payments',       desc: 'Supplier reimburses cash to store' },
     ],
+    submittedOpen: localStorage.getItem('submittedQueueOpen') !== 'false',
+    toggleSubmitted() { 
+        this.submittedOpen = !this.submittedOpen; 
+        localStorage.setItem('submittedQueueOpen', this.submittedOpen); 
+    },
 
 }" class="flex flex-col gap-4" style="margin-top:-17px;">
 
@@ -219,208 +224,30 @@
             </form>
         </div>
     </div>
-    
-    {# ══════════════════════════════════════════════
-       SUBMITTED QUEUE — awaiting admin approval
-    ══════════════════════════════════════════════ #}
-    {% if submitted_items %}
-    <div class="rounded-2xl overflow-hidden"
-         style="background:var(--color-surface); border:1px solid var(--color-border);">
 
-        <div class="px-5 py-3 flex items-center justify-between"
-             style="background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[15px]" style="color:var(--color-info);">pending</span>
-                <h2 class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
-                    {% if is_admin %}Pending Approval{% else %}My Submitted Items{% endif %}
-                </h2>
-            </div>
-            <span class="text-xs px-2 py-0.5 rounded-full font-semibold"
-                  style="background:color-mix(in srgb,var(--color-info) 15%,transparent); color:var(--color-info);">
-                {{ submitted_items | length }} item{{ 's' if submitted_items | length != 1 }}
-            </span>
-        </div>
+{# admin approval quick link #}
+{% if submitted_items %}
+<div class="rounded-2xl p-4 flex items-center justify-between"
+     style="background:var(--color-surface); border:1px solid var(--color-border);">
 
-        {# Desktop header #}
-        <div class="hidden sm:grid px-5 py-2.5 text-xs font-semibold uppercase tracking-wider"
-             style="grid-template-columns: 2fr 1.5fr 0.6fr 0.8fr 0.8fr 1.2fr {% if can_approve %}160px{% endif %} {% if can_delete %}40px{% endif %};
-                    color:var(--color-txt-muted);
-                    border-bottom:1px solid var(--color-border);
-                    background:var(--color-surface-alt);">
-            <span>Product</span>
-            <span>Date</span>
-            <span class="text-center">Qty</span>
-            <span>Origin</span>
-            <span>Reason</span>
-            <span>Logged By</span>
-            {% if can_approve %}<span class="text-center">Action</span>{% endif %}
-            {% if can_delete %}<span></span>{% endif %}
-        </div>
-
-        {% for detail, defect, product, user in submitted_items %}
-        {# Desktop row #}
-        <div class="hidden sm:grid px-5 py-3.5 items-center transition"
-             style="grid-template-columns: 2fr 1.5fr 0.6fr 0.8fr 0.8fr 1.2fr {% if can_approve %}160px{% endif %} {% if can_delete %}40px{% endif %};
-                    border-top:1px solid var(--color-border);"
-             onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-             onmouseout="this.style.backgroundColor='transparent'">
-
-            <div>
-                <p class="text-sm font-medium" style="color:var(--color-txt-primary);">
-                    {{ product.product_name.capitalize() }}
-                </p>
-                <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);">{{ product.product_id }}</p>
-                {% if detail.transaction_id %}
-                <p class="text-[10px] font-mono mt-0.5" style="color:var(--color-txt-muted);">
-                    TXN-{{ '%05d' | format(detail.transaction_id) }}
-                </p>
-                {% endif %}
-            </div>
-
-            <div>
-                <p class="text-sm" style="color:var(--color-txt-secondary);">
-                    {{ defect.defect_datetime | pht('%b %d, %Y') }}
-                </p>
-                <p class="text-xs" style="color:var(--color-txt-muted);">
-                    {{ defect.defect_datetime | pht('%I:%M %p') }}
-                </p>
-            </div>
-
-            <p class="text-sm text-center font-semibold tabular-nums" style="color:var(--color-info);">
-                {{ detail.quantity }}
-            </p>
-
-            <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
-                  style="{% if detail.origin == 'customer' %}
-                             background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)
-                         {% else %}
-                             background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)
-                         {% endif %}">
-                {{ 'Customer' if detail.origin == 'customer' else 'In-Store' }}
-            </span>
-
-            <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
-                  style="{% if detail.reason == 'expired' %}
-                             background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
-                         {% elif detail.reason == 'change_of_mind' %}
-                             background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)
-                         {% else %}
-                             background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)
-                         {% endif %}">
-                {{ REASON_LABELS[detail.reason] }}
-            </span>
-
-            <div>
-                <p class="text-sm" style="color:var(--color-txt-secondary);">
-                    {{ user.first_name | title }} {{ user.last_name | title }}
-                </p>
-                <p class="text-xs capitalize" style="color:var(--color-txt-muted);">{{ user.role }}</p>
-            </div>
-
-            {% if can_approve %}
-            <div class="flex items-center justify-center gap-1.5">
-                <form method="POST"
-                      action="{{ url_for('defects.approve', detail_id=detail.defect_detail_id) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit"
-                            class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-                            style="background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success);"
-                            onmouseover="this.style.background='color-mix(in srgb,var(--color-success) 22%,transparent)'"
-                            onmouseout="this.style.background='color-mix(in srgb,var(--color-success) 12%,transparent)'">
-                        <span class="material-symbols-outlined text-[13px]">check_circle</span>
-                        Approve
-                    </button>
-                </form>
-                <button @click="$dispatch('confirm', {
-                            title:   'Reject Submission',
-                            message: 'Reject this defect log for {{ product.product_name.capitalize() | replace("'","\'") }}?',
-                            action:  '{{ url_for("defects.reject", detail_id=detail.defect_detail_id) }}',
-                            fields:  [{ name: 'rejection_note', value: '', placeholder: 'Rejection reason (required)', required: true }]
-                        })"
-                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-                        style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
-                        onmouseover="this.style.background='color-mix(in srgb,var(--color-error) 22%,transparent)'"
-                        onmouseout="this.style.background='color-mix(in srgb,var(--color-error) 12%,transparent)'">
-                    <span class="material-symbols-outlined text-[13px]">cancel</span>
-                    Reject
-                </button>
-            </div>
-            {% endif %}
-
-            {% if can_delete %}
-            <div class="flex justify-center">
-                <button @click="$dispatch('confirm', {
-                                    title:   'Archive Record',
-                                    message: 'Archive {{ product.product_name.capitalize() | replace("'","\'") }}? This cannot be undone easily.',
-                                    action:  '{{ url_for("defects.archive_detail", detail_id=detail.defect_detail_id) }}',
-                                    fields:  []
-                                })"
-                        class="w-7 h-7 rounded-lg flex items-center justify-center transition"
-                        style="color:var(--color-txt-muted);"
-                        onmouseover="this.style.color='var(--color-warning)'"
-                        onmouseout="this.style.color='var(--color-txt-muted)'">
-                    <span class="material-symbols-outlined text-[15px]">archive</span>
-                </button>
-            </div>
-            {% endif %}
-        </div>
-
-        {# Mobile card #}
-        <div class="sm:hidden flex items-center justify-between gap-3 px-4 py-3"
-             style="border-top:1px solid var(--color-border);">
-            <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);">
-                    {{ product.product_name.capitalize() }}
-                </p>
-                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                          style="background:color-mix(in srgb,var(--color-info) 15%,transparent);color:var(--color-info);">
-                        ×{{ detail.quantity }}
-                    </span>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                          style="{% if detail.reason == 'expired' %}background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)
-                                 {% elif detail.reason == 'change_of_mind' %}background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)
-                                 {% else %}background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error){% endif %}">
-                        {{ REASON_LABELS[detail.reason] }}
-                    </span>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full"
-                          style="color:var(--color-txt-muted);">
-                        {{ 'Customer' if detail.origin == 'customer' else 'In-Store' }}
-                    </span>
-                    <span class="text-[10px] px-2 py-0.5 rounded-full"
-                          style="color:var(--color-txt-muted);">
-                        {{ user.first_name | title }} {{ user.last_name | title }}
-                    </span>
-                </div>
-            </div>
-            {% if can_approve %}
-            <div class="flex gap-1.5 shrink-0">
-                <form method="POST"
-                      action="{{ url_for('defects.approve', detail_id=detail.defect_detail_id) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit"
-                            class="w-8 h-8 rounded-xl flex items-center justify-center"
-                            style="background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success);">
-                        <span class="material-symbols-outlined text-[16px]">check_circle</span>
-                    </button>
-                </form>
-                <button @click="$dispatch('confirm', {
-                            title:   'Reject Submission',
-                            message: 'Reject this defect log?',
-                            action:  '{{ url_for("defects.reject", detail_id=detail.defect_detail_id) }}',
-                            fields:  [{ name: 'rejection_note', value: '', placeholder: 'Rejection reason (required)', required: true }]
-                        })"
-                        class="w-8 h-8 rounded-xl flex items-center justify-center"
-                        style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);">
-                    <span class="material-symbols-outlined text-[16px]">cancel</span>
-                </button>
-            </div>
-            {% endif %}
-        </div>
-        {% endfor %}
+    <div>
+        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">
+            Submitted defects need approval
+        </p>
+        <p class="text-xs" style="color:var(--color-txt-muted);">
+            Go to Admin Requests to review them.
+        </p>
     </div>
-    {% endif %}
 
+<a href="/admin/requests#defects"
+   class="px-4 py-2 rounded-xl text-sm font-semibold transition"
+   style="background:var(--color-accent);
+          color:white;">
+    Review Requests ({{ submitted_items|length }}) →
+</a>
+
+</div>
+{% endif %}
 
     {# ══════════════════════════════════════════════
        WATCH LIST — active + supplier pending
