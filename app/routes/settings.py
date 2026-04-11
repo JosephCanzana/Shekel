@@ -13,7 +13,6 @@ settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 ALL_COLUMNS = [
     {"key": "sku",                 "label": "Barcode / SKU",       "group": "Product"},
     {"key": "bundle_barcode",      "label": "Bundle Barcode",       "group": "Product"},
-    {"key": "bundle_name",         "label": "Bundle Name",          "group": "Product"},
     {"key": "units_per_bundle",    "label": "Units per Bundle",     "group": "Product"},
     {"key": "category",            "label": "Category",             "group": "Product"},
     {"key": "status",              "label": "Status",               "group": "Product"},
@@ -39,14 +38,12 @@ ROLE_COLUMN_DEFAULTS = {
         "defaults":  ["stock", "unit_price", "stock_total_value", "low_stock_threshold"]
     },
     "stocking": {
-        "available": ["sku", "bundle_name", "stock", "unit_price",
+        "available": ["sku", "stock", "unit_price",
                       "bundle_price", "stock_total_value",
                       "category", "low_stock_threshold", "status", "last_updated"],
         "defaults":  ["stock", "unit_price", "low_stock_threshold"]
     }
 }
-
-
 def get_role_setting(role, page="inventory"):
     setting = RoleColumnSetting.query.filter_by(role=role, page=page).first()
     if setting:
