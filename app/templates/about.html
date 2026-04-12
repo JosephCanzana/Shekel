@@ -7,26 +7,20 @@
 <div class="max-w-3xl mx-auto space-y-5 pb-6">
 
     {# ══════════════════════════════════════════════
-       HERO — App identity
+       HERO
     ══════════════════════════════════════════════ #}
     <div class="relative rounded-2xl overflow-hidden"
          style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
-
-        {# Subtle gradient backdrop #}
         <div class="absolute inset-0 pointer-events-none"
              style="background: radial-gradient(ellipse at top left,
                         color-mix(in srgb, var(--color-primary) 8%, transparent),
                         transparent 65%);"></div>
-
         <div class="relative px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-
-            {# Logo mark — real image with gradient icon fallback #}
             <div class="w-16 h-16 shrink-0 flex items-center justify-center">
                 <img src="{{ url_for('static', filename='img/shekel_logo.png') }}"
                      alt="Shekel logo"
                      class="w-16 h-16 object-contain"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                {# Fallback if image fails to load #}
                 <div class="w-16 h-16 rounded-2xl flex items-center justify-center"
                      style="display:none;
                             background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
@@ -35,7 +29,6 @@
                           style="color: var(--color-bg);">storefront</span>
                 </div>
             </div>
-
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-3 flex-wrap">
                     <h1 class="text-2xl font-bold tracking-tight"
@@ -49,7 +42,7 @@
                 </div>
                 <p class="text-sm mt-1.5 leading-relaxed"
                    style="color: var(--color-txt-muted);">
-                    A Sales and Inventory Management System designed for a supermarket
+                    A Sales and Inventory Management System designed for supermarket
                     businesses — built to streamline transactions, track stock, and manage
                     operations across multiple user roles.
                 </p>
@@ -58,30 +51,30 @@
     </div>
 
     {# ══════════════════════════════════════════════
-       ROLE GUIDE
+    ROLE GUIDE
     ══════════════════════════════════════════════ #}
     <div class="rounded-2xl overflow-hidden"
-         style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+        style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
 
         <div class="px-5 py-3.5 flex items-center gap-2"
-             style="background-color: var(--color-surface-alt);
+            style="background-color: var(--color-surface-alt);
                     border-bottom: 1px solid var(--color-border);">
             <span class="material-symbols-outlined text-[16px]"
-                  style="color: var(--color-txt-muted);">manage_accounts</span>
+                style="color: var(--color-txt-muted);">manage_accounts</span>
             <h2 class="text-xs font-bold uppercase tracking-wider"
                 style="color: var(--color-txt-muted);">Role Permissions</h2>
         </div>
 
-        <div class="divide-y-0 grid grid-cols-1 sm:grid-cols-2">
+        <div class="grid grid-cols-1 sm:grid-cols-3">
 
             {# Admin #}
             <div class="px-5 py-4"
-                 style="border-bottom: 1px solid var(--color-border);">
+                style="border-bottom: 1px solid var(--color-border);">
                 <div class="flex items-center gap-2 mb-3">
                     <span class="w-2 h-2 rounded-full shrink-0"
-                          style="background-color: var(--color-accent);"></span>
+                        style="background-color: var(--color-accent);"></span>
                     <p class="text-xs font-bold uppercase tracking-wider"
-                       style="color: var(--color-accent);">Admin</p>
+                    style="color: var(--color-accent);">Admin</p>
                 </div>
                 <ul class="space-y-1.5">
                     {% for item in [
@@ -97,31 +90,7 @@
                     <li class="flex items-start gap-2 text-xs"
                         style="color: var(--color-txt-secondary);">
                         <span class="material-symbols-outlined text-[13px] mt-0.5 shrink-0"
-                              style="color: var(--color-success);">check</span>
-                        {{ item }}
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-
-            {# Co-Admin #}
-            <div class="px-5 py-4"
-                 style="border-bottom: 1px solid var(--color-border);
-                        border-left: 1px solid var(--color-border);">
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="w-2 h-2 rounded-full shrink-0"
-                          style="background-color: var(--color-info);"></span>
-                    <p class="text-xs font-bold uppercase tracking-wider"
-                       style="color: var(--color-info);">Co-Admin</p>
-                </div>
-                <ul class="space-y-1.5">
-                    {% for item in [
-                        "Full access except permanently deleting",
-                    ] %}
-                    <li class="flex items-start gap-2 text-xs"
-                        style="color: var(--color-txt-secondary);">
-                        <span class="material-symbols-outlined text-[13px] mt-0.5 shrink-0"
-                              style="color: var(--color-success);">check</span>
+                            style="color: var(--color-success);">check</span>
                         {{ item }}
                     </li>
                     {% endfor %}
@@ -130,12 +99,13 @@
 
             {# Cashier #}
             <div class="px-5 py-4"
-                 style="border-top: 1px solid var(--color-border);">
+                style="border-bottom: 1px solid var(--color-border);
+                        border-left: 1px solid var(--color-border);">
                 <div class="flex items-center gap-2 mb-3">
                     <span class="w-2 h-2 rounded-full shrink-0"
-                          style="background-color: var(--color-success);"></span>
+                        style="background-color: var(--color-success);"></span>
                     <p class="text-xs font-bold uppercase tracking-wider"
-                       style="color: var(--color-success);">Cashier</p>
+                    style="color: var(--color-success);">Cashier</p>
                 </div>
                 <ul class="space-y-1.5">
                     {% for item in [
@@ -146,7 +116,7 @@
                     <li class="flex items-start gap-2 text-xs"
                         style="color: var(--color-txt-secondary);">
                         <span class="material-symbols-outlined text-[13px] mt-0.5 shrink-0"
-                              style="color: var(--color-success);">check</span>
+                            style="color: var(--color-success);">check</span>
                         {{ item }}
                     </li>
                     {% endfor %}
@@ -155,13 +125,13 @@
 
             {# Stocking #}
             <div class="px-5 py-4"
-                 style="border-top: 1px solid var(--color-border);
+                style="border-bottom: 1px solid var(--color-border);
                         border-left: 1px solid var(--color-border);">
                 <div class="flex items-center gap-2 mb-3">
                     <span class="w-2 h-2 rounded-full shrink-0"
-                          style="background-color: var(--color-warning);"></span>
+                        style="background-color: var(--color-warning);"></span>
                     <p class="text-xs font-bold uppercase tracking-wider"
-                       style="color: var(--color-warning);">Stocking</p>
+                    style="color: var(--color-warning);">Stocking</p>
                 </div>
                 <ul class="space-y-1.5">
                     {% for item in [
@@ -172,11 +142,142 @@
                     <li class="flex items-start gap-2 text-xs"
                         style="color: var(--color-txt-secondary);">
                         <span class="material-symbols-outlined text-[13px] mt-0.5 shrink-0"
-                              style="color: var(--color-success);">check</span>
+                            style="color: var(--color-success);">check</span>
                         {{ item }}
                     </li>
                     {% endfor %}
                 </ul>
+            </div>
+
+        </div>
+    </div>
+
+    {# ══════════════════════════════════════════════
+       PRINT AGENT DOWNLOAD
+    ══════════════════════════════════════════════ #}
+    <div class="rounded-2xl overflow-hidden"
+         style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+        <div class="px-5 py-3.5 flex items-center gap-2"
+             style="background-color: var(--color-surface-alt);
+                    border-bottom: 1px solid var(--color-border);">
+            <span class="material-symbols-outlined text-[16px]"
+                  style="color: var(--color-txt-muted);">print</span>
+            <h2 class="text-xs font-bold uppercase tracking-wider"
+                style="color: var(--color-txt-muted);">Print Agent</h2>
+        </div>
+
+        <div class="px-5 py-4 space-y-4">
+
+            <p class="text-xs leading-relaxed" style="color: var(--color-txt-muted);">
+                To print receipts directly from your device, install the Shekel Print Agent.
+                It runs silently in the background and connects your browser to the POS58 thermal printer
+                plugged into your computer.
+            </p>
+
+            {# Download buttons #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                {# Windows #}
+                <a href="{{ url_for('static', filename='downloads/shekel-agent-windows.zip') }}"
+                download
+                class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
+                style="background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+                        border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);"
+                onmouseover="this.style.background='color-mix(in srgb, var(--color-primary) 15%, transparent)'"
+                onmouseout="this.style.background='color-mix(in srgb, var(--color-primary) 8%, transparent)'">
+                    <span class="material-symbols-outlined text-[22px] shrink-0"
+                        style="color: var(--color-primary);">download</span>
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold" style="color: var(--color-txt-primary);">Windows</p>
+                        <p class="text-[11px]" style="color: var(--color-txt-muted);">Windows 10 / 11</p>
+                    </div>
+                </a>
+
+                {# Linux #}
+                <a href="{{ url_for('static', filename='downloads/shekel-agent-linux.zip') }}"
+                download
+                class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
+                style="background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+                        border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);"
+                onmouseover="this.style.background='color-mix(in srgb, var(--color-accent) 15%, transparent)'"
+                onmouseout="this.style.background='color-mix(in srgb, var(--color-accent) 8%, transparent)'">
+                    <span class="material-symbols-outlined text-[22px] shrink-0"
+                        style="color: var(--color-accent);">download</span>
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold" style="color: var(--color-txt-primary);">Linux</p>
+                        <p class="text-[11px]" style="color: var(--color-txt-muted);">Ubuntu / Arch / Fedora</p>
+                    </div>
+                </a>
+
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x"
+                style="--tw-divide-opacity: 1;">
+
+                {# Windows steps #}
+                <div class="px-4 py-3"
+                    style="border-color: var(--color-border);">
+                    <p class="text-[11px] font-bold mb-2"
+                    style="color: var(--color-primary);">Windows</p>
+                    <ol class="space-y-1">
+                        {% for step in [
+                            "Unzip the downloaded file",
+                            "Plug in your POS58 printer",
+                            "Right-click setup-windows.bat",
+                            "Select Run as administrator",
+                            "Follow on-screen instructions",
+                            "Done — agent runs in background"
+                        ] %}
+                        <li class="flex items-start gap-1.5 text-[11px]"
+                            style="color: var(--color-txt-secondary);">
+                            <span class="font-bold shrink-0 mt-0.5"
+                                style="color: var(--color-primary);">{{ loop.index }}.</span>
+                            {{ step }}
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+                {# Linux steps #}
+                <div class="px-4 py-3"
+                    style="border-color: var(--color-border);">
+                    <p class="text-[11px] font-bold mb-2"
+                    style="color: var(--color-accent);">Linux</p>
+                    <ol class="space-y-1">
+                        {% for step in [
+                            "Unzip the downloaded file",
+                            "Plug in your POS58 printer",
+                            "Open terminal in that folder",
+                            "Run: bash setup-linux.sh",
+                            "Log out and back in",
+                            "Done — agent runs automatically"
+                        ] %}
+                        <li class="flex items-start gap-1.5 text-[11px]"
+                            style="color: var(--color-txt-secondary);">
+                            <span class="font-bold shrink-0 mt-0.5"
+                                style="color: var(--color-accent);">{{ loop.index }}.</span>
+                            {{ step }}
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+            </div>
+
+            {# Verify note #}
+            <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
+                 style="background: color-mix(in srgb, var(--color-info) 8%, transparent);
+                        border: 1px solid color-mix(in srgb, var(--color-info) 15%, transparent);
+                        color: var(--color-txt-muted);">
+                <span class="material-symbols-outlined text-[14px] mt-0.5 shrink-0"
+                      style="color: var(--color-info);">info</span>
+                <span>
+                    After setup, verify the agent is running by opening
+                    <a href="http://localhost:8765/health" target="_blank"
+                       style="color: var(--color-info);">http://localhost:8765/health</a>
+                    in your browser. You should see <strong>ok: true</strong>.
+                </span>
             </div>
 
         </div>
@@ -190,7 +291,6 @@
         {# Academic context #}
         <div class="rounded-2xl overflow-hidden"
              style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
-
             <div class="px-5 py-3.5 flex items-center gap-2"
                  style="background-color: var(--color-surface-alt);
                         border-bottom: 1px solid var(--color-border);">
@@ -199,33 +299,21 @@
                 <h2 class="text-xs font-bold uppercase tracking-wider"
                     style="color: var(--color-txt-muted);">Academic Context</h2>
             </div>
-
             <div class="px-5 py-4 space-y-3">
-
                 <div>
                     <p class="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
                        style="color: var(--color-txt-muted);">Institution</p>
                     <p class="text-sm font-medium leading-snug"
-                       style="color: var(--color-txt-primary);">
-                        Holy Cross College
-                    </p>
-                    <p class="text-xs" style="color: var(--color-txt-muted);">
-                        Sta. Rosa, Nueva Ecija
-                    </p>
+                       style="color: var(--color-txt-primary);">Holy Cross College</p>
+                    <p class="text-xs" style="color: var(--color-txt-muted);">Sta. Rosa, Nueva Ecija</p>
                 </div>
-
                 <div>
                     <p class="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
                        style="color: var(--color-txt-muted);">Program</p>
                     <p class="text-sm font-medium leading-snug"
-                       style="color: var(--color-txt-primary);">
-                        BS Computer Science
-                    </p>
-                    <p class="text-xs" style="color: var(--color-txt-muted);">
-                        2nd Year
-                    </p>
+                       style="color: var(--color-txt-primary);">BS Computer Science</p>
+                    <p class="text-xs" style="color: var(--color-txt-muted);">2nd Year</p>
                 </div>
-
                 <div>
                     <p class="text-[10px] font-semibold uppercase tracking-wider mb-1"
                        style="color: var(--color-txt-muted);">Submitted For</p>
@@ -246,21 +334,18 @@
                         {% endfor %}
                     </ul>
                 </div>
-
                 <div>
                     <p class="text-[10px] font-semibold uppercase tracking-wider mb-0.5"
                        style="color: var(--color-txt-muted);">Academic Year</p>
                     <p class="text-sm font-medium"
                        style="color: var(--color-txt-primary);">2024 – 2025</p>
                 </div>
-
             </div>
         </div>
 
         {# Team #}
         <div class="rounded-2xl overflow-hidden"
              style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
-
             <div class="px-5 py-3.5 flex items-center gap-2"
                  style="background-color: var(--color-surface-alt);
                         border-bottom: 1px solid var(--color-border);">
@@ -269,9 +354,7 @@
                 <h2 class="text-xs font-bold uppercase tracking-wider"
                     style="color: var(--color-txt-muted);">The Team</h2>
             </div>
-
             <div class="px-5 py-4 space-y-0">
-
                 {% set members = [
                     ("Joseph Canzana",   "Lead Developer & Project Manager", "primary"),
                     ("Kclyn Castro",     "Research Lead & Documentation",    "info"),
@@ -280,14 +363,10 @@
                     ("Justine Neri",     "Team Lead & QA Support",           "info"),
                     ("Vasty Tubera",     "Research Support",                 "info"),
                 ] %}
-
                 {% for name, role, color in members %}
-                <div class="flex items-center gap-3 py-2.5
-                            {% if not loop.last %}border-b{% endif %}"
+                <div class="flex items-center gap-3 py-2.5 {% if not loop.last %}border-b{% endif %}"
                      style="{% if not loop.last %}border-color: var(--color-border);{% endif %}">
-                    {# Initials #}
-                    <div class="w-8 h-8 rounded-full shrink-0 flex items-center
-                                justify-center text-[11px] font-bold"
+                    <div class="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold"
                          style="background: color-mix(in srgb, var(--color-{{ color }}) 12%, transparent);
                                 color: var(--color-{{ color }});">
                         {{ name.split()[0][0] }}{{ name.split()[1][0] }}
@@ -300,30 +379,30 @@
                     </div>
                 </div>
                 {% endfor %}
-
             </div>
         </div>
 
     </div>
-    <div class="rounded-2xl px-5 py-5 text-center relative overflow-hidden"
-        style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
 
-        {# Subtle gradient backdrop #}
+    {# ══════════════════════════════════════════════
+       BIBLE VERSE
+    ══════════════════════════════════════════════ #}
+    <div class="rounded-2xl px-5 py-5 text-center relative overflow-hidden"
+         style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
         <div class="absolute inset-0 pointer-events-none"
-            style="background: radial-gradient(ellipse at center,
+             style="background: radial-gradient(ellipse at center,
                         color-mix(in srgb, var(--color-primary) 6%, transparent),
                         transparent 70%);"></div>
-
         <div class="relative">
             <span class="material-symbols-outlined text-[22px] mb-2 block"
-                style="color: var(--color-primary); opacity: 0.6;">menu_book</span>
+                  style="color: var(--color-primary); opacity: 0.6;">menu_book</span>
             <p class="text-sm font-medium leading-relaxed max-w-md mx-auto"
-            style="color: var(--color-txt-secondary);">
+               style="color: var(--color-txt-secondary);">
                 "Be sure you know the condition of your flocks,
                 give careful attention to your herds."
             </p>
             <p class="text-xs mt-2 font-semibold"
-            style="color: var(--color-txt-muted);">— Proverbs 27:23</p>
+               style="color: var(--color-txt-muted);">— Proverbs 27:23</p>
         </div>
     </div>
 
