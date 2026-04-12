@@ -18,7 +18,6 @@ def build():
             "--hidden-import", "win32api",
             "--hidden-import", "pywintypes",
         ]
-
     elif os_name == "darwin":
         output_name = "shekel-agent-macos"
         extra = []
@@ -26,8 +25,7 @@ def build():
             "--collect-all", "usb",
             "--collect-all", "escpos",
         ]
-
-    else:  # linux
+    else:
         output_name = "shekel-agent"
         extra = []
         collect = [
@@ -50,7 +48,6 @@ def build():
 
 
 if __name__ == "__main__":
-    # Install deps first
     packages = [
         "flask",
         "flask-cors",
@@ -58,9 +55,10 @@ if __name__ == "__main__":
         "pyusb",
         "pyserial",
         "pyinstaller",
+        "pytz",
     ]
     if os_name == "windows":
-        packages.append("pywin32")  # replaces libusb on Windows
+        packages.append("pywin32")
 
     subprocess.run(
         [sys.executable, "-m", "pip", "install"] + packages,

@@ -30,11 +30,9 @@ def rjust(left: str, right: str, width: int = COLS) -> str:
 
 
 def get_printer_windows():
-    """Use Windows printing API — no libusb or Zadig needed."""
     import win32print
     from escpos.printer import Win32Raw
 
-    # Find the POS printer automatically
     printers = win32print.EnumPrinters(
         win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
     )
@@ -43,7 +41,6 @@ def get_printer_windows():
     for p in printers:
         logger.info(f"  {p[2]}")
 
-    # Try to find POS/thermal printer automatically
     pos_keywords = ["pos", "thermal", "receipt", "xprinter", "58", "80", "shekel"]
     for p in printers:
         name = p[2].lower()
@@ -51,14 +48,12 @@ def get_printer_windows():
             logger.info(f"Auto-selected printer: {p[2]}")
             return Win32Raw(p[2])
 
-    # Fall back to default printer
     default = win32print.GetDefaultPrinter()
     logger.info(f"No POS printer found, using default: {default}")
     return Win32Raw(default)
 
 
 def get_printer_unix():
-    """Use USB directly on Linux/macOS."""
     import usb.core
     from escpos.printer import Usb
 
@@ -103,23 +98,22 @@ def do_print(receipt: dict):
             underline=0,
             width=1,
             height=1,
-            density=9,
         )
 
-        # ── Header ───────────────────────────────────────────────
+        # Header
         p.set(align='center', bold=True, width=1, height=1)
         p.text("DUDAY'S GROCERY STORE\n")
         p.set(align='center', bold=False, width=1, height=1)
-        p.text("Sitio Kanto, Soledad, Sta. Rosa, N.E\n")
+        p.text("Sitio Kanto, Soledad\n")
+        p.text("Sta. Rosa, Nueva Ecija\n")
         p.text("-" * COLS + "\n")
 
-        # ── Meta ─────────────────────────────────────────────────
+        # Meta
         p.set(align='left', width=1, height=1)
         txn_id = int(receipt['transaction_id'])
         p.text(f"TXN#    : {txn_id:05d}\n")
         pht_now = datetime.now(pytz.timezone("Asia/Manila"))
         formatted_time = pht_now.strftime("%Y-%m-%d %I:%M %p")
-
         p.text(f"Date    : {formatted_time}\n")
         p.text(f"Cashier : {receipt['cashier'].title()}\n")
         p.text("-" * COLS + "\n")
@@ -144,10 +138,9 @@ def do_print(receipt: dict):
         p.text(rjust("Change", f"P{float(receipt['change']):.2f}")   + "\n")
         p.text("-" * COLS + "\n")
 
-        # ── Footer ────────────────────────────────────────────
-        p.set(align='center')
-        p.text("\nThank you!\n")
-
+        # Footer
+        p.set(align='center', width=1, height=1)
+        p.text("\nThank you!\n\n\n")
         p.cut()
 
     finally:
@@ -157,7 +150,6 @@ def do_print(receipt: dict):
             logger.warning(f"Could not close printer: {e}")
 
 
-# ── Routes ───────────────────────────────────────────────────────
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"ok": True, "agent": "shekel-print-agent", "version": "1.0.0"})
@@ -179,7 +171,6 @@ def print_receipt():
 
 @app.route("/scan", methods=["GET"])
 def scan_devices():
-    result = []
     if platform.system() == "Windows":
         import win32print
         printers = win32print.EnumPrinters(
@@ -190,11 +181,12 @@ def scan_devices():
     else:
         try:
             import usb.core
+            result = []
             for d in usb.core.find(find_all=True):
                 result.append({"vid": f"{d.idVendor:04x}", "pid": f"{d.idProduct:04x}"})
+            return jsonify({"ok": True, "devices": result})
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
-        return jsonify({"ok": True, "devices": result})
 
 
 def main():

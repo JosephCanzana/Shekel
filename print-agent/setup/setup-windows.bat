@@ -19,20 +19,20 @@ if %errorLevel% neq 0 (
     exit /b 1
 )
 
-REM ── Check printer is plugged in ─────────────────────────────────
-echo [1/3] Checking for printer...
+REM ── Check printer ────────────────────────────────────────────────
+echo [1/4] Checking for printer...
 powershell -Command "Get-PnpDevice | Where-Object {$_.InstanceId -like '*0FE6*'}" 2>nul | findstr /i "0fe6" >nul
 if %errorLevel% equ 0 (
     echo   Printer detected.
 ) else (
     echo   WARNING: Printer not detected automatically.
-    echo   Make sure the POS58 is plugged in and powered on.
+    echo   Make sure POS58 is plugged in and powered on.
     echo   Continuing anyway...
     echo.
 )
 
-REM ── Add agent ───────────────────────────────────────────────────
-echo [2/3] Setting up agent...
+REM ── Install agent ────────────────────────────────────────────────
+echo [2/4] Installing agent...
 set AGENT_SRC=%~dp0shekel-agent.exe
 
 if not exist "%AGENT_SRC%" (
@@ -42,19 +42,18 @@ if not exist "%AGENT_SRC%" (
     exit /b 1
 )
 
-REM Copy agent to AppData so it has a stable path
-set AGENT_DEST=%APPDATA%\ShekelAgent\shekel-agent.exe
 mkdir "%APPDATA%\ShekelAgent" 2>nul
-copy /Y "%AGENT_SRC%" "%AGENT_DEST%" >nul
-echo   Agent installed.
+copy /Y "%AGENT_SRC%" "%APPDATA%\ShekelAgent\shekel-agent.exe" >nul
+echo   Agent installed to %APPDATA%\ShekelAgent\
 
-REM ── Create VBS launcher (silent background run) ──────────────────
+REM ── Create silent VBS launcher ───────────────────────────────────
 set VBS=%APPDATA%\ShekelAgent\shekel-agent-launcher.vbs
 echo Set WshShell = CreateObject("WScript.Shell") > "%VBS%"
-echo WshShell.Run """%AGENT_DEST%""", 0, False >> "%VBS%"
+echo WshShell.Run """%APPDATA%\ShekelAgent\shekel-agent.exe""", 0, False >> "%VBS%"
+echo   Silent launcher created.
 
-REM ── Ask about autostart ─────────────────────────────────────────
-echo [3/3] Autostart setup...
+REM ── Ask about autostart ──────────────────────────────────────────
+echo [3/4] Autostart setup...
 echo.
 echo   Do you want the print agent to start
 echo   automatically every time you log in?
@@ -65,38 +64,50 @@ echo.
 set /p AUTOSTART="   Your choice (Y/N): "
 
 if /i "%AUTOSTART%"=="Y" (
-    set STARTUP_VBS=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\shekel-agent-launcher.vbs
-    copy /Y "%VBS%" "%STARTUP_VBS%" >nul
-    echo   Autostart enabled.
+    schtasks /delete /tn "ShekelPrintAgent" /f >nul 2>&1
+    schtasks /create /tn "ShekelPrintAgent" ^
+        /tr "wscript.exe \"%APPDATA%\ShekelAgent\shekel-agent-launcher.vbs\"" ^
+        /sc onlogon ^
+        /rl highest ^
+        /f >nul
+    if %errorLevel% equ 0 (
+        echo   Autostart enabled via Task Scheduler.
+    ) else (
+        echo   Task Scheduler failed. Trying Startup folder...
+        copy /Y "%VBS%" "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\shekel-agent-launcher.vbs" >nul
+        echo   Autostart enabled via Startup folder.
+    )
 ) else (
     echo   Autostart skipped.
-    echo   To start manually, run:
-    echo   %AGENT_DEST%
+    echo   To start manually run:
+    echo   %APPDATA%\ShekelAgent\shekel-agent.exe
 )
 
 REM ── Start agent now in background ────────────────────────────────
-echo.
-echo   Starting agent in background...
-cscript //nologo "%VBS%"
+echo [4/4] Starting agent now...
+wscript.exe "%VBS%"
+timeout /t 3 /nokey >nul
 
-REM Wait a moment then verify it started
-timeout /t 2 /nokey >nul
 curl -s http://localhost:8765/health >nul 2>&1
 if %errorLevel% equ 0 (
-    echo   Agent is running.
+    echo   Agent is running successfully.
 ) else (
     echo   WARNING: Could not verify agent is running.
-    echo   Try opening http://localhost:8765/health in your browser.
+    echo   Check http://localhost:8765/health in your browser.
 )
 
 echo.
 echo ========================================
 echo   Setup complete!
 echo.
-echo   The print agent is running silently
+echo   Agent is running silently
 echo   in the background.
 echo.
-echo   Verify it is running anytime at:
+echo   You can delete this folder now.
+echo   Everything is saved to:
+echo   %APPDATA%\ShekelAgent\
+echo.
+echo   Verify anytime at:
 echo   http://localhost:8765/health
 echo ========================================
 pause
