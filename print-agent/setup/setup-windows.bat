@@ -46,19 +46,26 @@ set STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\shekel-agent
 copy /Y "%AGENT_SRC%" "%STARTUP%" >nul
 echo   Added to startup folder.
 
-REM ── Start agent now ─────────────────────────────────────────────
-echo [3/3] Starting agent...
-start "" "%STARTUP%"
-echo   Agent started.
+REM ── Start agent in background ────────────────────────────────────
+echo [3/3] Starting agent in background...
+
+set VBS=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\shekel-agent-launcher.vbs
+echo Set WshShell = CreateObject("WScript.Shell") > "%VBS%"
+echo WshShell.Run """%STARTUP%""", 0, False >> "%VBS%"
+
+cscript //nologo "%VBS%"
+echo   Agent started in background.
 
 echo.
 echo ========================================
 echo   Setup complete!
 echo.
-echo   The print agent will now start
-echo   automatically every time you log in.
+echo   The print agent is now running silently
+echo   and will start automatically every
+echo   time you log in.
 echo.
-echo   Keep the terminal window open while
-echo   using Shekel.
+echo   To check if it is running:
+echo   Open browser and go to:
+echo   http://localhost:8765/health
 echo ========================================
 pause
