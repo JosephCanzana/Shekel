@@ -19,3 +19,4 @@ pyusb
 pyserial
 pyinstaller
 pywin32
+pytz

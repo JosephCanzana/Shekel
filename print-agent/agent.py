@@ -5,7 +5,7 @@ import platform
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
-from zoneinfo import ZoneInfo
+import pytz
 
 logging.basicConfig(
     level=logging.INFO,
@@ -117,7 +117,7 @@ def do_print(receipt: dict):
         p.set(align='left', width=1, height=1)
         txn_id = int(receipt['transaction_id'])
         p.text(f"TXN#    : {txn_id:05d}\n")
-        pht_now = datetime.now(ZoneInfo("Asia/Manila"))
+        pht_now = datetime.now(pytz.timezone("Asia/Manila"))
         formatted_time = pht_now.strftime("%Y-%m-%d %I:%M %p")
 
         p.text(f"Date    : {formatted_time}\n")
