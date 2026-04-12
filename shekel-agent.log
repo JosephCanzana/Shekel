@@ -1,0 +1,99 @@
+2026-04-12 14:11:01,443 [INFO] ========================================
+2026-04-12 14:11:01,443 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 14:11:01,443 [INFO]   Listening on http://localhost:8765
+2026-04-12 14:11:01,443 [INFO]   Keep this window open while using Shekel
+2026-04-12 14:11:01,443 [INFO] ========================================
+2026-04-12 14:11:01,449 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 14:11:01,449 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 14:11:20,746 [INFO] 127.0.0.1 - - [12/Apr/2026 14:11:20] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 14:11:20,892 [INFO] USB scan found 18 device(s)
+2026-04-12 14:11:20,892 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:11:20,892 [INFO]   VID: 152d  PID: 0583
+2026-04-12 14:11:20,892 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:11:20,892 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:11:20,892 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:11:20,892 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 14:11:20,892 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:11:20,892 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:11:20,892 [INFO]   VID: 322e  PID: 2233
+2026-04-12 14:11:20,892 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 14:11:20,892 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 14:11:20,892 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 14:11:20,892 [INFO]   VID: 3554  PID: fa09
+2026-04-12 14:11:20,892 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 14:11:20,892 [INFO]   VID: 058f  PID: 6254
+2026-04-12 14:11:20,892 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:11:20,893 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:11:20,893 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:11:20,893 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 14:11:21,143 [INFO] USB printer enabled
+2026-04-12 14:11:21,147 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 14:11:21,147 [INFO] Printed TXN#47 OK
+2026-04-12 14:11:21,147 [INFO] 127.0.0.1 - - [12/Apr/2026 14:11:21] "POST /print HTTP/1.1" 200 -
+2026-04-12 14:17:20,735 [INFO] ========================================
+2026-04-12 14:17:20,735 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 14:17:20,735 [INFO]   Listening on http://localhost:8765
+2026-04-12 14:17:20,735 [INFO]   Keep this window open while using Shekel
+2026-04-12 14:17:20,735 [INFO] ========================================
+2026-04-12 14:17:20,742 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 14:17:20,742 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 14:17:50,593 [INFO] 127.0.0.1 - - [12/Apr/2026 14:17:50] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 14:17:50,742 [INFO] USB scan found 18 device(s)
+2026-04-12 14:17:50,742 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:17:50,742 [INFO]   VID: 152d  PID: 0583
+2026-04-12 14:17:50,742 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:17:50,742 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:17:50,743 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:17:50,743 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 14:17:50,743 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:17:50,743 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:17:50,743 [INFO]   VID: 322e  PID: 2233
+2026-04-12 14:17:50,743 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 14:17:50,743 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 14:17:50,743 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 14:17:50,743 [INFO]   VID: 3554  PID: fa09
+2026-04-12 14:17:50,743 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 14:17:50,743 [INFO]   VID: 058f  PID: 6254
+2026-04-12 14:17:50,743 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:17:50,743 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:17:50,743 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:17:50,743 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 14:17:50,989 [INFO] USB printer enabled
+2026-04-12 14:17:50,993 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 14:17:50,994 [INFO] Printed TXN#48 OK
+2026-04-12 14:17:50,994 [INFO] 127.0.0.1 - - [12/Apr/2026 14:17:50] "POST /print HTTP/1.1" 200 -
+2026-04-12 14:19:08,264 [INFO] ========================================
+2026-04-12 14:19:08,264 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 14:19:08,264 [INFO]   Listening on http://localhost:8765
+2026-04-12 14:19:08,265 [INFO]   Keep this window open while using Shekel
+2026-04-12 14:19:08,265 [INFO] ========================================
+2026-04-12 14:19:08,276 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 14:19:08,276 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 14:19:28,696 [INFO] 127.0.0.1 - - [12/Apr/2026 14:19:28] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 14:19:28,846 [INFO] USB scan found 18 device(s)
+2026-04-12 14:19:28,846 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:19:28,846 [INFO]   VID: 152d  PID: 0583
+2026-04-12 14:19:28,846 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:19:28,846 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:19:28,846 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:19:28,846 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 14:19:28,846 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:19:28,846 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:19:28,846 [INFO]   VID: 322e  PID: 2233
+2026-04-12 14:19:28,846 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 14:19:28,846 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 14:19:28,846 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 14:19:28,846 [INFO]   VID: 3554  PID: fa09
+2026-04-12 14:19:28,846 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 14:19:28,846 [INFO]   VID: 058f  PID: 6254
+2026-04-12 14:19:28,846 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:19:28,847 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 14:19:28,847 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 14:19:28,847 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 14:19:29,093 [INFO] USB printer enabled
+2026-04-12 14:19:29,097 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 14:19:29,097 [INFO] Printed TXN#49 OK
+2026-04-12 14:19:29,098 [INFO] 127.0.0.1 - - [12/Apr/2026 14:19:29] "POST /print HTTP/1.1" 200 -

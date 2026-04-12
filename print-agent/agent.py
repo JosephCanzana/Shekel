@@ -6,6 +6,8 @@ import time
 import random
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from zoneinfo import ZoneInfo 
+from datetime import datetime
 
 # ── Logging setup ────────────────────────────────────────────────
 logging.basicConfig(
@@ -24,23 +26,6 @@ CORS(app, origins=["*"])  # allow your web app to call this
 
 PORT = 8765
 COLS = 32
-
-
-BIBLE_VERSES = [
-    ("I can do all things through Christ who strengthens me.", "Philippians 4:13"),
-    ("Trust in the Lord with all your heart.", "Proverbs 3:5"),
-    ("For I know the plans I have for you.", "Jeremiah 29:11"),
-    ("The Lord is my shepherd; I shall not want.", "Psalm 23:1"),
-    ("All things work together for good to those who love God.", "Romans 8:28"),
-    ("Seek first the kingdom of God.", "Matthew 6:33"),
-    ("Be strong and courageous. Do not be afraid.", "Joshua 1:9"),
-    ("Delight yourself in the Lord.", "Psalm 37:4"),
-    ("Walk by faith, not by sight.", "2 Corinthians 5:7"),
-    ("Faith is the substance of things hoped for.", "Hebrews 11:1"),
-]
-
-def get_random_verse():
-    return random.choice(BIBLE_VERSES)
 
 def wrap_words(text, width=COLS):
     words = text.split()
@@ -155,9 +140,13 @@ def do_print(receipt: dict):
 
         # ── Meta ─────────────────────────────────────────────────
         p.set(align='left', width=1, height=1)
-        p.text(f"TXN#    : {receipt['transaction_id']}\n")
-        p.text(f"Date    : {receipt['datetime']}\n")
-        p.text(f"Cashier : {receipt['cashier']}\n")
+        txn_id = int(receipt['transaction_id'])
+        p.text(f"TXN#    : {txn_id:05d}\n")
+        pht_now = datetime.now(ZoneInfo("Asia/Manila"))
+        formatted_time = pht_now.strftime("%Y-%m-%d %I:%M %p")
+
+        p.text(f"Date    : {formatted_time}\n")
+        p.text(f"Cashier : {receipt['cashier'].title()}\n")
         p.text("-" * COLS + "\n")
 
         # ── Items ─────────────────────────────────────────────────
@@ -182,15 +171,7 @@ def do_print(receipt: dict):
 
         # ── Footer ────────────────────────────────────────────
         p.set(align='center')
-
-        quote, ref = get_random_verse()
-
-        p.text("\n")
-        print_center_block(p, f'"{quote}"')
-        p.text("\n")
-        p.text(ref.center(COLS) + "\n")
-
-        p.text("\nThank you!\n\n\n")
+        p.text("\nThank you!\n")
 
         p.cut()
 
