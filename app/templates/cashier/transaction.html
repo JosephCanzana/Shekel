@@ -247,14 +247,24 @@
                 window.location.reload()
             }
         },
-        printReceipt() {
-    const el = document.getElementById('print-receipt')
-    el.style.display = 'block'
-    this.$nextTick(() => {
-        window.print()
-        el.style.display = 'none'
-        this.closeReceipt()
-    })
+async printReceipt() {
+    if (!this.receipt) return
+
+    try {
+        const res = await fetch('http://localhost:8765/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.receipt)
+        })
+        const data = await res.json()
+        if (!res.ok) {
+            this.globalError = data.error || 'Print failed.'
+        }
+    } catch (e) {
+        this.globalError = 'Print agent is not running. Please start shekel-agent.'
+    }
+
+    this.closeReceipt()
 },
 
 }" x-init="

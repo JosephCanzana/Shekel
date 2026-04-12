@@ -13,5 +13,8 @@ pymysql
 cryptography
 python-dotenv
 pytz
+flask-cors
 python-escpos
 pyusb
+pyserial
+pyinstaller

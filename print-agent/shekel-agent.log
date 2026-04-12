@@ -1,0 +1,1116 @@
+2026-04-12 11:02:28,368 [INFO] ========================================
+2026-04-12 11:02:28,369 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 11:02:28,369 [INFO]   Listening on http://localhost:8765
+2026-04-12 11:02:28,369 [INFO]   Keep this window open while using Shekel
+2026-04-12 11:02:28,369 [INFO] ========================================
+2026-04-12 11:02:28,411 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 11:02:28,411 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 11:02:57,712 [INFO] 127.0.0.1 - - [12/Apr/2026 11:02:57] "GET /health HTTP/1.1" 200 -
+2026-04-12 11:03:08,562 [INFO] USB scan found 18 device(s)
+2026-04-12 11:03:08,562 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:03:08,562 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:03:08,562 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:03:08,562 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:03:08,562 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:03:08,562 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:03:08,562 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:03:08,562 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:03:08,562 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:03:08,562 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:03:08,562 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:03:08,562 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:03:08,562 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:03:08,562 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:03:08,562 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:03:08,562 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:03:08,562 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:03:08,562 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:03:08,568 [INFO] Serial scan found 32 port(s)
+2026-04-12 11:03:08,568 [INFO]   /dev/ttyS31 — n/a
+2026-04-12 11:03:08,568 [INFO]   /dev/ttyS30 — n/a
+2026-04-12 11:03:08,568 [INFO]   /dev/ttyS29 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS28 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS27 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS26 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS25 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS24 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS23 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS22 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS21 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS20 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS19 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS18 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS17 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS16 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS15 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS14 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS13 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS12 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS11 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS10 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS9 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS8 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS7 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS6 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS5 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS4 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS3 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS2 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS1 — n/a
+2026-04-12 11:03:08,569 [INFO]   /dev/ttyS0 — n/a
+2026-04-12 11:03:08,569 [ERROR] Print failed: No printer found. Check USB connection and drivers.
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 144, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 86, in do_print
+    p = get_printer()
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 77, in get_printer
+    raise RuntimeError("No printer found. Check USB connection and drivers.")
+RuntimeError: No printer found. Check USB connection and drivers.
+2026-04-12 11:03:08,570 [INFO] 127.0.0.1 - - [12/Apr/2026 11:03:08] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:03:40,427 [INFO] 127.0.0.1 - - [12/Apr/2026 11:03:40] "GET /scan HTTP/1.1" 200 -
+2026-04-12 11:04:51,656 [INFO] 127.0.0.1 - - [12/Apr/2026 11:04:51] "GET /health HTTP/1.1" 200 -
+2026-04-12 11:04:51,658 [INFO] 127.0.0.1 - - [12/Apr/2026 11:04:51] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:04:51,659 [INFO] USB scan found 18 device(s)
+2026-04-12 11:04:51,659 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:04:51,659 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:04:51,659 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:04:51,659 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:04:51,659 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:04:51,659 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:04:51,659 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:04:51,659 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:04:51,659 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:04:51,659 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:04:51,659 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:04:51,659 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:04:51,659 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:04:51,659 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:04:51,659 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:04:51,659 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:04:51,659 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:04:51,659 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:04:51,664 [INFO] Serial scan found 32 port(s)
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS31 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS30 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS29 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS28 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS27 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS26 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS25 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS24 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS23 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS22 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS21 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS20 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS19 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS18 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS17 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS16 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS15 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS14 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS13 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS12 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS11 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS10 — n/a
+2026-04-12 11:04:51,664 [INFO]   /dev/ttyS9 — n/a
+2026-04-12 11:04:51,665 [INFO]   /dev/ttyS8 — n/a
+2026-04-12 11:04:51,665 [INFO]   /dev/ttyS7 — n/a
+2026-04-12 11:04:51,665 [INFO]   /dev/ttyS6 — n/a
+2026-04-12 11:04:51,665 [INFO]   /dev/ttyS5 — n/a
+2026-04-12 11:04:51,665 [INFO]   /dev/ttyS4 — n/a
+2026-04-12 11:04:51,665 [INFO]   /dev/ttyS3 — n/a
+2026-04-12 11:04:51,665 [INFO]   /dev/ttyS2 — n/a
+2026-04-12 11:04:51,665 [INFO]   /dev/ttyS1 — n/a
+2026-04-12 11:04:51,665 [INFO]   /dev/ttyS0 — n/a
+2026-04-12 11:04:51,665 [ERROR] Print failed: No printer found. Check USB connection and drivers.
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 144, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 86, in do_print
+    p = get_printer()
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 77, in get_printer
+    raise RuntimeError("No printer found. Check USB connection and drivers.")
+RuntimeError: No printer found. Check USB connection and drivers.
+2026-04-12 11:04:51,665 [INFO] 127.0.0.1 - - [12/Apr/2026 11:04:51] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:05:49,491 [INFO] 127.0.0.1 - - [12/Apr/2026 11:05:49] "GET /health HTTP/1.1" 200 -
+2026-04-12 11:05:54,220 [INFO] 127.0.0.1 - - [12/Apr/2026 11:05:54] "GET /scan HTTP/1.1" 200 -
+2026-04-12 11:06:12,674 [INFO] 127.0.0.1 - - [12/Apr/2026 11:06:12] "GET /health HTTP/1.1" 200 -
+2026-04-12 11:06:16,469 [INFO] 127.0.0.1 - - [12/Apr/2026 11:06:16] "GET /scan HTTP/1.1" 200 -
+2026-04-12 11:06:21,302 [INFO] USB scan found 18 device(s)
+2026-04-12 11:06:21,302 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:06:21,302 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:06:21,302 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:06:21,302 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:06:21,302 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:06:21,302 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:06:21,303 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:06:21,303 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:06:21,303 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:06:21,303 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:06:21,303 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:06:21,303 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:06:21,303 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:06:21,303 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:06:21,303 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:06:21,303 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:06:21,303 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:06:21,303 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:06:21,308 [INFO] Serial scan found 32 port(s)
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS31 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS30 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS29 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS28 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS27 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS26 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS25 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS24 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS23 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS22 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS21 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS20 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS19 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS18 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS17 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS16 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS15 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS14 — n/a
+2026-04-12 11:06:21,308 [INFO]   /dev/ttyS13 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS12 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS11 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS10 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS9 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS8 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS7 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS6 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS5 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS4 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS3 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS2 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS1 — n/a
+2026-04-12 11:06:21,309 [INFO]   /dev/ttyS0 — n/a
+2026-04-12 11:06:21,309 [ERROR] Print failed: No printer found. Check USB connection and drivers.
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 144, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 86, in do_print
+    p = get_printer()
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 77, in get_printer
+    raise RuntimeError("No printer found. Check USB connection and drivers.")
+RuntimeError: No printer found. Check USB connection and drivers.
+2026-04-12 11:06:21,309 [INFO] 127.0.0.1 - - [12/Apr/2026 11:06:21] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:11:34,520 [INFO] ========================================
+2026-04-12 11:11:34,520 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 11:11:34,520 [INFO]   Listening on http://localhost:8765
+2026-04-12 11:11:34,520 [INFO]   Keep this window open while using Shekel
+2026-04-12 11:11:34,520 [INFO] ========================================
+2026-04-12 11:11:34,530 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 11:11:34,531 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 11:12:38,715 [INFO] USB scan found 17 device(s)
+2026-04-12 11:12:38,715 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:12:38,715 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:12:38,715 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:38,716 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:12:38,716 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:38,716 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:12:38,716 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:38,716 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:12:38,716 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:12:38,716 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:12:38,716 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:12:38,716 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:12:38,716 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:12:38,716 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:12:38,716 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:38,716 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:12:38,716 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:38,722 [INFO] Serial scan found 32 port(s)
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS31 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS30 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS29 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS28 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS27 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS26 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS25 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS24 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS23 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS22 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS21 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS20 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS19 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS18 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS17 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS16 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS15 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS14 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS13 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS12 — n/a
+2026-04-12 11:12:38,722 [INFO]   /dev/ttyS11 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS10 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS9 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS8 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS7 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS6 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS5 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS4 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS3 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS2 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS1 — n/a
+2026-04-12 11:12:38,723 [INFO]   /dev/ttyS0 — n/a
+2026-04-12 11:12:38,723 [ERROR] Print failed: No printer found. Check USB connection and drivers.
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 145, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 87, in do_print
+    p = get_printer()
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 78, in get_printer
+    raise RuntimeError("No printer found. Check USB connection and drivers.")
+RuntimeError: No printer found. Check USB connection and drivers.
+2026-04-12 11:12:38,724 [INFO] 127.0.0.1 - - [12/Apr/2026 11:12:38] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:12:42,997 [INFO] USB scan found 18 device(s)
+2026-04-12 11:12:42,997 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:12:42,997 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:12:42,998 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:12:42,998 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:42,998 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:12:42,998 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:42,998 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:12:42,998 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:42,998 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:12:42,998 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:12:42,998 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:12:42,998 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:12:42,998 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:12:42,998 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:12:42,998 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:12:42,998 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:42,998 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:12:42,998 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:12:42,998 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:12:43,245 [INFO] USB printer enabled
+2026-04-12 11:12:43,261 [INFO] Printed TXN#TEST-001 OK
+2026-04-12 11:12:43,261 [INFO] 127.0.0.1 - - [12/Apr/2026 11:12:43] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:14:46,498 [INFO] 127.0.0.1 - - [12/Apr/2026 11:14:46] "GET /health HTTP/1.1" 200 -
+2026-04-12 11:14:46,500 [INFO] 127.0.0.1 - - [12/Apr/2026 11:14:46] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:14:46,501 [INFO] USB scan found 18 device(s)
+2026-04-12 11:14:46,501 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:14:46,501 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:14:46,501 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:14:46,501 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:14:46,501 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:14:46,501 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:14:46,501 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:14:46,501 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:14:46,501 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:14:46,501 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:14:46,501 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:14:46,501 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:14:46,501 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:14:46,501 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:14:46,501 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:14:46,501 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:14:46,501 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:14:46,501 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:14:46,501 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:14:46,501 [ERROR] Could not set configuration: [Errno 16] Resource busy
+2026-04-12 11:14:46,501 [INFO] USB printer enabled
+2026-04-12 11:14:46,502 [ERROR] Print failed: [Errno 16] Resource busy
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 145, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 90, in do_print
+    p.set(align="center", bold=True, double_height=True, double_width=True)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/escpos.py", line 956, in set
+    self._raw(TXT_NORMAL)
+    ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/printer/usb.py", line 190, in _raw
+    self.device.write(self.out_ep, msg, self.timeout)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 1000, in write
+    intf, ep = self._ctx.setup_request(self, endpoint)
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 234, in setup_request
+    self.managed_claim_interface(device, intf)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 180, in managed_claim_interface
+    self.backend.claim_interface(self.handle, i)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 833, in claim_interface
+    _check(self.lib.libusb_claim_interface(dev_handle.handle, intf))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 604, in _check
+    raise USBError(_strerror(ret), ret, _libusb_errno[ret])
+usb.core.USBError: [Errno 16] Resource busy
+2026-04-12 11:14:46,507 [INFO] 127.0.0.1 - - [12/Apr/2026 11:14:46] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:17:51,768 [INFO] 127.0.0.1 - - [12/Apr/2026 11:17:51] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:17:51,770 [INFO] USB scan found 18 device(s)
+2026-04-12 11:17:51,770 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:17:51,770 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:17:51,770 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:17:51,770 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:17:51,770 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:17:51,770 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:17:51,770 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:17:51,770 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:17:51,770 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:17:51,770 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:17:51,770 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:17:51,770 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:17:51,770 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:17:51,770 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:17:51,770 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:17:51,770 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:17:51,770 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:17:51,770 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:17:51,770 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:17:51,770 [ERROR] Could not set configuration: [Errno 16] Resource busy
+2026-04-12 11:17:51,770 [INFO] USB printer enabled
+2026-04-12 11:17:51,771 [ERROR] Print failed: [Errno 16] Resource busy
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 145, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 90, in do_print
+    p.set(align="center", bold=True, double_height=True, double_width=True)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/escpos.py", line 956, in set
+    self._raw(TXT_NORMAL)
+    ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/printer/usb.py", line 190, in _raw
+    self.device.write(self.out_ep, msg, self.timeout)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 1000, in write
+    intf, ep = self._ctx.setup_request(self, endpoint)
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 234, in setup_request
+    self.managed_claim_interface(device, intf)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 180, in managed_claim_interface
+    self.backend.claim_interface(self.handle, i)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 833, in claim_interface
+    _check(self.lib.libusb_claim_interface(dev_handle.handle, intf))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 604, in _check
+    raise USBError(_strerror(ret), ret, _libusb_errno[ret])
+usb.core.USBError: [Errno 16] Resource busy
+2026-04-12 11:17:51,772 [INFO] 127.0.0.1 - - [12/Apr/2026 11:17:51] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:18:50,173 [INFO] 127.0.0.1 - - [12/Apr/2026 11:18:50] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:18:50,175 [INFO] USB scan found 18 device(s)
+2026-04-12 11:18:50,175 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:18:50,175 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:18:50,175 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:18:50,175 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:18:50,175 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:18:50,175 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:18:50,175 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:18:50,175 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:18:50,175 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:18:50,175 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:18:50,175 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:18:50,175 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:18:50,175 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:18:50,175 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:18:50,175 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:18:50,175 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:18:50,175 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:18:50,175 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:18:50,175 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:18:50,175 [ERROR] Could not set configuration: [Errno 16] Resource busy
+2026-04-12 11:18:50,176 [INFO] USB printer enabled
+2026-04-12 11:18:50,176 [ERROR] Print failed: [Errno 16] Resource busy
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 145, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 90, in do_print
+    p.set(align="center", bold=True, double_height=True, double_width=True)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/escpos.py", line 956, in set
+    self._raw(TXT_NORMAL)
+    ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/printer/usb.py", line 190, in _raw
+    self.device.write(self.out_ep, msg, self.timeout)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 1000, in write
+    intf, ep = self._ctx.setup_request(self, endpoint)
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 234, in setup_request
+    self.managed_claim_interface(device, intf)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 180, in managed_claim_interface
+    self.backend.claim_interface(self.handle, i)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 833, in claim_interface
+    _check(self.lib.libusb_claim_interface(dev_handle.handle, intf))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 604, in _check
+    raise USBError(_strerror(ret), ret, _libusb_errno[ret])
+usb.core.USBError: [Errno 16] Resource busy
+2026-04-12 11:18:50,177 [INFO] 127.0.0.1 - - [12/Apr/2026 11:18:50] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:19:17,981 [INFO] USB scan found 18 device(s)
+2026-04-12 11:19:17,981 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:19:17,981 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:19:17,981 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:19:17,981 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:19:17,981 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:19:17,981 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:19:17,981 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:19:17,981 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:19:17,981 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:19:17,981 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:19:17,981 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:19:17,981 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:19:17,981 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:19:17,981 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:19:17,981 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:19:17,981 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:19:17,981 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:19:17,981 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:19:17,981 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:19:17,982 [ERROR] Could not set configuration: [Errno 16] Resource busy
+2026-04-12 11:19:17,982 [INFO] USB printer enabled
+2026-04-12 11:19:17,982 [ERROR] Print failed: [Errno 16] Resource busy
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 145, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 90, in do_print
+    p.set(align="center", bold=True, double_height=True, double_width=True)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/escpos.py", line 956, in set
+    self._raw(TXT_NORMAL)
+    ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/printer/usb.py", line 190, in _raw
+    self.device.write(self.out_ep, msg, self.timeout)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 1000, in write
+    intf, ep = self._ctx.setup_request(self, endpoint)
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 234, in setup_request
+    self.managed_claim_interface(device, intf)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 180, in managed_claim_interface
+    self.backend.claim_interface(self.handle, i)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 833, in claim_interface
+    _check(self.lib.libusb_claim_interface(dev_handle.handle, intf))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 604, in _check
+    raise USBError(_strerror(ret), ret, _libusb_errno[ret])
+usb.core.USBError: [Errno 16] Resource busy
+2026-04-12 11:19:17,983 [INFO] 127.0.0.1 - - [12/Apr/2026 11:19:17] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:20:48,475 [INFO] 127.0.0.1 - - [12/Apr/2026 11:20:48] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:20:48,478 [INFO] USB scan found 18 device(s)
+2026-04-12 11:20:48,478 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:20:48,478 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:20:48,478 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:20:48,478 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:20:48,478 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:20:48,478 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:20:48,478 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:20:48,478 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:20:48,478 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:20:48,478 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:20:48,478 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:20:48,478 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:20:48,478 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:20:48,478 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:20:48,478 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:20:48,478 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:20:48,478 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:20:48,478 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:20:48,478 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:20:48,729 [INFO] USB printer enabled
+2026-04-12 11:20:48,731 [INFO] Printed TXN#79 OK
+2026-04-12 11:20:48,731 [INFO] 127.0.0.1 - - [12/Apr/2026 11:20:48] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:22:24,694 [INFO] 127.0.0.1 - - [12/Apr/2026 11:22:24] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:22:24,696 [INFO] USB scan found 18 device(s)
+2026-04-12 11:22:24,696 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:22:24,696 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:22:24,696 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:22:24,696 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:24,696 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:22:24,696 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:24,696 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:22:24,696 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:24,696 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:22:24,696 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:22:24,696 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:22:24,696 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:22:24,696 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:22:24,696 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:22:24,696 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:22:24,696 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:24,696 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:22:24,696 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:24,696 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:22:24,696 [ERROR] Could not set configuration: [Errno 16] Resource busy
+2026-04-12 11:22:24,696 [INFO] USB printer enabled
+2026-04-12 11:22:24,696 [ERROR] Print failed: [Errno 16] Resource busy
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 145, in print_receipt
+    logger.info(f"Printed TXN#{data.get('transaction_id','?')} OK")
+    ^^^^^^^^^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 90, in do_print
+    p.set(align="center", bold=True, double_height=False, double_width=False)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/escpos.py", line 956, in set
+    self._raw(TXT_NORMAL)
+    ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/printer/usb.py", line 190, in _raw
+    self.device.write(self.out_ep, msg, self.timeout)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 1000, in write
+    intf, ep = self._ctx.setup_request(self, endpoint)
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 234, in setup_request
+    self.managed_claim_interface(device, intf)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 180, in managed_claim_interface
+    self.backend.claim_interface(self.handle, i)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 833, in claim_interface
+    _check(self.lib.libusb_claim_interface(dev_handle.handle, intf))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 604, in _check
+    raise USBError(_strerror(ret), ret, _libusb_errno[ret])
+usb.core.USBError: [Errno 16] Resource busy
+2026-04-12 11:22:24,698 [INFO] 127.0.0.1 - - [12/Apr/2026 11:22:24] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:22:51,216 [INFO] 127.0.0.1 - - [12/Apr/2026 11:22:51] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:22:51,218 [INFO] USB scan found 18 device(s)
+2026-04-12 11:22:51,218 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:22:51,218 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:22:51,218 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:22:51,218 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:51,218 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:22:51,218 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:51,218 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:22:51,218 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:51,218 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:22:51,218 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:22:51,218 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:22:51,218 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:22:51,218 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:22:51,218 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:22:51,218 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:22:51,218 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:51,218 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:22:51,218 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:22:51,218 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:22:51,218 [ERROR] Could not set configuration: [Errno 16] Resource busy
+2026-04-12 11:22:51,218 [INFO] USB printer enabled
+2026-04-12 11:22:51,219 [ERROR] Print failed: [Errno 16] Resource busy
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 145, in print_receipt
+    logger.info(f"Printed TXN#{data.get('transaction_id','?')} OK")
+    ^^^^^^^^^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 90, in do_print
+    p.set(align="center", bold=True, double_height=False, double_width=False)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/escpos.py", line 956, in set
+    self._raw(TXT_NORMAL)
+    ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/printer/usb.py", line 190, in _raw
+    self.device.write(self.out_ep, msg, self.timeout)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 1000, in write
+    intf, ep = self._ctx.setup_request(self, endpoint)
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 234, in setup_request
+    self.managed_claim_interface(device, intf)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 180, in managed_claim_interface
+    self.backend.claim_interface(self.handle, i)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 833, in claim_interface
+    _check(self.lib.libusb_claim_interface(dev_handle.handle, intf))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 604, in _check
+    raise USBError(_strerror(ret), ret, _libusb_errno[ret])
+usb.core.USBError: [Errno 16] Resource busy
+2026-04-12 11:22:51,220 [INFO] 127.0.0.1 - - [12/Apr/2026 11:22:51] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:23:21,239 [INFO] 127.0.0.1 - - [12/Apr/2026 11:23:21] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:23:21,241 [INFO] USB scan found 18 device(s)
+2026-04-12 11:23:21,241 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:23:21,241 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:23:21,241 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:23:21,241 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:23:21,241 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:23:21,241 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:23:21,241 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:23:21,241 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:23:21,241 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:23:21,241 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:23:21,241 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:23:21,241 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:23:21,241 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:23:21,241 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:23:21,241 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:23:21,241 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:23:21,241 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:23:21,241 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:23:21,241 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:23:21,242 [ERROR] Could not set configuration: [Errno 16] Resource busy
+2026-04-12 11:23:21,242 [INFO] USB printer enabled
+2026-04-12 11:23:21,242 [ERROR] Print failed: [Errno 16] Resource busy
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 145, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 90, in do_print
+    p.set(align="center", bold=True, double_height=True, double_width=True)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/escpos.py", line 956, in set
+    self._raw(TXT_NORMAL)
+    ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/printer/usb.py", line 190, in _raw
+    self.device.write(self.out_ep, msg, self.timeout)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 1000, in write
+    intf, ep = self._ctx.setup_request(self, endpoint)
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 234, in setup_request
+    self.managed_claim_interface(device, intf)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 180, in managed_claim_interface
+    self.backend.claim_interface(self.handle, i)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 833, in claim_interface
+    _check(self.lib.libusb_claim_interface(dev_handle.handle, intf))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 604, in _check
+    raise USBError(_strerror(ret), ret, _libusb_errno[ret])
+usb.core.USBError: [Errno 16] Resource busy
+2026-04-12 11:23:21,243 [INFO] 127.0.0.1 - - [12/Apr/2026 11:23:21] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:25:11,072 [INFO] 127.0.0.1 - - [12/Apr/2026 11:25:11] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:25:11,073 [INFO] USB scan found 18 device(s)
+2026-04-12 11:25:11,073 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:25:11,073 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:25:11,074 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:25:11,074 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:11,074 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:25:11,074 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:11,074 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:25:11,074 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:11,074 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:25:11,074 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:25:11,074 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:25:11,074 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:25:11,074 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:25:11,074 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:25:11,074 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:25:11,074 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:11,074 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:25:11,074 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:11,074 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:25:11,074 [ERROR] Could not set configuration: [Errno 16] Resource busy
+2026-04-12 11:25:11,074 [INFO] USB printer enabled
+2026-04-12 11:25:11,074 [ERROR] Print failed: [Errno 16] Resource busy
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 145, in print_receipt
+    data = request.get_json(silent=True)
+        ^^^^^^^^^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 90, in do_print
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/escpos.py", line 956, in set
+    self._raw(TXT_NORMAL)
+    ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/printer/usb.py", line 190, in _raw
+    self.device.write(self.out_ep, msg, self.timeout)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 1000, in write
+    intf, ep = self._ctx.setup_request(self, endpoint)
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 234, in setup_request
+    self.managed_claim_interface(device, intf)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 180, in managed_claim_interface
+    self.backend.claim_interface(self.handle, i)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 833, in claim_interface
+    _check(self.lib.libusb_claim_interface(dev_handle.handle, intf))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 604, in _check
+    raise USBError(_strerror(ret), ret, _libusb_errno[ret])
+usb.core.USBError: [Errno 16] Resource busy
+2026-04-12 11:25:11,075 [INFO] 127.0.0.1 - - [12/Apr/2026 11:25:11] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:29,843 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:25:33,341 [INFO] ========================================
+2026-04-12 11:25:33,341 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 11:25:33,341 [INFO]   Listening on http://localhost:8765
+2026-04-12 11:25:33,341 [INFO]   Keep this window open while using Shekel
+2026-04-12 11:25:33,341 [INFO] ========================================
+2026-04-12 11:25:33,425 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 11:25:33,425 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 11:25:51,106 [INFO] 127.0.0.1 - - [12/Apr/2026 11:25:51] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:25:51,700 [INFO] USB scan found 18 device(s)
+2026-04-12 11:25:51,700 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:25:51,700 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:25:51,700 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:51,700 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:25:51,700 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:51,700 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:25:51,700 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:51,700 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:25:51,700 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:25:51,700 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:25:51,700 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:25:51,700 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:25:51,700 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:25:51,700 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:25:51,700 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:25:51,700 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:51,701 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:25:51,701 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:25:51,701 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:25:51,949 [INFO] USB printer enabled
+2026-04-12 11:25:51,952 [INFO] Printed TXN#84 OK
+2026-04-12 11:25:51,953 [INFO] 127.0.0.1 - - [12/Apr/2026 11:25:51] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:26:16,929 [INFO] 127.0.0.1 - - [12/Apr/2026 11:26:16] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:26:16,931 [INFO] USB scan found 18 device(s)
+2026-04-12 11:26:16,931 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:26:16,931 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:26:16,931 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:26:16,931 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:26:16,931 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:26:16,931 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:26:16,931 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:26:16,931 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:26:16,931 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:26:16,931 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:26:16,931 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:26:16,931 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:26:16,931 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:26:16,931 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:26:16,931 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:26:16,931 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:26:16,931 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:26:16,931 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:26:16,932 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:26:16,932 [ERROR] Could not set configuration: [Errno 16] Resource busy
+2026-04-12 11:26:16,932 [INFO] USB printer enabled
+2026-04-12 11:26:16,932 [ERROR] Print failed: [Errno 16] Resource busy
+Traceback (most recent call last):
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 150, in print_receipt
+    do_print(data)
+    ~~~~~~~~^^^^^^
+  File "/home/joseph/Workspace/Projects/Shekel/print-agent/agent.py", line 96, in do_print
+    p.set(align="center", bold=True, double_height=False, double_width=False)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/escpos.py", line 974, in set
+    self._raw(TXT_STYLE["bold"][bold])
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/escpos/printer/usb.py", line 190, in _raw
+    self.device.write(self.out_ep, msg, self.timeout)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 1000, in write
+    intf, ep = self._ctx.setup_request(self, endpoint)
+               ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 234, in setup_request
+    self.managed_claim_interface(device, intf)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 113, in wrapper
+    return f(self, *args, **kwargs)
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/core.py", line 180, in managed_claim_interface
+    self.backend.claim_interface(self.handle, i)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 833, in claim_interface
+    _check(self.lib.libusb_claim_interface(dev_handle.handle, intf))
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/joseph/.local/share/mise/installs/python/3.14.2/lib/python3.14/site-packages/usb/backend/libusb1.py", line 604, in _check
+    raise USBError(_strerror(ret), ret, _libusb_errno[ret])
+usb.core.USBError: [Errno 16] Resource busy
+2026-04-12 11:26:16,934 [INFO] 127.0.0.1 - - [12/Apr/2026 11:26:16] "[35m[1mPOST /print HTTP/1.1[0m" 500 -
+2026-04-12 11:27:27,734 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:27:27,745 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:27:29,526 [INFO] ========================================
+2026-04-12 11:27:29,526 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 11:27:29,526 [INFO]   Listening on http://localhost:8765
+2026-04-12 11:27:29,526 [INFO]   Keep this window open while using Shekel
+2026-04-12 11:27:29,526 [INFO] ========================================
+2026-04-12 11:27:29,588 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 11:27:29,588 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 11:27:42,261 [INFO] 127.0.0.1 - - [12/Apr/2026 11:27:42] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:27:43,124 [INFO] USB scan found 18 device(s)
+2026-04-12 11:27:43,124 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:27:43,124 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:27:43,124 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:43,124 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:27:43,124 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:43,124 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:27:43,124 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:43,124 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:27:43,125 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:27:43,125 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:27:43,125 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:27:43,125 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:27:43,125 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:27:43,125 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:27:43,125 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:27:43,125 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:43,125 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:27:43,125 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:43,125 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:27:43,376 [INFO] USB printer enabled
+2026-04-12 11:27:43,379 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:27:43,379 [INFO] Printed TXN#86 OK
+2026-04-12 11:27:43,380 [INFO] 127.0.0.1 - - [12/Apr/2026 11:27:43] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:27:55,196 [INFO] 127.0.0.1 - - [12/Apr/2026 11:27:55] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:27:55,198 [INFO] USB scan found 18 device(s)
+2026-04-12 11:27:55,198 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:27:55,198 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:27:55,198 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:55,198 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:27:55,198 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:55,198 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:27:55,198 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:55,198 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:27:55,198 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:27:55,198 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:27:55,198 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:27:55,198 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:27:55,198 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:27:55,198 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:27:55,198 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:27:55,198 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:55,198 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:27:55,198 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:27:55,198 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:27:55,448 [INFO] USB printer enabled
+2026-04-12 11:27:55,450 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:27:55,450 [INFO] Printed TXN#87 OK
+2026-04-12 11:27:55,450 [INFO] 127.0.0.1 - - [12/Apr/2026 11:27:55] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:30:40,633 [INFO] USB scan found 18 device(s)
+2026-04-12 11:30:40,633 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:30:40,633 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:30:40,633 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:30:40,633 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:30:40,633 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:30:40,633 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:30:40,633 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:30:40,633 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:30:40,633 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:30:40,633 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:30:40,633 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:30:40,633 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:30:40,633 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:30:40,633 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:30:40,633 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:30:40,633 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:30:40,633 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:30:40,633 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:30:40,634 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:30:40,881 [INFO] USB printer enabled
+2026-04-12 11:30:40,883 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:30:40,883 [INFO] Printed TXN#TEST-001 OK
+2026-04-12 11:30:40,883 [INFO] 127.0.0.1 - - [12/Apr/2026 11:30:40] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:34:16,704 [INFO] 127.0.0.1 - - [12/Apr/2026 11:34:16] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:34:16,706 [INFO] USB scan found 18 device(s)
+2026-04-12 11:34:16,706 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:34:16,706 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:34:16,706 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:34:16,706 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:34:16,706 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:34:16,706 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:34:16,706 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:34:16,706 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:34:16,706 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:34:16,706 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:34:16,706 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:34:16,706 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:34:16,706 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:34:16,706 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:34:16,706 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:34:16,706 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:34:16,706 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:34:16,706 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:34:16,706 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:34:16,954 [INFO] USB printer enabled
+2026-04-12 11:34:16,956 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:34:16,956 [INFO] Printed TXN#88 OK
+2026-04-12 11:34:16,956 [INFO] 127.0.0.1 - - [12/Apr/2026 11:34:16] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:38:10,565 [INFO] ========================================
+2026-04-12 11:38:10,565 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 11:38:10,565 [INFO]   Listening on http://localhost:8765
+2026-04-12 11:38:10,565 [INFO]   Keep this window open while using Shekel
+2026-04-12 11:38:10,565 [INFO] ========================================
+2026-04-12 11:38:10,571 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 11:38:10,571 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 11:38:20,362 [INFO] 127.0.0.1 - - [12/Apr/2026 11:38:20] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:38:20,505 [INFO] USB scan found 18 device(s)
+2026-04-12 11:38:20,505 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:38:20,505 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:38:20,505 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:38:20,505 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:38:20,505 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:38:20,505 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:38:20,505 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:38:20,505 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:38:20,505 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:38:20,505 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:38:20,505 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:38:20,505 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:38:20,505 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:38:20,505 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:38:20,505 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:38:20,505 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:38:20,505 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:38:20,505 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:38:20,505 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:38:20,754 [INFO] USB printer enabled
+2026-04-12 11:38:20,758 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:38:20,758 [INFO] Printed TXN#89 OK
+2026-04-12 11:38:20,758 [INFO] 127.0.0.1 - - [12/Apr/2026 11:38:20] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:39:08,290 [INFO] ========================================
+2026-04-12 11:39:08,290 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 11:39:08,290 [INFO]   Listening on http://localhost:8765
+2026-04-12 11:39:08,290 [INFO]   Keep this window open while using Shekel
+2026-04-12 11:39:08,290 [INFO] ========================================
+2026-04-12 11:39:08,296 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 11:39:08,296 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 11:39:19,118 [INFO] 127.0.0.1 - - [12/Apr/2026 11:39:19] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:39:19,259 [INFO] USB scan found 18 device(s)
+2026-04-12 11:39:19,259 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:39:19,259 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:39:19,259 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:39:19,259 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:39:19,259 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:39:19,259 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:39:19,259 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:39:19,259 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:39:19,259 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:39:19,259 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:39:19,259 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:39:19,259 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:39:19,259 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:39:19,259 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:39:19,259 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:39:19,259 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:39:19,259 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:39:19,259 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:39:19,259 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:39:19,507 [INFO] USB printer enabled
+2026-04-12 11:39:19,510 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:39:19,510 [INFO] Printed TXN#90 OK
+2026-04-12 11:39:19,510 [INFO] 127.0.0.1 - - [12/Apr/2026 11:39:19] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:42:19,149 [INFO] ========================================
+2026-04-12 11:42:19,149 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 11:42:19,149 [INFO]   Listening on http://localhost:8765
+2026-04-12 11:42:19,149 [INFO]   Keep this window open while using Shekel
+2026-04-12 11:42:19,149 [INFO] ========================================
+2026-04-12 11:42:19,155 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 11:42:19,155 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 11:42:30,528 [INFO] 127.0.0.1 - - [12/Apr/2026 11:42:30] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:42:30,669 [INFO] USB scan found 18 device(s)
+2026-04-12 11:42:30,669 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:42:30,669 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:42:30,669 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:42:30,669 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:42:30,669 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:42:30,669 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:42:30,669 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:42:30,669 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:42:30,669 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:42:30,669 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:42:30,669 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:42:30,669 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:42:30,669 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:42:30,670 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:42:30,670 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:42:30,670 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:42:30,670 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:42:30,670 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:42:30,670 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:42:30,919 [INFO] USB printer enabled
+2026-04-12 11:42:30,922 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:42:30,923 [INFO] Printed TXN#91 OK
+2026-04-12 11:42:30,923 [INFO] 127.0.0.1 - - [12/Apr/2026 11:42:30] "POST /print HTTP/1.1" 200 -
+2026-04-12 11:45:09,741 [INFO] ========================================
+2026-04-12 11:45:09,741 [INFO]   Shekel Print Agent v1.0.0
+2026-04-12 11:45:09,741 [INFO]   Listening on http://localhost:8765
+2026-04-12 11:45:09,741 [INFO]   Keep this window open while using Shekel
+2026-04-12 11:45:09,741 [INFO] ========================================
+2026-04-12 11:45:09,748 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:8765
+2026-04-12 11:45:09,748 [INFO] [33mPress CTRL+C to quit[0m
+2026-04-12 11:45:35,711 [INFO] 127.0.0.1 - - [12/Apr/2026 11:45:35] "OPTIONS /print HTTP/1.1" 200 -
+2026-04-12 11:45:35,854 [INFO] USB scan found 18 device(s)
+2026-04-12 11:45:35,854 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:45:35,854 [INFO]   VID: 152d  PID: 0583
+2026-04-12 11:45:35,854 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:45:35,854 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:45:35,854 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:45:35,854 [INFO]   VID: 13d3  PID: 3571
+2026-04-12 11:45:35,854 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:45:35,854 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:45:35,854 [INFO]   VID: 322e  PID: 2233
+2026-04-12 11:45:35,854 [INFO]   VID: 0fe6  PID: 811e
+2026-04-12 11:45:35,854 [INFO]   VID: aaaa  PID: 8816
+2026-04-12 11:45:35,854 [INFO]   VID: 1d57  PID: fa60
+2026-04-12 11:45:35,854 [INFO]   VID: 3554  PID: fa09
+2026-04-12 11:45:35,854 [INFO]   VID: 0d8c  PID: 0014
+2026-04-12 11:45:35,854 [INFO]   VID: 058f  PID: 6254
+2026-04-12 11:45:35,854 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:45:35,854 [INFO]   VID: 1d6b  PID: 0003
+2026-04-12 11:45:35,854 [INFO]   VID: 1d6b  PID: 0002
+2026-04-12 11:45:35,855 [INFO] Found printer via USB: VID=0fe6 PID=811e
+2026-04-12 11:45:36,102 [INFO] USB printer enabled
+2026-04-12 11:45:36,106 [INFO] Closing Usb connection to printer (4070, 33054)
+2026-04-12 11:45:36,106 [INFO] Printed TXN#92 OK
+2026-04-12 11:45:36,107 [INFO] 127.0.0.1 - - [12/Apr/2026 11:45:36] "POST /print HTTP/1.1" 200 -
