@@ -22,9 +22,10 @@ else:
 
 cmd = [
     sys.executable, "-m", "PyInstaller",
-    "--onefile",             # single file output
+    "--onefile",
     "--clean",
     "--name", output_name,
+    "--add-binary", "libusb-1.0.dll;.",   # ← add this line (Windows only)
     *extra,
     "agent.py",
 ]

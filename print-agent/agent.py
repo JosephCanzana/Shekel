@@ -133,7 +133,7 @@ def do_print(receipt: dict):
 
         # ── Header ───────────────────────────────────────────────
         p.set(align='center', bold=True, width=1, height=1)
-        p.text("SHEKEL\n")
+        p.text("DUDAY'S GROCERY STORE\n")
         p.set(align='center', bold=False, width=1, height=1)
         p.text("Sitio Kanto, Soledad, Sta. Rosa, N.E\n")
         p.text("-" * COLS + "\n")

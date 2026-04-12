@@ -46,11 +46,17 @@ echo   Press any key to open Zadig...
 pause >nul
 
 REM Download Zadig if not present
-if not exist "%~dp0zadig.exe" (
-    echo   Downloading Zadig...
-    powershell -Command "Invoke-WebRequest -Uri 'https://zadig.akeo.ie/downloads/zadig-2.9.exe' -OutFile '%~dp0zadig.exe'"
+set ZADIG=""
+if exist "%~dp0zadig.exe" set ZADIG="%~dp0zadig.exe"
+if exist "%~dp0zadig-2.9.exe" set ZADIG="%~dp0zadig-2.9.exe"
+
+if %ZADIG%=="" (
+    echo ERROR: Zadig not found.
+    echo Make sure zadig.exe or zadig-2.9.exe is in the same folder.
+    pause
+    exit /b 1
 )
-start /wait "%~dp0zadig.exe"
+"%~dp0zadig.exe"
 echo   Zadig closed. Continuing...
 
 REM ── Add to startup ───────────────────────────────────────────────
