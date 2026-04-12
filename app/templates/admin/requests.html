@@ -67,6 +67,29 @@ function requestsData() {
         proposals:     PROPOSAL_DATA,
         defects:       DEFECT_DATA,
 
+        // ── NEW: grouped defect helpers ──────────────────────────────────
+        fmt(n) { return '₱' + parseFloat(n).toFixed(2) },
+
+        exchangeSummary(item) {
+            if (!item.exchange_items || item.exchange_items.length === 0) return null
+            const moneyItems = item.exchange_items.filter(e => !e.no_money_exchange)
+            const exchangeTotal = moneyItems.reduce((s, e) => s + e.price_at_exchange * e.quantity, 0)
+            const diff = exchangeTotal - item.subtotal_amount
+            return { exchangeTotal, diff }
+        },
+
+        defectGroups: DEFECT_DATA.map(g => ({ ...g, expanded: false })),
+
+        get filteredDefectGroups() {
+            return this.defectGroups.filter(g => {
+                if (this.defectFilter.reason && !g.items.some(i => i.reason === this.defectFilter.reason)) return false
+                if (this.defectFilter.origin && !g.items.some(i => i.origin === this.defectFilter.origin)) return false
+                if (!this.inDateRange(g.datetime, this.defectFilter.dateFrom, this.defectFilter.dateTo)) return false
+                return true
+            })
+        },
+        // ────────────────────────────────────────────────────────────────
+
         stockFilter:         { type: '', dateFrom: '', dateTo: '' },
         defectFilter:        { reason: '', origin: '', dateFrom: '', dateTo: '' },
         historyStockFilter:  { type: '', status: '', dateFrom: '', dateTo: '' },
@@ -260,7 +283,7 @@ function requestsData() {
                   x-text="batches.length + ' stock pending'"></span>
             <span class="px-3 py-1.5 rounded-full text-xs font-bold"
                   style="background:color-mix(in srgb,var(--color-info) 12%,transparent); color:var(--color-info);"
-                  x-text="defects.length + ' defect pending'"></span>
+                  x-text="defectGroups.reduce((s,g) => s + g.items.length, 0) + ' defect pending'"></span>
         </div>
     </div>
 
@@ -294,7 +317,7 @@ function requestsData() {
                       :style="tab==='defects'
                           ? 'background:color-mix(in srgb,var(--color-info) 15%,transparent);color:var(--color-info)'
                           : 'background:var(--color-border);color:var(--color-txt-muted)'"
-                      x-text="defects.length"></span>
+                      x-text="defectGroups.reduce((s,g) => s + g.items.length, 0)"></span>
             </button>
             <button @click="tab='history'"
                     class="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold transition whitespace-nowrap"
@@ -586,7 +609,7 @@ function requestsData() {
 
         <div class="flex items-center justify-between mb-3">
             <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);"
-               x-text="filteredDefects.length + ' of ' + defects.length + ' submission(s)'"></p>
+               x-text="filteredDefectGroups.reduce((s,g)=>s+g.items.length,0) + ' of ' + defectGroups.reduce((s,g)=>s+g.items.length,0) + ' submission(s)'"></p>
             <div class="flex items-center gap-2">
                 <button @click="$refs.defectFilterModal.style.display='flex'"
                         class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition relative"
@@ -604,7 +627,7 @@ function requestsData() {
                 <template x-if="activeDefectFilters > 0">
                     <button @click="defectFilter={reason:'',origin:'',dateFrom:'',dateTo:''}"
                             class="px-2 py-1.5 rounded-xl text-xs transition"
-                            style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
+                            style="border:1px solid var(--color-border); color:var(--color-txt-muted);">
                         <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
                     </button>
                 </template>
@@ -675,7 +698,7 @@ function requestsData() {
             </div>
         </div>
 
-        {# Supplier comp proposals — mobile-first card layout #}
+        {# Supplier comp proposals #}
         <template x-if="proposals.length > 0">
             <div class="rounded-2xl overflow-hidden mb-4"
                  style="background:var(--color-surface); border:1px solid var(--color-border);">
@@ -714,7 +737,6 @@ function requestsData() {
                                       x-text="item.proposed"></span>
                             </div>
                         </div>
-                        {# Action buttons — full width on mobile #}
                         <div class="flex items-center gap-2 mt-3">
                             <button @click="$dispatch('confirm', {
                                         title:   'Approve Proposal',
@@ -746,7 +768,8 @@ function requestsData() {
             </div>
         </template>
 
-        <template x-if="filteredDefects.length === 0">
+        {# ── Empty state ── #}
+        <template x-if="filteredDefectGroups.length === 0">
             <div class="rounded-2xl py-20 flex flex-col items-center justify-center gap-3"
                  style="background:var(--color-surface); border:1px solid var(--color-border);">
                 <span class="material-symbols-outlined text-[48px]" style="color:var(--color-border-strong);">assignment_turned_in</span>
@@ -754,154 +777,228 @@ function requestsData() {
             </div>
         </template>
 
-        <div class="rounded-2xl overflow-hidden" x-show="filteredDefects.length > 0"
-             style="background:var(--color-surface); border:1px solid var(--color-border);">
-            {# Desktop header #}
-            <div class="hidden sm:grid px-5 py-2.5 text-xs font-semibold uppercase tracking-wider"
-                 style="grid-template-columns:2fr 1.5fr 0.6fr 0.8fr 0.8fr 1.2fr 1.5fr 200px;
-                        color:var(--color-txt-muted);
-                        border-bottom:1px solid var(--color-border);
-                        background:var(--color-surface-alt);">
-                <span>Product</span>
-                <span>Date & Time</span>
-                <span class="text-center">Qty</span>
-                <span>Origin</span>
-                <span>Reason</span>
-                <span>Customer Comp</span>
-                <span>Logged By</span>
-                <span class="text-center">Action</span>
-            </div>
+        {# ── Grouped collapsible cards ── #}
+        <div class="space-y-3" x-show="filteredDefectGroups.length > 0">
+            <template x-for="group in filteredDefectGroups" :key="group.defect_id">
+                <div class="rounded-2xl overflow-hidden"
+                     style="background:var(--color-surface); border:1px solid var(--color-border);">
 
-            <template x-for="item in filteredDefects" :key="item.detail_id">
-                <div>
-                    {# Desktop row #}
-                    <div class="hidden sm:grid px-5 py-3.5 items-center transition"
-                         style="grid-template-columns:2fr 1.5fr 0.6fr 0.8fr 0.8fr 1.2fr 1.5fr 200px;
-                                border-top:1px solid var(--color-border);"
-                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                         onmouseout="this.style.backgroundColor='transparent'">
-                        <div>
-                            <p class="text-sm font-medium" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
-                            <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="item.product_id"></p>
-                            <template x-if="item.transaction_id">
-                                <p class="text-[10px] font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="item.transaction_id"></p>
-                            </template>
+                    {# ── Card header (click to expand) ── #}
+                    <button @click="group.expanded = !group.expanded"
+                            class="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 text-left transition"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0"
+                             style="background:color-mix(in srgb,var(--color-error) 10%,transparent);">
+                            <span class="material-symbols-outlined text-[18px] sm:text-[20px]"
+                                  style="color:var(--color-error);">assignment_return</span>
                         </div>
-                        <div>
-                            <p class="text-sm" style="color:var(--color-txt-secondary);" x-text="item.datetime.split(' ').slice(0,3).join(' ')"></p>
-                            <p class="text-xs" style="color:var(--color-txt-muted);" x-text="item.datetime.split(' ').slice(3).join(' ')"></p>
-                        </div>
-                        <p class="text-sm text-center font-semibold tabular-nums" style="color:var(--color-info);" x-text="item.quantity"></p>
-                        <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
-                              :style="item.origin === 'customer'
-                                  ? 'background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)'
-                                  : 'background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)'"
-                              x-text="item.origin_label"></span>
-                        <span class="text-xs px-2 py-0.5 rounded-full font-medium w-fit"
-                              :style="item.reason === 'expired'
-                                  ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
-                                  : item.reason === 'change_of_mind'
-                                    ? 'background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)'
-                                    : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
-                              x-text="item.reason_label"></span>
-                        <span class="text-xs" style="color:var(--color-txt-secondary);" x-text="item.customer_compensation"></span>
-                        <div>
-                            <p class="text-sm" style="color:var(--color-txt-secondary);" x-text="item.logged_by"></p>
-                            <p class="text-xs capitalize" style="color:var(--color-txt-muted);" x-text="item.logged_role"></p>
-                        </div>
-                        <div class="flex items-center justify-center gap-1.5">
-                            <button @click="$dispatch('confirm', {
-                                        title:   'Approve',
-                                        message: 'Approve ' + item.product_name + ' (×' + item.quantity + ')? Inventory will be adjusted.',
-                                        action:  item.approve_url,
-                                        fields:  []
-                                    })"
-                                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"
-                                    style="background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success);"
-                                    onmouseover="this.style.background='color-mix(in srgb,var(--color-success) 22%,transparent)'"
-                                    onmouseout="this.style.background='color-mix(in srgb,var(--color-success) 12%,transparent)'">
-                                <span class="material-symbols-outlined text-[13px]">check_circle</span> Approve
-                            </button>
-                            <button @click="openReject(item)"
-                                    class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition"
-                                    style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
-                                    onmouseover="this.style.background='color-mix(in srgb,var(--color-error) 22%,transparent)'"
-                                    onmouseout="this.style.background='color-mix(in srgb,var(--color-error) 12%,transparent)'">
-                                <span class="material-symbols-outlined text-[13px]">cancel</span> Reject
-                            </button>
-                            <button @click="$dispatch('confirm', {
-                                        title:   'Delete',
-                                        message: 'Delete this submission? No inventory change.',
-                                        action:  item.delete_url,
-                                        fields:  []
-                                    })"
-                                    class="w-7 h-7 rounded-lg flex items-center justify-center transition"
-                                    style="color:var(--color-txt-muted);"
-                                    onmouseover="this.style.color='var(--color-error)'"
-                                    onmouseout="this.style.color='var(--color-txt-muted)'">
-                                <span class="material-symbols-outlined text-[14px]">delete</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {# Mobile card — richer layout #}
-                    <div class="sm:hidden px-4 py-4"
-                         style="border-top:1px solid var(--color-border);">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
-                                <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="item.product_id"></p>
+                        <div class="flex-1 min-w-0 text-left">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="text-sm font-semibold" style="color:var(--color-txt-primary);"
+                                   x-text="group.datetime"></p>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                                      style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);">
+                                    Defect Log
+                                </span>
                             </div>
-                            <span class="text-base font-bold tabular-nums shrink-0" style="color:var(--color-info);" x-text="'×' + item.quantity"></span>
+                            <p class="text-xs mt-0.5 truncate" style="color:var(--color-txt-muted);"
+                               x-text="group.logged_by + ' · ' + group.items.length + ' item(s)'"></p>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-2 flex-wrap">
-                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                  :style="item.reason === 'expired'
-                                      ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
-                                      : item.reason === 'change_of_mind'
-                                        ? 'background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)'
-                                        : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
-                                  x-text="item.reason_label"></span>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                  :style="item.origin === 'customer'
-                                      ? 'background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)'
-                                      : 'background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)'"
-                                  x-text="item.origin_label"></span>
-                            <span class="text-[10px]" style="color:var(--color-txt-muted);" x-text="item.datetime"></span>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="hidden sm:inline text-xs px-2 py-1 rounded-lg font-semibold"
+                                  style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);">
+                                Pending
+                            </span>
+                            <span class="material-symbols-outlined text-[20px] transition-transform"
+                                  style="color:var(--color-txt-muted);"
+                                  :style="group.expanded ? 'transform:rotate(180deg)' : ''">expand_more</span>
                         </div>
-                        <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                            <span class="text-[10px]" style="color:var(--color-txt-muted);" x-text="'By: ' + item.logged_by"></span>
-                            <template x-if="item.customer_compensation">
-                                <span class="text-[10px]" style="color:var(--color-txt-muted);" x-text="'· Comp: ' + item.customer_compensation"></span>
-                            </template>
-                        </div>
-                        {# Full-width action buttons on mobile #}
-                        <div class="flex gap-2 mt-3">
-                            <button @click="$dispatch('confirm', {
-                                        title:'Approve', message:'Approve ' + item.product_name + ' (×' + item.quantity + ')? Inventory will be adjusted.',
-                                        action:item.approve_url, fields:[] })"
-                                    class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold"
-                                    style="background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success);border:1px solid color-mix(in srgb,var(--color-success) 25%,transparent);">
-                                <span class="material-symbols-outlined text-[14px]">check_circle</span> Approve
-                            </button>
-                            <button @click="openReject(item)"
-                                    class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold"
-                                    style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);border:1px solid color-mix(in srgb,var(--color-error) 20%,transparent);">
-                                <span class="material-symbols-outlined text-[14px]">cancel</span> Reject
-                            </button>
-                            <button @click="$dispatch('confirm', {
-                                        title:'Delete', message:'Delete this submission? No inventory change.',
-                                        action:item.delete_url, fields:[] })"
-                                    class="w-10 flex items-center justify-center rounded-xl text-xs transition"
-                                    style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
-                                <span class="material-symbols-outlined text-[16px]">delete</span>
-                            </button>
-                        </div>
+                    </button>
+
+                    {# ── Expanded body ── #}
+                    <div x-show="group.expanded"
+                         x-transition:enter="transition-all duration-200"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         style="border-top:1px solid var(--color-border);">
+
+                        <template x-for="item in group.items" :key="item.detail_id">
+                            <div style="border-bottom:1px solid var(--color-border);">
+
+                                {# ── Item header ── #}
+                                <div class="px-4 sm:px-5 py-4">
+                                    <div class="flex items-start gap-3 sm:gap-4">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-semibold" style="color:var(--color-txt-primary);"
+                                               x-text="item.product_name"></p>
+                                            <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);"
+                                               x-text="item.product_id"></p>
+                                            <template x-if="item.transaction_id">
+                                                <p class="text-[10px] font-mono mt-0.5" style="color:var(--color-txt-muted);"
+                                                   x-text="item.transaction_id"></p>
+                                            </template>
+                                            {# badges #}
+                                            <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                                      :style="item.origin === 'customer'
+                                                          ? 'background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)'
+                                                          : 'background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)'"
+                                                      x-text="item.origin_label"></span>
+                                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                                      :style="item.reason === 'expired'
+                                                          ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
+                                                          : item.reason === 'change_of_mind'
+                                                            ? 'background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)'
+                                                            : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                                                      x-text="item.reason_label"></span>
+                                                <span class="text-[10px] px-2 py-0.5 rounded-full"
+                                                      style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted);"
+                                                      x-text="item.customer_compensation"></span>
+                                            </div>
+                                        </div>
+                                        <div class="shrink-0 text-right">
+                                            <p class="text-2xl font-bold tabular-nums" style="color:var(--color-info);"
+                                               x-text="'×' + item.quantity"></p>
+                                            <p class="text-xs tabular-nums" style="color:var(--color-txt-muted);"
+                                               x-text="fmt(item.subtotal_amount)"></p>
+                                        </div>
+                                    </div>
+
+                                    {# ── Exchange visual — only for exchange_different ── #}
+                                    <template x-if="item.customer_compensation_raw === 'exchange_different' && item.exchange_items && item.exchange_items.length > 0">
+                                        <div class="mt-3 rounded-xl overflow-hidden"
+                                             style="border:1px solid color-mix(in srgb,var(--color-info) 25%,transparent);
+                                                    background:color-mix(in srgb,var(--color-info) 5%,transparent);">
+
+                                            {# Original item row #}
+                                            <div class="flex items-center justify-between px-3 py-2"
+                                                 style="border-bottom:1px solid color-mix(in srgb,var(--color-info) 15%,transparent);">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="material-symbols-outlined text-[13px]" style="color:var(--color-txt-muted);">undo</span>
+                                                    <div>
+                                                        <p class="text-xs font-semibold" style="color:var(--color-txt-primary);"
+                                                           x-text="item.product_name"></p>
+                                                        <p class="text-[10px]" style="color:var(--color-txt-muted);">Returned item</p>
+                                                    </div>
+                                                </div>
+                                                <div class="text-right">
+                                                    <p class="text-xs font-semibold tabular-nums" style="color:var(--color-txt-primary);"
+                                                       x-text="'×' + item.quantity + ' · ' + fmt(item.subtotal_amount)"></p>
+                                                </div>
+                                            </div>
+
+                                            {# Arrow divider #}
+                                            <div class="flex items-center justify-center py-1.5">
+                                                <span class="material-symbols-outlined text-[16px]" style="color:var(--color-info);">swap_vert</span>
+                                            </div>
+
+                                            {# Exchange item rows #}
+                                            <template x-for="ei in item.exchange_items" :key="ei.product_id">
+                                                <div class="flex items-center justify-between px-3 py-2"
+                                                     style="border-top:1px solid color-mix(in srgb,var(--color-info) 15%,transparent);">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="material-symbols-outlined text-[13px]" style="color:var(--color-info);">swap_horiz</span>
+                                                        <div>
+                                                            <p class="text-xs font-semibold" style="color:var(--color-txt-primary);"
+                                                               x-text="ei.product_name"></p>
+                                                            <div class="flex items-center gap-1.5 mt-0.5">
+                                                                <template x-if="ei.no_money_exchange">
+                                                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                                                                          style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted);">
+                                                                        Swap only
+                                                                    </span>
+                                                                </template>
+                                                                <template x-if="ei.override_used">
+                                                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                                                                          style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);">
+                                                                        Stock override
+                                                                    </span>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-right shrink-0">
+                                                        <p class="text-xs font-semibold tabular-nums" style="color:var(--color-txt-primary);"
+                                                           x-text="'×' + ei.quantity"></p>
+                                                        <template x-if="!ei.no_money_exchange">
+                                                            <p class="text-[10px] tabular-nums" style="color:var(--color-txt-muted);"
+                                                               x-text="fmt(ei.price_at_exchange * ei.quantity)"></p>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+
+                                            {# Summary row — change back #}
+                                            <template x-if="exchangeSummary(item)">
+                                                <div class="px-3 py-2 flex items-center justify-between"
+                                                     style="border-top:1px solid color-mix(in srgb,var(--color-info) 20%,transparent);
+                                                            background:color-mix(in srgb,var(--color-info) 8%,transparent);">
+                                                    <span class="text-xs font-semibold" style="color:var(--color-info);">
+                                                        <span x-text="exchangeSummary(item).diff < 0
+                                                            ? 'Change back to customer'
+                                                            : exchangeSummary(item).diff === 0
+                                                              ? 'Equal value swap'
+                                                              : 'Customer adds'"></span>
+                                                    </span>
+                                                    <template x-if="exchangeSummary(item).diff !== 0">
+                                                        <span class="text-sm font-bold tabular-nums"
+                                                              :style="exchangeSummary(item).diff < 0
+                                                                  ? 'color:var(--color-success)'
+                                                                  : 'color:var(--color-warning)'"
+                                                              x-text="fmt(Math.abs(exchangeSummary(item).diff))"></span>
+                                                    </template>
+                                                    <template x-if="exchangeSummary(item).diff === 0">
+                                                        <span class="text-xs font-semibold" style="color:var(--color-info);">—</span>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+
+                                    {# ── Action buttons ── #}
+                                    <div class="flex items-center gap-2 mt-3 flex-wrap">
+                                        <button @click="$dispatch('confirm', {
+                                                    title:   'Approve',
+                                                    message: 'Approve ' + item.product_name + ' (×' + item.quantity + ')? Inventory will be adjusted.',
+                                                    action:  item.approve_url,
+                                                    fields:  []
+                                                })"
+                                                class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                                                style="background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success);"
+                                                onmouseover="this.style.background='color-mix(in srgb,var(--color-success) 22%,transparent)'"
+                                                onmouseout="this.style.background='color-mix(in srgb,var(--color-success) 12%,transparent)'">
+                                            <span class="material-symbols-outlined text-[13px]">check_circle</span> Approve
+                                        </button>
+                                        <button @click="openReject(item)"
+                                                class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                                                style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
+                                                onmouseover="this.style.background='color-mix(in srgb,var(--color-error) 22%,transparent)'"
+                                                onmouseout="this.style.background='color-mix(in srgb,var(--color-error) 12%,transparent)'">
+                                            <span class="material-symbols-outlined text-[13px]">cancel</span> Reject
+                                        </button>
+                                        <button @click="$dispatch('confirm', {
+                                                    title:   'Delete',
+                                                    message: 'Delete this submission? No inventory change.',
+                                                    action:  item.delete_url,
+                                                    fields:  []
+                                                })"
+                                                class="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                                                style="color:var(--color-txt-muted);"
+                                                onmouseover="this.style.color='var(--color-error)'"
+                                                onmouseout="this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[14px]">delete</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
             </template>
         </div>
-    </div>
+
+    </div>{# end tab=defects #}
 
 
     {# ══════════════════════════════════════════

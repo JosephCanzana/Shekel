@@ -22,12 +22,14 @@
     },
     closeResolve() { this.resolveModal = false; this.resolveRow = null },
 
-   // ── Exchange product for supplier different_item resolution ───────────
-    resolveExchangeQuery:       '',
-    resolveExchangeSearching:   false,
-    resolveExchangeSuggestions: [],
-    resolveExchangeProduct:     null,
-    resolveNoMoney:             false,
+     // ── Exchange mini-cart for supplier different_item resolution ─────────
+    resolveExchangeItems:        [],  // [{ _ekey, product_id, product_name, total_price, stock, quantity, no_money_exchange }]
+    resolveExchangeQuery:        '',
+    resolveExchangeSearching:    false,
+    resolveExchangeSuggestions:  [],
+    resolveExchangeError:        '',
+
+    fmt(n) { return '₱' + parseFloat(n).toFixed(2) },
 
     async fetchResolveExchangeSuggestions() {
         const q = this.resolveExchangeQuery.trim()
@@ -43,8 +45,9 @@
         } catch(e) { this.resolveExchangeSuggestions = [] }
     },
 
-    async selectResolveExchangeProduct(product_id) {
+    async addResolveExchangeItem(product_id) {
         this.resolveExchangeSuggestions = []
+        this.resolveExchangeError       = ''
         this.resolveExchangeSearching   = true
         try {
             const res  = await fetch('/defects/api/lookup', {
@@ -54,12 +57,38 @@
                 body: JSON.stringify({ query: product_id })
             })
             const data = await res.json()
-            if (res.ok) {
-                this.resolveExchangeProduct = data
-                this.resolveExchangeQuery   = data.product_name
+            if (!res.ok) {
+                this.resolveExchangeError = data.error || 'Product not found.'
+            } else {
+                if (this.resolveExchangeItems.find(e => e.product_id === data.product_id)) {
+                    this.resolveExchangeError = `${data.product_name} is already in the list.`
+                } else {
+                    this.resolveExchangeItems.push({
+                        _ekey:             Date.now(),
+                        product_id:        data.product_id,
+                        product_name:      data.product_name,
+                        total_price:       data.total_price,
+                        stock:             data.stock,
+                        quantity:          1,
+                        no_money_exchange: false,
+                    })
+                }
+                this.resolveExchangeQuery = ''
             }
-        } catch(e) {}
+        } catch(e) { this.resolveExchangeError = 'Network error.' }
         this.resolveExchangeSearching = false
+    },
+
+    removeResolveExchangeItem(ekey) {
+        this.resolveExchangeItems = this.resolveExchangeItems.filter(e => e._ekey !== ekey)
+        this.resolveExchangeError = ''
+    },
+
+    clearResolveExchange() {
+        this.resolveExchangeItems       = []
+        this.resolveExchangeQuery       = ''
+        this.resolveExchangeSuggestions = []
+        this.resolveExchangeError       = ''
     },
 
     clearResolveExchange() {
@@ -527,30 +556,80 @@
                                   style="color:var(--color-primary);">check_circle</span>
                         </button>
                     </template>
-                {# ── Exchange product sub-panel — different_item only ── #}
+                {# ── Exchange mini-cart — different_item only ── #}
                 <template x-if="resolveChoice === 'different_item'">
-                    <div class="mx-6 mb-2 rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
+                    <div class="mx-6 mb-2 rounded-xl overflow-hidden"
+                         style="border:1px solid var(--color-border);">
+
                         <div class="px-3 py-2 flex items-center gap-1.5"
                              style="background:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
                             <span class="material-symbols-outlined text-[13px]" style="color:var(--color-info);">swap_horiz</span>
-                            <p class="text-xs font-semibold" style="color:var(--color-txt-muted);">Exchange Item from Supplier</p>
+                            <p class="text-xs font-semibold" style="color:var(--color-txt-muted);">Exchange Items from Supplier</p>
                         </div>
-                        <div class="p-3 space-y-2">
+
+                        {# item rows #}
+                        <template x-if="resolveExchangeItems.length > 0">
+                            <div>
+                                <template x-for="ei in resolveExchangeItems" :key="ei._ekey">
+                                    <div class="flex items-center gap-2 px-3 py-2"
+                                         style="border-bottom:1px solid var(--color-border);">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs font-medium truncate" style="color:var(--color-txt-primary);" x-text="ei.product_name"></p>
+                                            <p class="text-[10px] tabular-nums" style="color:var(--color-txt-muted);"
+                                               x-text="fmt(ei.total_price) + ' × ' + ei.quantity + ' = ' + fmt(ei.total_price * ei.quantity)"></p>
+                                            <label class="flex items-center gap-1.5 mt-0.5 cursor-pointer select-none">
+                                                <input type="checkbox" x-model="ei.no_money_exchange" class="w-3 h-3 rounded">
+                                                <span class="text-[10px]" style="color:var(--color-txt-muted);">No money — just swap</span>
+                                            </label>
+                                        </div>
+                                        <div class="flex items-center gap-1 shrink-0">
+                                            <button @click="if(ei.quantity > 1) ei.quantity--"
+                                                    :disabled="ei.quantity <= 1"
+                                                    class="w-6 h-6 rounded-md flex items-center justify-center disabled:opacity-30"
+                                                    style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);">
+                                                <span class="material-symbols-outlined text-[12px]">remove</span>
+                                            </button>
+                                            <input type="number" x-model="ei.quantity" min="1"
+                                                   @focus="$event.target.select()"
+                                                   class="w-8 py-0.5 rounded-md text-xs text-center font-bold focus:outline-none"
+                                                   style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                                            <button @click="ei.quantity++"
+                                                    class="w-6 h-6 rounded-md flex items-center justify-center"
+                                                    style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-muted);">
+                                                <span class="material-symbols-outlined text-[12px]">add</span>
+                                            </button>
+                                        </div>
+                                        <button @click="removeResolveExchangeItem(ei._ekey)"
+                                                class="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+                                                style="color:var(--color-error);">
+                                            <span class="material-symbols-outlined text-[13px]">close</span>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        {# search to add #}
+                        <div class="p-3 space-y-1.5">
                             <div class="relative">
                                 <input type="text" x-model="resolveExchangeQuery"
                                        @input.debounce.250ms="fetchResolveExchangeSuggestions()"
                                        @keydown.escape="resolveExchangeSuggestions=[]"
                                        @blur="setTimeout(()=>resolveExchangeSuggestions=[],150)"
-                                       placeholder="Search replacement product..."
+                                       placeholder="Add replacement product..."
                                        class="w-full px-3 py-2 rounded-xl text-xs focus:outline-none transition"
                                        style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);"
                                        onfocus="this.style.borderColor='var(--color-accent)'"
                                        onblur="this.style.borderColor='var(--color-border)'">
+                                <template x-if="resolveExchangeSearching">
+                                    <span class="material-symbols-outlined text-[13px] animate-spin absolute right-2 top-1/2 -translate-y-1/2"
+                                          style="color:var(--color-txt-muted);">progress_activity</span>
+                                </template>
                                 <template x-if="resolveExchangeSuggestions.length > 0">
                                     <div class="absolute left-0 right-0 mt-1 rounded-xl overflow-hidden z-40 shadow-lg"
                                          style="background:var(--color-surface); border:1px solid var(--color-border);">
                                         <template x-for="s in resolveExchangeSuggestions" :key="s.product_id">
-                                            <button @mousedown.prevent="selectResolveExchangeProduct(s.product_id)"
+                                            <button @mousedown.prevent="addResolveExchangeItem(s.product_id)"
                                                     class="w-full flex items-center justify-between px-3 py-2 text-xs text-left transition"
                                                     style="border-top:1px solid var(--color-border);"
                                                     onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
@@ -559,54 +638,31 @@
                                                     <p class="font-medium" style="color:var(--color-txt-primary);" x-text="s.product_name"></p>
                                                     <p class="font-mono text-[10px]" style="color:var(--color-txt-muted);" x-text="s.product_id"></p>
                                                 </div>
-                                                <p class="tabular-nums shrink-0 ml-2 font-semibold" style="color:var(--color-txt-secondary);" x-text="fmt(s.total_price)"></p>
+                                                <p class="tabular-nums shrink-0 ml-2 font-semibold"
+                                                   style="color:var(--color-txt-secondary);" x-text="fmt(s.total_price)"></p>
                                             </button>
                                         </template>
                                     </div>
                                 </template>
                             </div>
-
-                            <template x-if="resolveExchangeProduct">
-                                <div class="rounded-lg px-3 py-2 flex items-center justify-between"
-                                     style="background:color-mix(in srgb,var(--color-info) 8%,transparent); border:1px solid color-mix(in srgb,var(--color-info) 20%,transparent);">
-                                    <div>
-                                        <p class="text-xs font-semibold" style="color:var(--color-txt-primary);" x-text="resolveExchangeProduct.product_name"></p>
-                                        <p class="text-[10px]" style="color:var(--color-txt-muted);" x-text="fmt(resolveExchangeProduct.total_price) + ' · ' + resolveExchangeProduct.stock + ' in stock'"></p>
-                                    </div>
-                                    <button @click="clearResolveExchange()" class="w-6 h-6 rounded-md flex items-center justify-center" style="color:var(--color-txt-muted);">
-                                        <span class="material-symbols-outlined text-[13px]">close</span>
-                                    </button>
-                                </div>
+                            <template x-if="resolveExchangeError">
+                                <p class="text-[10px] flex items-center gap-1 px-1" style="color:var(--color-error);">
+                                    <span class="material-symbols-outlined text-[11px]">error</span>
+                                    <span x-text="resolveExchangeError"></span>
+                                </p>
                             </template>
-
-                            <template x-if="resolveExchangeProduct && resolveRow">
-                                <div class="flex items-center justify-between text-xs px-1">
-                                    <span style="color:var(--color-txt-muted);">Price difference:</span>
-                                    <span class="font-bold tabular-nums"
-                                          :style="resolveNoMoney ? 'color:var(--color-txt-muted)' :
-                                                  (resolveExchangeProduct.total_price - (resolveRow.original_price||0)) > 0 ? 'color:var(--color-warning)' :
-                                                  (resolveExchangeProduct.total_price - (resolveRow.original_price||0)) < 0 ? 'color:var(--color-success)' : 'color:var(--color-txt-muted)'"
-                                          x-text="resolveNoMoney ? 'No charge — just swap' :
-                                                  (resolveExchangeProduct.total_price - (resolveRow.original_price||0)) === 0 ? 'Equal value' :
-                                                  (resolveExchangeProduct.total_price - (resolveRow.original_price||0)) > 0
-                                                      ? 'Supplier adds ' + fmt(resolveExchangeProduct.total_price - (resolveRow.original_price||0))
-                                                      : 'Store absorbs ' + fmt(Math.abs(resolveExchangeProduct.total_price - (resolveRow.original_price||0)))">
-                                    </span>
-                                </div>
-                            </template>
-
-                            <template x-if="resolveChoice === 'different_item' && !resolveExchangeProduct">
+                            <template x-if="resolveExchangeItems.length === 0">
                                 <p class="text-xs flex items-center gap-1.5 px-2 py-1.5 rounded-lg"
                                    style="background:color-mix(in srgb,var(--color-warning) 10%,transparent); color:var(--color-warning);">
                                     <span class="material-symbols-outlined text-[13px]">warning</span>
-                                    Select the replacement product to continue.
+                                    Add at least one replacement product to continue.
                                 </p>
                             </template>
-
-                            <label class="flex items-center gap-2 text-xs cursor-pointer select-none" style="color:var(--color-txt-muted);">
-                                <input type="checkbox" x-model="resolveNoMoney" class="w-3.5 h-3.5 rounded">
-                                No money exchange — just swap items
-                            </label>
+                            <template x-if="resolveExchangeItems.length > 0">
+                                <p class="text-[10px] px-1" style="color:var(--color-txt-muted);">
+                                    Supplier may send items of any value — no cap applies.
+                                </p>
+                            </template>
                         </div>
                     </div>
                 </template>
@@ -621,13 +677,17 @@
                     </button>
                     <button @click="
                         if (!resolveChoice) return;
-                        if (resolveChoice === 'different_item' && !resolveExchangeProduct) return;
+                        if (resolveChoice === 'different_item' && resolveExchangeItems.length === 0) return;
                         const fields = [{ name: 'supplier_compensation', value: resolveChoice }];
-                        if (resolveChoice === 'different_item' && resolveExchangeProduct) {
-                            const diff = resolveExchangeProduct.total_price - (resolveRow.original_price || 0);
-                            fields.push({ name: 'exchange_product_id', value: resolveExchangeProduct.product_id });
-                            fields.push({ name: 'price_difference',    value: resolveNoMoney ? '' : String(diff) });
-                            fields.push({ name: 'no_money_exchange',   value: resolveNoMoney ? '1' : '' });
+                        if (resolveChoice === 'different_item') {
+                            fields.push({
+                                name:  'exchange_items_json',
+                                value: JSON.stringify(resolveExchangeItems.map(e => ({
+                                    product_id:        e.product_id,
+                                    quantity:          e.quantity,
+                                    no_money_exchange: e.no_money_exchange,
+                                })))
+                            });
                         }
                         $dispatch('confirm', {
                             title:   resolveRow.is_proposal ? 'Submit Proposal' : 'Confirm Resolution',
@@ -639,8 +699,8 @@
                         });
                         closeResolve();"
                             class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition"
-                            :class="resolveChoice ? '' : 'opacity-40 cursor-not-allowed'"
-                            :disabled="!resolveChoice"
+                            :class="(resolveChoice && !(resolveChoice === 'different_item' && resolveExchangeItems.length === 0)) ? '' : 'opacity-40 cursor-not-allowed'"
+                            :disabled="!resolveChoice || (resolveChoice === 'different_item' && resolveExchangeItems.length === 0)"
                             style="background:var(--color-primary);color:var(--color-bg);">
                         Confirm
                     </button>

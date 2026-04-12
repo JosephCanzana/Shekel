@@ -30,6 +30,19 @@ from app.extensions import db
 admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
 
 
+def _serialize_exchange_items(detail):
+    return [
+    {
+    "product_name":     ei.product.product_name.capitalize() if ei.product else ei.product_id,
+    "product_id":       ei.product_id,
+    "quantity":         ei.quantity,
+    "price_at_exchange": float(ei.price_at_exchange),
+    "no_money_exchange": ei.no_money_exchange,
+    "override_used":     ei.override_used,
+    }
+    for ei in (detail.exchange_items or [])
+    ]
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 @admin_bp.route("/")
 @login_required
@@ -87,6 +100,7 @@ def requests_page():
         .order_by(StockAdjustmentRequest.reviewed_at.desc())\
         .limit(30).all()
 
+    # Group submitted defect details by defect header
     defect_rows = (
         db.session.query(DefectDetail, Defect, Product, User)
         .join(Defect,   Defect.defect_id     == DefectDetail.defect_id)
@@ -94,31 +108,44 @@ def requests_page():
         .join(User,     User.user_id         == Defect.user_id)
         .filter(DefectDetail.status      == "submitted")
         .filter(DefectDetail.is_archived == False)
-        .order_by(Defect.defect_datetime.asc())
+        .order_by(Defect.defect_datetime.asc(), DefectDetail.defect_detail_id.asc())
         .all()
     )
 
-    defect_data = [
-        {
-            "detail_id":    detail.defect_detail_id,
-            "product_id":   product.product_id,
-            "product_name": product.product_name.capitalize(),
-            "quantity":     detail.quantity,
-            "origin":       detail.origin,
-            "origin_label": "Customer" if detail.origin == "customer" else "In-Store",
-            "reason":       detail.reason,
-            "reason_label": detail.reason.replace("_", " ").title(),
+    # Group by defect_id so one card = one log session
+    from collections import OrderedDict
+    defect_groups = OrderedDict()
+    for detail, defect, product, user in defect_rows:
+        did = defect.defect_id
+        if did not in defect_groups:
+            defect_groups[did] = {
+                "defect_id":  defect.defect_id,
+                "datetime":   to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
+                "logged_by":  f"{user.first_name} {user.last_name}".strip().title(),
+                "logged_role": user.role,
+                "items": [],
+            }
+        defect_groups[did]["items"].append({
+            "detail_id":             detail.defect_detail_id,
+            "product_id":            product.product_id,
+            "product_name":          product.product_name.capitalize(),
+            "quantity":              detail.quantity,
+            "price_at_defect":       float(detail.price_at_defect),
+            "subtotal_amount":       float(detail.subtotal_amount),
+            "origin":                detail.origin,
+            "origin_label":          "Customer" if detail.origin == "customer" else "In-Store",
+            "reason":                detail.reason,
+            "reason_label":          detail.reason.replace("_", " ").title(),
             "customer_compensation": detail.customer_compensation.replace("_", " ").title(),
-            "transaction_id": f"TXN-{detail.transaction_id:05d}" if detail.transaction_id else None,
-            "logged_by":    f"{user.first_name} {user.last_name}".strip().title(),
-            "logged_role":  user.role,
-            "datetime":     to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
+            "customer_compensation_raw": detail.customer_compensation,
+            "transaction_id":        f"TXN-{detail.transaction_id:05d}" if detail.transaction_id else None,
+            "exchange_items":        _serialize_exchange_items(detail),
             "approve_url":  url_for("defects.approve",        detail_id=detail.defect_detail_id),
             "reject_url":   url_for("defects.reject",         detail_id=detail.defect_detail_id),
             "delete_url":   url_for("defects.archive_detail", detail_id=detail.defect_detail_id),
-        }
-        for detail, defect, product, user in defect_rows
-    ]
+        })
+
+    defect_data = list(defect_groups.values())
 
     proposal_rows = (
         db.session.query(DefectDetail, Defect, Product, User)

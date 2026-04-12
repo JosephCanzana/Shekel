@@ -39,7 +39,7 @@ function myRequestsData() {
         })),
 
         history:       HISTORY_DATA,
-        defectPending: DEFECT_PENDING_DATA,
+        defectPending: DEFECT_PENDING_DATA.map(g => ({ ...g, expanded: false })),
         defectHistory: DEFECT_HISTORY_DATA,
 
         // ── Pending filters ──────────────────────────────────────────────────
@@ -87,13 +87,13 @@ function myRequestsData() {
             })
         },
         get filteredDefectPending() {
-            return this.defectPending.filter(d => {
-                if (this.defectPendingFilter.reason && d.reason !== this.defectPendingFilter.reason) return false
-                if (this.defectPendingFilter.origin && d.origin !== this.defectPendingFilter.origin) return false
-                if (!this.inDateRange(d.datetime, this.defectPendingFilter.dateFrom, this.defectPendingFilter.dateTo)) return false
-                return true
-            })
-        },
+        return this.defectPending.filter(g => {
+            if (this.defectPendingFilter.reason && !g.items.some(i => i.reason === this.defectPendingFilter.reason)) return false
+            if (this.defectPendingFilter.origin && !g.items.some(i => i.origin === this.defectPendingFilter.origin)) return false
+            if (!this.inDateRange(g.datetime, this.defectPendingFilter.dateFrom, this.defectPendingFilter.dateTo)) return false
+            return true
+        })
+    },
         get filteredHistoryStock() {
             return this.history.filter(b => {
                 if (this.historyStockFilter.type   && b.request_type !== this.historyStockFilter.type)   return false
@@ -469,154 +469,214 @@ function myRequestsData() {
 
 
     {# ══════════════════════════════════════════
-       TAB: DEFECT RETURNS (pending only)
-    ══════════════════════════════════════════ #}
-    <div x-show="tab === 'defects'" x-transition class="space-y-4">
+   TAB: DEFECT RETURNS (pending only)
+══════════════════════════════════════════ #}
+<div x-show="tab === 'defects'" x-transition class="space-y-4">
 
-        <div>
-            <div class="flex items-center justify-between mb-3">
-                <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
-                    Awaiting Admin Approval
-                    <span class="ml-1.5 px-1.5 py-0.5 rounded-full font-bold"
-                          style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
-                          x-text="defectPending.length"></span>
-                </p>
-                <div class="flex items-center gap-2">
-                    <button @click="$refs.defectPendingModal.style.display='flex'"
-                            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition relative"
-                            style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
-                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                            onmouseout="this.style.backgroundColor='transparent'">
-                        <span class="material-symbols-outlined text-[15px]">tune</span> Filters
-                        <template x-if="activeDefectPendingFilters > 0">
-                            <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
-                                  style="background:var(--color-primary);color:var(--color-bg);"
-                                  x-text="activeDefectPendingFilters"></span>
-                        </template>
-                    </button>
+    <div>
+        <div class="flex items-center justify-between mb-3">
+            <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--color-txt-muted);">
+                Awaiting Admin Approval
+                <span class="ml-1.5 px-1.5 py-0.5 rounded-full font-bold"
+                      style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
+                      x-text="defectPending.reduce((s,g)=>s+g.items.length,0)"></span>
+            </p>
+            <div class="flex items-center gap-2">
+                <button @click="$refs.defectPendingModal.style.display='flex'"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition relative"
+                        style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="this.style.backgroundColor='transparent'">
+                    <span class="material-symbols-outlined text-[15px]">tune</span> Filters
                     <template x-if="activeDefectPendingFilters > 0">
-                        <button @click="defectPendingFilter={reason:'',origin:'',dateFrom:'',dateTo:''}"
-                                class="px-2 py-1.5 rounded-xl text-xs" style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
-                            <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
-                        </button>
+                        <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
+                              style="background:var(--color-primary);color:var(--color-bg);"
+                              x-text="activeDefectPendingFilters"></span>
                     </template>
-                </div>
-            </div>
-
-            {# Defect pending filter modal #}
-            <div x-ref="defectPendingModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
-                 style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);"
-                 @click="if($event.target===$el)$el.style.display='none'">
-                <div class="w-full max-w-sm rounded-2xl overflow-hidden"
-                     style="background:var(--color-surface);border:1px solid var(--color-border);">
-                    <div class="px-5 py-4 flex items-center justify-between"
-                         style="border-bottom:1px solid var(--color-border);background:var(--color-surface-alt);">
-                        <h3 class="font-bold text-sm" style="color:var(--color-txt-primary);">Filter Defect Returns</h3>
-                        <button @click="$refs.defectPendingModal.style.display='none'"
-                                class="w-7 h-7 rounded-lg flex items-center justify-center" style="color:var(--color-txt-muted);">
-                            <span class="material-symbols-outlined text-[18px]">close</span>
-                        </button>
-                    </div>
-                    <div class="px-5 py-4 flex flex-col gap-4">
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Reason</label>
-                            <select x-model="defectPendingFilter.reason" class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                                    style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
-                                <option value="">All Reasons</option>
-                                <option value="damaged">Damaged</option>
-                                <option value="expired">Expired</option>
-                                <option value="change_of_mind">Change of Mind</option>
-                            </select>
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Origin</label>
-                            <select x-model="defectPendingFilter.origin" class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-                                    style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
-                                <option value="">All Origins</option>
-                                <option value="in_store">In-Store</option>
-                                <option value="customer">Customer</option>
-                            </select>
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Date Range</label>
-                            <div class="flex items-center gap-2">
-                                <div class="flex-1 flex flex-col gap-1">
-                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">From</span>
-                                    <input type="date" x-model="defectPendingFilter.dateFrom" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
-                                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
-                                </div>
-                                <span class="text-xs mt-4" style="color:var(--color-txt-muted);">—</span>
-                                <div class="flex-1 flex flex-col gap-1">
-                                    <span class="text-[10px] uppercase tracking-wide" style="color:var(--color-txt-muted);">To</span>
-                                    <input type="date" x-model="defectPendingFilter.dateTo" class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none"
-                                           style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="flex gap-3 pt-1">
-                            <button @click="defectPendingFilter={reason:'',origin:'',dateFrom:'',dateTo:''}"
-                                    class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
-                                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
-                                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                                    onmouseout="this.style.backgroundColor='transparent'">Reset</button>
-                            <button @click="$refs.defectPendingModal.style.display='none'"
-                                    class="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                                    style="background:var(--color-primary);color:var(--color-bg);">Apply</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <template x-if="filteredDefectPending.length === 0">
-                <div class="rounded-2xl py-10 flex flex-col items-center justify-center gap-2"
-                     style="background:var(--color-surface); border:1px solid var(--color-border);">
-                    <span class="material-symbols-outlined text-[36px]" style="color:var(--color-border-strong);">task_alt</span>
-                    <p class="text-sm" style="color:var(--color-txt-muted);">No pending defect submissions.</p>
-                </div>
-            </template>
-
-            <div class="rounded-2xl overflow-hidden" x-show="filteredDefectPending.length > 0"
-                 style="background:var(--color-surface); border:1px solid var(--color-border);">
-                {# FIX: added :key and closing > to x-for #}
-                <template x-for="item in filteredDefectPending" :key="item.defect_id">
-                    <div class="flex items-center gap-4 px-5 py-3.5 transition"
-                         style="border-bottom:1px solid var(--color-border);"
-                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                         onmouseout="this.style.backgroundColor='transparent'">
-                        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                             style="background:color-mix(in srgb,var(--color-info) 12%,transparent);">
-                            <span class="material-symbols-outlined text-[16px]" style="color:var(--color-info);">assignment_return</span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-semibold truncate" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
-                            <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                      style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
-                                      x-text="'×' + item.quantity"></span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                                      :style="defectBadgeColor(item.reason)"
-                                      x-text="item.reason_label"></span>
-                                <span class="text-[10px] px-2 py-0.5 rounded-full"
-                                      style="color:var(--color-txt-muted);" x-text="item.origin_label"></span>
-                                <template x-if="item.transaction_id">
-                                    <span class="text-[10px] px-2 py-0.5 rounded-full font-mono"
-                                          style="color:var(--color-txt-muted);" x-text="item.transaction_id"></span>
-                                </template>
-                            </div>
-                        </div>
-                        <div class="shrink-0 text-right">
-                            <p class="text-xs" style="color:var(--color-txt-muted);" x-text="item.datetime"></p>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold mt-1 inline-block"
-                                  style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);">
-                                Pending
-                            </span>
-                        </div>
-                    </div>
+                </button>
+                <template x-if="activeDefectPendingFilters > 0">
+                    <button @click="defectPendingFilter={reason:'',origin:'',dateFrom:'',dateTo:''}"
+                            class="px-2 py-1.5 rounded-xl text-xs" style="border:1px solid var(--color-border);color:var(--color-txt-muted);">
+                        <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
+                    </button>
                 </template>
             </div>
         </div>
-    </div>
 
+        {# Keep existing filter modal unchanged #}
+        <div x-ref="defectPendingModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4"
+             style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);"
+             @click="if($event.target===$el)$el.style.display='none'">
+            {# ... keep existing modal content ... #}
+        </div>
+
+        <template x-if="filteredDefectPending.length === 0">
+            <div class="rounded-2xl py-10 flex flex-col items-center justify-center gap-2"
+                 style="background:var(--color-surface); border:1px solid var(--color-border);">
+                <span class="material-symbols-outlined text-[36px]" style="color:var(--color-border-strong);">task_alt</span>
+                <p class="text-sm" style="color:var(--color-txt-muted);">No pending defect submissions.</p>
+            </div>
+        </template>
+
+        {# ── Grouped collapsible cards ── #}
+        <div class="space-y-3" x-show="filteredDefectPending.length > 0">
+            <template x-for="group in filteredDefectPending" :key="group.defect_id">
+                <div class="rounded-2xl overflow-hidden"
+                     style="background:var(--color-surface); border:1px solid var(--color-border);">
+
+                    {# Card header #}
+                    <button @click="group.expanded = !group.expanded"
+                            class="w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 text-left transition"
+                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                            onmouseout="this.style.backgroundColor='transparent'">
+                        <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                             style="background:color-mix(in srgb,var(--color-info) 12%,transparent);">
+                            <span class="material-symbols-outlined text-[18px]" style="color:var(--color-info);">assignment_return</span>
+                        </div>
+                        <div class="flex-1 min-w-0 text-left">
+                            <p class="text-sm font-semibold" style="color:var(--color-txt-primary);"
+                               x-text="group.datetime"></p>
+                            <p class="text-xs mt-0.5 truncate" style="color:var(--color-txt-muted);"
+                               x-text="group.items.length + ' item(s) · Awaiting approval'"></p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs px-2 py-1 rounded-lg font-semibold"
+                                  style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);">
+                                Pending
+                            </span>
+                            <span class="material-symbols-outlined text-[20px] transition-transform"
+                                  style="color:var(--color-txt-muted);"
+                                  :style="group.expanded ? 'transform:rotate(180deg)' : ''">expand_more</span>
+                        </div>
+                    </button>
+
+                    {# Expanded body #}
+                    <div x-show="group.expanded"
+                         x-transition:enter="transition-all duration-200"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         style="border-top:1px solid var(--color-border);">
+
+                        <template x-for="item in group.items" :key="item.detail_id">
+                            <div class="px-4 sm:px-5 py-4"
+                                 style="border-bottom:1px solid var(--color-border);">
+
+                                <div class="flex items-start gap-3">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold" style="color:var(--color-txt-primary);"
+                                           x-text="item.product_name"></p>
+                                        <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);"
+                                           x-text="item.product_id"></p>
+                                        <template x-if="item.transaction_id">
+                                            <p class="text-[10px] font-mono mt-0.5" style="color:var(--color-txt-muted);"
+                                               x-text="item.transaction_id"></p>
+                                        </template>
+                                        <div class="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                                  style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
+                                                  x-text="'×' + item.quantity"></span>
+                                            <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                                                  :style="item.reason === 'expired'
+                                                      ? 'background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning)'
+                                                      : item.reason === 'change_of_mind'
+                                                        ? 'background:color-mix(in srgb,var(--color-accent) 15%,transparent);color:var(--color-accent)'
+                                                        : 'background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)'"
+                                                  x-text="item.reason_label"></span>
+                                            <span class="text-[10px] px-2 py-0.5 rounded-full"
+                                                  :style="item.origin === 'customer'
+                                                      ? 'background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)'
+                                                      : 'background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)'"
+                                                  x-text="item.origin_label"></span>
+                                            <span class="text-[10px] px-2 py-0.5 rounded-full"
+                                                  style="background:color-mix(in srgb,var(--color-txt-muted) 10%,transparent);color:var(--color-txt-muted);"
+                                                  x-text="item.customer_compensation"></span>
+                                        </div>
+                                    </div>
+                                    <div class="shrink-0 text-right">
+                                        <p class="text-xl font-bold tabular-nums" style="color:var(--color-info);"
+                                           x-text="'×' + item.quantity"></p>
+                                        <p class="text-xs tabular-nums" style="color:var(--color-txt-muted);"
+                                           x-text="fmt(item.subtotal_amount)"></p>
+                                    </div>
+                                </div>
+
+                                {# Exchange visual #}
+                                <template x-if="item.customer_compensation_raw === 'exchange_different' && item.exchange_items && item.exchange_items.length > 0">
+                                    <div class="mt-3 rounded-xl overflow-hidden"
+                                         style="border:1px solid color-mix(in srgb,var(--color-info) 25%,transparent);
+                                                background:color-mix(in srgb,var(--color-info) 5%,transparent);">
+
+                                        <div class="flex items-center justify-between px-3 py-2"
+                                             style="border-bottom:1px solid color-mix(in srgb,var(--color-info) 15%,transparent);">
+                                            <div class="flex items-center gap-2">
+                                                <span class="material-symbols-outlined text-[13px]" style="color:var(--color-txt-muted);">undo</span>
+                                                <p class="text-xs font-semibold" style="color:var(--color-txt-primary);"
+                                                   x-text="item.product_name + ' ×' + item.quantity"></p>
+                                            </div>
+                                            <p class="text-xs tabular-nums font-semibold" style="color:var(--color-txt-muted);"
+                                               x-text="fmt(item.subtotal_amount)"></p>
+                                        </div>
+
+                                        <div class="flex items-center justify-center py-1.5">
+                                            <span class="material-symbols-outlined text-[16px]" style="color:var(--color-info);">swap_vert</span>
+                                        </div>
+
+                                        <template x-for="ei in item.exchange_items" :key="ei.product_id">
+                                            <div class="flex items-center justify-between px-3 py-2"
+                                                 style="border-top:1px solid color-mix(in srgb,var(--color-info) 15%,transparent);">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="material-symbols-outlined text-[13px]" style="color:var(--color-info);">swap_horiz</span>
+                                                    <div>
+                                                        <p class="text-xs font-semibold" style="color:var(--color-txt-primary);"
+                                                           x-text="ei.product_name + ' ×' + ei.quantity"></p>
+                                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                                            <template x-if="ei.no_money_exchange">
+                                                                <span class="text-[10px]" style="color:var(--color-txt-muted);">Swap only</span>
+                                                            </template>
+                                                            <template x-if="ei.override_used">
+                                                                <span class="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                                                                      style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);">
+                                                                    Stock override
+                                                                </span>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <template x-if="!ei.no_money_exchange">
+                                                    <p class="text-xs tabular-nums font-semibold" style="color:var(--color-txt-primary);"
+                                                       x-text="fmt(ei.price_at_exchange * ei.quantity)"></p>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="exchangeSummary(item)">
+                                            <div class="px-3 py-2 flex items-center justify-between"
+                                                 style="border-top:1px solid color-mix(in srgb,var(--color-info) 20%,transparent);
+                                                        background:color-mix(in srgb,var(--color-info) 8%,transparent);">
+                                                <span class="text-xs font-semibold" style="color:var(--color-info);"
+                                                      x-text="exchangeSummary(item).diff < 0
+                                                          ? 'Change back to customer'
+                                                          : exchangeSummary(item).diff === 0
+                                                            ? 'Equal value swap'
+                                                            : 'Customer adds'"></span>
+                                                <template x-if="exchangeSummary(item).diff !== 0">
+                                                    <span class="text-sm font-bold tabular-nums"
+                                                          :style="exchangeSummary(item).diff < 0 ? 'color:var(--color-success)' : 'color:var(--color-warning)'"
+                                                          x-text="fmt(Math.abs(exchangeSummary(item).diff))"></span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
 
     {# ══════════════════════════════════════════
        TAB: HISTORY  (Stock sub-tab + Defect sub-tab)

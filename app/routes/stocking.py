@@ -14,7 +14,25 @@ from app.utils.index_helpers import *
 from app.utils.helpers import generate_charge_token, _pht_fix
 from app.utils.audit import audit
 
+
 stocking_bp = Blueprint("stocking", __name__, url_prefix="/stocking")
+
+
+def _history_dict(r):
+    d = _pht_fix(r.to_dict())
+    d['details'] = [
+        {
+            'product_id':         det.product_id,
+            'product_name':       Product.query.get(det.product_id).product_name.capitalize(),
+            'quantity_requested': det.quantity_requested,
+            'quantity_approved':  det.quantity_approved,
+            'status':             det.status,
+            'rejection_reason':   det.rejection_reason or '',
+            'note':               det.note or '',
+        }
+        for det in r.details
+    ]
+    return d
 
 @stocking_bp.route("/")
 @login_required
@@ -342,22 +360,8 @@ def my_requests():
     ).order_by(StockAdjustmentRequest.reviewed_at.desc()).limit(30).all()
  
     # ── This user's defect submissions ────────────────────────────
-    def _serialize(detail, defect, product):
-        return {
-            "detail_id":    detail.defect_detail_id,
-            "product_name": product.product_name.capitalize(),
-            "product_id":   product.product_id,
-            "quantity":     detail.quantity,
-            "origin_label": "Customer" if detail.origin == "customer" else "In-Store",
-            "reason_label": detail.reason.replace("_", " ").title(),
-            "customer_compensation": detail.customer_compensation.replace("_", " ").title(),
-            "status":          detail.status,
-            "rejection_note":  detail.rejection_note or "",
-            "transaction_id":  f"TXN-{detail.transaction_id:05d}" if detail.transaction_id else None,
-            "datetime":        to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
-        }
  
-    defect_pending = (
+    defect_pending_rows = (
         db.session.query(DefectDetail, Defect, Product)
         .join(Defect,  Defect.defect_id     == DefectDetail.defect_id)
         .join(Product, Product.product_id   == DefectDetail.product_id)
@@ -368,7 +372,7 @@ def my_requests():
         .all()
     )
  
-    defect_history = (
+    defect_history_rows = (
         db.session.query(DefectDetail, Defect, Product)
         .join(Defect,  Defect.defect_id     == DefectDetail.defect_id)
         .join(Product, Product.product_id   == DefectDetail.product_id)
@@ -380,29 +384,71 @@ def my_requests():
         .all()
     )
  
-    def _history_dict(r):
-        d = _pht_fix(r.to_dict())
-        d['details'] = [
+    def _serialize_exchange_items(detail):
+        return [
             {
-                'product_id':         det.product_id,
-                'product_name':       Product.query.get(det.product_id).product_name.capitalize(),
-                'quantity_requested': det.quantity_requested,
-                'quantity_approved':  det.quantity_approved,
-                'status':             det.status,
-                'rejection_reason':   det.rejection_reason or '',
-                'note':               det.note or '',
+                "product_name":      ei.product.product_name.capitalize() if ei.product else ei.product_id,
+                "product_id":        ei.product_id,
+                "quantity":          ei.quantity,
+                "price_at_exchange": float(ei.price_at_exchange),
+                "no_money_exchange": ei.no_money_exchange,
+                "override_used":     ei.override_used,
             }
-            for det in r.details
+            for ei in (detail.exchange_items or [])
         ]
-        return d
+
+    def _serialize(detail, defect, product):
+        return {
+            "detail_id":             detail.defect_detail_id,
+            "product_name":          product.product_name.capitalize(),
+            "product_id":            product.product_id,
+            "quantity":              detail.quantity,
+            "price_at_defect":       float(detail.price_at_defect),
+            "subtotal_amount":       float(detail.subtotal_amount),
+            "origin_label":          "Customer" if detail.origin == "customer" else "In-Store",
+            "reason":                detail.reason,
+            "reason_label":          detail.reason.replace("_", " ").title(),
+            "customer_compensation": detail.customer_compensation.replace("_", " ").title(),
+            "customer_compensation_raw": detail.customer_compensation,
+            "status":                detail.status,
+            "rejection_note":        detail.rejection_note or "",
+            "transaction_id":        f"TXN-{detail.transaction_id:05d}" if detail.transaction_id else None,
+            "exchange_items":        _serialize_exchange_items(detail),
+            "datetime":              to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
+            "defect_id":             defect.defect_id,
+        }
+
+    # Group pending by defect_id
+    from collections import OrderedDict
+    pending_groups = OrderedDict()
+    for detail, defect, product in defect_pending_rows:   # rename query var to avoid clash
+        did = defect.defect_id
+        if did not in pending_groups:
+            pending_groups[did] = {
+                "defect_id":   defect.defect_id,
+                "datetime":    to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p"),
+                "items": [],
+            }
+        pending_groups[did]["items"].append(_serialize(detail, defect, product))
+
+    # Rename the query variables to avoid collision with the function name
+    # In my_requests(), rename:
+    #   defect_pending  (the query result) → defect_pending_rows
+    #   defect_history  (the query result) → defect_history_rows
+
+    # Then pass to template:
+    defect_pending_grouped = list(pending_groups.values())
+    defect_history_list    = [_serialize(d, def_, p) for d, def_, p in defect_history_rows]
 
     return render_template(
         "stocking/requests.html",
         pending_data    = [_pht_fix(r.to_dict()) for r in pending],
         history_data    = [_history_dict(r) for r in history],
-        defect_pending  = [_serialize(d, def_, p) for d, def_, p in defect_pending],
-        defect_history  = [_serialize(d, def_, p) for d, def_, p in defect_history],
+        defect_pending  = defect_pending_grouped,   # now grouped by defect_id
+        defect_history  = defect_history_list,
     )
+ 
+
 
 # ── Stocking: edit a pending request item ─────────────────────────────────────
 @stocking_bp.route("/requests/<int:request_id>/edit", methods=["POST"])
