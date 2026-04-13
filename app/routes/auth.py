@@ -177,7 +177,7 @@ def forgot_password():
         recovery = RecoveryDetail.query.filter_by(email=email).first()
 
         if (recovery
-                and recovery.user.role == "superadmin"
+                and recovery.user.role in ("superadmin", "admin")
                 and recovery.is_verified):          # ← only send if verified
             token                 = generate_reset_token()
             recovery.reset_token  = token
@@ -193,7 +193,7 @@ def forgot_password():
             )
             mail.send(msg)
 
-        flash("If that email belongs to a superadmin account, a reset link has been sent.", "info")
+        flash("If that email belongs to an admin account, a reset link has been sent.", "info")
         return redirect(url_for('auth.forgot_password'))
 
     return render_template("auth/forgot_password.html")
@@ -208,7 +208,7 @@ def reset_password(token):
         flash("Reset link is invalid or has expired.", "error")
         return redirect(url_for('auth.forgot_password'))
 
-    if recovery.user.role != "superadmin":
+    if recovery.user.role not in ("superadmin", "admin"):
         flash("Reset link is invalid or has expired.", "error")
         return redirect(url_for('auth.forgot_password'))
 

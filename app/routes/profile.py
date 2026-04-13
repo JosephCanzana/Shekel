@@ -16,9 +16,10 @@ profile_bp = Blueprint("profile", __name__, url_prefix="/profile")
 def index():
     return render_template(
         "profile/index.html",
-        user            = current_user,
-        can_change_pw   = current_user.role in ("superadmin", "admin"),
-        is_admin        = current_user.role == "superadmin",
+        user                = current_user,
+        can_change_pw       = current_user.role in ("superadmin", "admin"),
+        is_admin            = current_user.role == "superadmin",
+        can_manage_recovery = current_user.role in ("superadmin", "admin"),
     )
 
 
@@ -69,7 +70,7 @@ def change_password():
 
 @profile_bp.route("/recovery", methods=["POST"])
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def update_recovery():
     email = request.form.get("email",        "").strip()
     phone = request.form.get("phone_number", "").strip()
@@ -136,7 +137,7 @@ def update_recovery():
 
 @profile_bp.route("/update-identity", methods=["POST"])
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def update_identity():
     first_name = request.form.get("first_name", "").strip().lower()
     last_name  = request.form.get("last_name",  "").strip().lower()
@@ -162,7 +163,7 @@ def update_identity():
 
 @profile_bp.route("/recovery/verify/<token>")
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def verify_recovery_email(token):
     recovery = RecoveryDetail.query.filter_by(
         verify_token=token,
@@ -183,7 +184,7 @@ def verify_recovery_email(token):
 
 @profile_bp.route("/recovery/resend-verification", methods=["POST"])
 @login_required
-@role_required("superadmin")
+@role_required("superadmin", "admin")
 def resend_verification():
     recovery = current_user.recovery_detail
 

@@ -83,7 +83,7 @@
     {# ══════════════════════════════════════════════
        TWO-COLUMN LAYOUT on desktop
     ══════════════════════════════════════════════ #}
-    <div class="grid grid-cols-1 {% if is_admin or can_change_pw %}lg:grid-cols-[1fr_1.1fr]{% endif %} gap-6 items-start">
+    <div class="grid grid-cols-1 {% if is_admin or can_change_pw or can_manage_recovery %}lg:grid-cols-[1fr_1.1fr]{% endif %} gap-6 items-start">
 
         {# ── LEFT: Account details ── #}
         <div class="space-y-4">
@@ -216,11 +216,11 @@
         </div>{# /left #}
 
         {# ── RIGHT: Recovery + Password ── #}
-        {% if is_admin or can_change_pw %}
+        {% if is_admin or can_change_pw or can_manage_recovery %}
         <div class="space-y-4">
 
             {# ── Recovery Details (admin only) ── #}
-            {% if is_admin %}
+            {% if is_admin or can_manage_recovery %}
             <div class="rounded-2xl overflow-hidden"
                  style="background-color: var(--color-surface); border: 1px solid var(--color-border);"
                  x-data="{ changed: false }">

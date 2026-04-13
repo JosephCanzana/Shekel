@@ -277,10 +277,6 @@ class="space-y-5">
                                     <span class="material-symbols-outlined text-[18px]">archive</span>
                                 </button>
                             </div>
-                        </template>
-
-                        {# Reset password only — admin viewing a peer admin #}
-                        <template x-if="CURRENT_ROLE === 'admin' && user.role === 'admin'">
                             <button @click='$dispatch("confirm", {
                                         title:   "Reset Password",
                                         message: `Reset password for ${user.first_name} ${user.last_name}?`,
@@ -295,6 +291,8 @@ class="space-y-5">
                                 <span class="material-symbols-outlined text-[18px]">lock_reset</span>
                             </button>
                         </template>
+
+ 
 
                     </div>
                 </template>
