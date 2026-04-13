@@ -1,252 +1,765 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — Shekel{% endblock %}
+{% block title %}Dashboard — Stocking{% endblock %}
 {% block nav_title %}Dashboard{% endblock %}
 
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  [x-cloak] { display: none !important; }
+  .pill-active { background: color-mix(in srgb, currentColor 8%, transparent); }
+</style>
+{% endblock %}
+
 {% block body %}
-<div class="space-y-6">
+{% set is_single_day = (date_from == date_to) %}
 
-    {# ── Greeting ── #}
+<div class="space-y-4"
+     x-data="{
+       showFilter:    false,
+       showInvTbl:    true,
+       showStockTbl:  true,
+       showDefectTbl: true,
+       dateFrom: '{{ date_from }}',
+       dateTo:   '{{ date_to }}',
+
+       go(tab, pg, df, dt) {
+         const u = new URL(window.location.href);
+         u.searchParams.set('tab',       tab || '{{ active_tab }}');
+         u.searchParams.set('date_from', df  !== undefined ? df : this.dateFrom);
+         u.searchParams.set('date_to',   dt  !== undefined ? dt : this.dateTo);
+         u.searchParams.set('page',      pg  || '1');
+         window.location.href = u.toString();
+       },
+
+       quick(r) {
+         const now  = new Date();
+         const fmt  = d => new Date(d).toISOString().slice(0,10);
+         const tod  = fmt(now);
+         const wkStart = () => { const d=new Date(now); d.setDate(now.getDate()-now.getDay()+1); return fmt(d); };
+         const map  = {
+           today: [tod, tod],
+           week:  [wkStart(), tod],
+           month: [fmt(new Date(now.getFullYear(), now.getMonth(), 1)), tod],
+           year:  [fmt(new Date(now.getFullYear(), 0, 1)), tod],
+         };
+         const [df, dt] = map[r] || [tod, tod];
+         this.go('{{ active_tab }}', 1, df, dt);
+       },
+
+       isActive(r) {
+         const now  = new Date();
+         const fmt  = d => new Date(d).toISOString().slice(0,10);
+         const tod  = fmt(now);
+         const df   = '{{ date_from }}', dt = '{{ date_to }}';
+         const wkStart = () => { const d=new Date(now); d.setDate(now.getDate()-now.getDay()+1); return fmt(d); };
+         if (r==='today') return df===tod && dt===tod;
+         if (r==='week')  return df===wkStart() && dt===tod;
+         if (r==='month') return df===fmt(new Date(now.getFullYear(),now.getMonth(),1)) && dt===tod;
+         if (r==='year')  return df===fmt(new Date(now.getFullYear(),0,1)) && dt===tod;
+         return false;
+       },
+
+       applyFilter() { this.go('{{ active_tab }}', 1); this.showFilter = false; }
+     }">
+
+  {# ══ GREETING ══════════════════════════════════════════════════════════════ #}
+  <div class="flex flex-wrap items-start justify-between gap-3">
     <div>
-        <h1 class="text-xl font-bold tracking-tight"
-            style="color: var(--color-txt-primary);">
-            Good {{ time_of_day }}, {{ current_user.first_name | capitalize }}.
-        </h1>
-        <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
-            Here's your inventory overview.
-        </p>
+      <h1 class="text-xl font-semibold text-txt-primary flex items-center gap-2">
+        Good {{ time_of_day }}, {{ current_user.first_name.title() }}
+      </h1>
+      <p class="text-xs text-txt-muted mt-0.5">
+        {% if is_single_day %}
+          Viewing data for <strong class="text-txt-primary font-medium">{{ date_from }}</strong>
+        {% else %}
+          <strong class="text-txt-primary font-medium">{{ date_from }}</strong>
+          &rarr;
+          <strong class="text-txt-primary font-medium">{{ date_to }}</strong>
+        {% endif %}
+      </p>
     </div>
 
-    {# ── Stat Cards ── #}
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    {# ── Controls row ──────────────────────────────────────────────────── #}
+    <div class="flex items-center flex-wrap gap-1.5">
+      {% for label, key in [('Today','today'),('This Week','week'),('This Month','month'),('This Year','year')] %}
+      <button @click="quick('{{ key }}')"
+              :class="isActive('{{ key }}')
+                ? 'border-txt-primary text-txt-primary pill-active font-semibold'
+                : 'border-border text-txt-muted hover:border-border-strong hover:text-txt-primary'"
+              class="px-2.5 py-1 text-[11px] rounded-full border transition-all">
+        {{ label }}
+      </button>
+      {% endfor %}
 
-        {# New Products This Month #}
-        <div class="rounded-2xl p-5 space-y-3"
-             style="background-color: var(--color-surface);
-                    border: 1px solid var(--color-border);">
-            <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold uppercase tracking-wider"
-                      style="color: var(--color-txt-muted);">New Products</span>
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center"
-                     style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
-                    <span class="material-symbols-outlined text-[17px]"
-                          style="color: var(--color-accent);">add_box</span>
-                </div>
-            </div>
-            <div>
-                <p class="text-2xl font-bold tracking-tight"
-                   style="color: var(--color-txt-primary);">
-                    {{ stats.new_added_product | default(0) }}
-                </p>
-                <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
-                    added this month
-                </p>
-            </div>
-        </div>
+      <span class="w-px h-4 bg-border mx-0.5"></span>
 
-        {# Low Stock #}
-        <div class="rounded-2xl p-5 space-y-3"
-             style="background-color: var(--color-surface);
-                    border: 1px solid var(--color-border);">
-            <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold uppercase tracking-wider"
-                      style="color: var(--color-txt-muted);">Low Stock</span>
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center"
-                     style="background: color-mix(in srgb, var(--color-warning) 12%, transparent);">
-                    <span class="material-symbols-outlined text-[17px]"
-                          style="color: var(--color-warning);">warning</span>
-                </div>
-            </div>
-            <div>
-                <p class="text-2xl font-bold tracking-tight"
-                   style="color: var(--color-txt-primary);">
-                    {{ stats.low_stock_count | default(0) }}
-                </p>
-                <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
-                    items need restocking
-                </p>
-            </div>
-        </div>
+      <button @click="showFilter = true"
+              class="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full border border-border
+                     text-txt-muted hover:text-txt-primary hover:border-border-strong transition-all">
+        <span class="material-symbols-outlined text-[12px]">date_range</span>
+        Custom
+      </button>
 
-        {# Defects #}
-        <div class="rounded-2xl p-5 space-y-3"
-             style="background-color: var(--color-surface);
-                    border: 1px solid var(--color-border);">
-            <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold uppercase tracking-wider"
-                    style="color: var(--color-txt-muted);">On Watch (Defects)</span>
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center"
-                     style="background: color-mix(in srgb, var(--color-error) 12%, transparent);">
-                    <span class="material-symbols-outlined text-[17px]"
-                          style="color: var(--color-error);">remove_shopping_cart</span>
-                </div>
-            </div>
-            <div>
-                <p class="text-2xl font-bold tracking-tight"
-                   style="color: var(--color-txt-primary);">
-                    {{ stats.defects_count | default(0) }}
-                </p>
-                <p class="text-xs mt-1" style="color: var(--color-txt-muted);">
-                    pending defects &amp; returns
-                </p>
-            </div>
-        </div>
+      <span class="w-px h-4 bg-border mx-0.5"></span>
 
+      {# Stock-in shortcut — only shown on stock tab #}
+      {% if active_tab == 'stock' %}
+      <a href="{{ url_for('stocking.stock_in') }}"
+         class="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-full bg-txt-primary text-bg
+                font-medium hover:opacity-90 transition-all">
+        <span class="material-symbols-outlined text-[12px]">add</span> New Stock-In
+      </a>
+      {% endif %}
     </div>
+  </div>
 
-    {# ── Bottom Section ── #}
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+  {# ══ TABS ═══════════════════════════════════════════════════════════════════ #}
+  <div class="flex border-b border-border overflow-x-auto">
+    {% for key, icon, label in [
+        ('inventory', 'inventory_2',    'Inventory'),
+        ('stock',     'move_up',        'Stock-In'),
+        ('defects',   'report_problem', 'Defects'),
+    ] %}
+    <a href="?tab={{ key }}&date_from={{ date_from }}&date_to={{ date_to }}&page=1"
+       class="flex items-center gap-1.5 px-4 py-2.5 text-sm -mb-px whitespace-nowrap border-b-2 transition-colors
+              {{ 'border-txt-primary text-txt-primary font-semibold' if active_tab==key
+                 else 'border-transparent text-txt-muted hover:text-txt-primary' }}">
+      <span class="material-symbols-outlined text-[17px]">{{ icon }}</span>
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
 
-        {# Low Stock Alerts #}
-        <div class="rounded-2xl overflow-hidden"
-             style="background-color: var(--color-surface);
-                    border: 1px solid var(--color-border);">
 
-            <div class="px-5 py-4 flex items-center justify-between"
-                 style="border-bottom: 1px solid var(--color-border);">
-                <h2 class="text-sm font-semibold"
-                    style="color: var(--color-txt-primary);">Low Stock Alerts</h2>
-                <span class="text-xs px-2 py-0.5 rounded-full font-medium"
-                      style="background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-                             color: var(--color-warning);">
-                    {{ stats.low_stock_count | default(0) }} items
-                </span>
-            </div>
+  {# ╔═══════════════════════════════════════════════════════════════════╗
+     ║  INVENTORY TAB                                                    ║
+     ╚═══════════════════════════════════════════════════════════════════╝ #}
+  {% if active_tab == 'inventory' %}
 
-            <div>
-                {% if low_stock_items %}
-                    {% for item in low_stock_items %}
-                    <div class="px-5 py-3 flex items-center justify-between"
-                         style="border-bottom: 1px solid var(--color-border);">
-                        <div>
-                            <p class="text-sm font-medium"
-                               style="color: var(--color-txt-primary);">{{ item.name }}</p>
-                            <p class="text-xs" style="color: var(--color-txt-muted);">
-                                {{ item.category }}
-                            </p>
-                        </div>
-                        <span class="text-xs font-semibold px-2 py-1 rounded-lg"
-                              style="background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-                                     color: var(--color-warning);">
-                            {{ item.stock }} left
-                        </span>
-                    </div>
-                    {% endfor %}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    {% set inv_cards = [
+      ('Total Products',  data.inventory.total_products|string, 'category',       'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20',   ''),
+      ('Total Units',     data.inventory.total_units|string,    'inventory_2',    'text-emerald-500','bg-emerald-50 dark:bg-emerald-900/20',''),
+      ('Low Stock',       data.inventory.low_stock|string,      'warning',        'text-amber-500',  'bg-amber-50 dark:bg-amber-900/20',  'text-amber-500'),
+      ('Out of Stock',    data.inventory.out_of_stock|string,   'do_not_disturb', 'text-red-500',    'bg-red-50 dark:bg-red-900/20',      'text-red-500'),
+    ] %}
+    {% for label, value, icon, icolor, ibg, vcolor in inv_cards %}
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+        </span>
+        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+      </div>
+      <p class="text-2xl font-semibold {{ vcolor if vcolor else 'text-txt-primary' }}">{{ value }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# Inventory charts row #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2 bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-semibold text-txt-primary">Stock Levels — Top 12</p>
+        <div class="flex items-center gap-3 text-[10px] text-txt-muted">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-emerald-500 inline-block"></span>OK</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-amber-500 inline-block"></span>Low</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-red-500 inline-block"></span>Out</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-rose-400 inline-block"></span>Defective</span>
+        </div>
+      </div>
+      <div style="position:relative;height:220px">
+        <canvas id="chart-inventory"></canvas>
+      </div>
+    </div>
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <p class="text-sm font-semibold text-txt-primary mb-3">Stock Status</p>
+      <div style="position:relative;height:220px">
+        <canvas id="chart-inv-status"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-surface border border-border rounded-xl p-4">
+    <p class="text-sm font-semibold text-txt-primary mb-3">Units by Category</p>
+    <div style="position:relative;height:180px">
+      <canvas id="chart-inv-category"></canvas>
+    </div>
+  </div>
+
+  {# Inventory table #}
+  <div class="bg-surface border border-border rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+      <p class="text-sm font-semibold text-txt-primary">All Products</p>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-txt-muted">{{ detail.total }} products</span>
+        <button @click="showInvTbl = !showInvTbl"
+                class="flex items-center gap-1 text-xs text-txt-muted hover:text-txt-primary transition-colors px-2 py-1 rounded-lg border border-border hover:border-border-strong">
+          <span class="material-symbols-outlined text-[14px]" x-text="showInvTbl ? 'visibility_off' : 'visibility'"></span>
+          <span x-text="showInvTbl ? 'Hide' : 'Show'"></span>
+        </button>
+      </div>
+    </div>
+    <div x-show="showInvTbl" x-collapse>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-bg border-b border-border text-xs text-txt-muted uppercase tracking-wide">
+              <th class="text-left px-4 py-2.5 font-semibold">Product</th>
+              <th class="text-left px-4 py-2.5 font-semibold">Category</th>
+              <th class="text-right px-4 py-2.5 font-semibold">In Stock</th>
+              <th class="text-right px-4 py-2.5 font-semibold">Defective</th>
+              <th class="text-right px-4 py-2.5 font-semibold whitespace-nowrap">Reorder At</th>
+              <th class="text-left px-4 py-2.5 font-semibold">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border">
+            {% for product, inv, category in detail.rows %}
+            {% set is_out = inv.quantity_available == 0 %}
+            {% set is_low = not is_out and inv.quantity_available <= product.low_reorder_threshold %}
+            <tr class="hover:bg-bg transition-colors">
+              <td class="px-4 py-2.5 font-medium text-txt-primary">{{ product.product_name.capitalize() }}</td>
+              <td class="px-4 py-2.5 text-txt-muted text-xs">{{ category.category_name.capitalize() if category else '—' }}</td>
+              <td class="px-4 py-2.5 text-right font-mono font-semibold
+                {{ 'text-red-500' if is_out else ('text-amber-500' if is_low else 'text-emerald-600 dark:text-emerald-400') }}">
+                {{ inv.quantity_available }}
+              </td>
+              <td class="px-4 py-2.5 text-right font-mono text-txt-muted">{{ inv.quantity_defective or 0 }}</td>
+              <td class="px-4 py-2.5 text-right text-txt-muted text-xs">{{ product.low_reorder_threshold }}</td>
+              <td class="px-4 py-2.5">
+                {% if is_out %}
+                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Out</span>
+                {% elif is_low %}
+                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Low</span>
                 {% else %}
-                    <div class="px-5 py-10 text-center">
-                        <span class="material-symbols-outlined text-[32px] block mb-2"
-                              style="color: var(--color-border-strong);">inventory</span>
-                        <p class="text-sm" style="color: var(--color-txt-muted);">
-                            All items are well stocked.
-                        </p>
-                    </div>
+                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">OK</span>
                 {% endif %}
-            </div>
-
-        </div>
-
-        {# Right column — Recent Stock-ins + Defects #}
-        <div class="space-y-4">
-
-            {# Recent Stock-ins #}
-            <div class="rounded-2xl overflow-hidden"
-                 style="background-color: var(--color-surface);
-                        border: 1px solid var(--color-border);">
-
-                <div class="px-5 py-4 flex items-center justify-between"
-                     style="border-bottom: 1px solid var(--color-border);">
-                    <h2 class="text-sm font-semibold"
-                        style="color: var(--color-txt-primary);">Recent Stock-ins</h2>
-                    <span class="text-xs" style="color: var(--color-txt-muted);">Latest 5</span>
-                </div>
-
-                <div>
-                    {% if recent_stockins %}
-                        {% for item in recent_stockins %}
-                        <div class="px-5 py-3 flex items-center justify-between"
-                             style="border-bottom: 1px solid var(--color-border);">
-                            <div class="flex items-center gap-3">
-                                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                                     style="background: color-mix(in srgb, var(--color-success) 10%, transparent);">
-                                    <span class="material-symbols-outlined text-[14px]"
-                                          style="color: var(--color-success);">add_box</span>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium"
-                                       style="color: var(--color-txt-primary);">{{ item.name }}</p>
-                                    <p class="text-xs" style="color: var(--color-txt-muted);">
-                                        {{ item.stocked_by }} · {{ item.date }}
-                                    </p>
-                                </div>
-                            </div>
-                            <span class="text-xs font-semibold"
-                                  style="color: var(--color-success);">+{{ item.qty }}</span>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="px-5 py-10 text-center">
-                            <span class="material-symbols-outlined text-[32px] block mb-2"
-                                  style="color: var(--color-border-strong);">move_to_inbox</span>
-                            <p class="text-sm" style="color: var(--color-txt-muted);">
-                                No stock-ins recorded yet.
-                            </p>
-                        </div>
-                    {% endif %}
-                </div>
-
-            </div>
-
-            {# Defects Summary #}
-            <div class="rounded-2xl overflow-hidden"
-                 style="background-color: var(--color-surface);
-                        border: 1px solid var(--color-border);">
-
-                <div class="px-5 py-4 flex items-center justify-between"
-                     style="border-bottom: 1px solid var(--color-border);">
-                    <h2 class="text-sm font-semibold"
-                        style="color: var(--color-txt-primary);">Defects Summary</h2>
-                    <span class="text-xs" style="color: var(--color-txt-muted);">This month</span>
-                </div>
-
-                <div>
-                    {% if defects %}
-                        {% for defect in defects %}
-                        <div class="px-5 py-3 flex items-center justify-between"
-                             style="border-bottom: 1px solid var(--color-border);">
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium truncate"
-                                   style="color: var(--color-txt-primary);">{{ defect.name }}</p>
-                                <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                    <span class="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                                          style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);">
-                                        {{ defect.reason }}
-                                    </span>
-                                    <span class="text-xs" style="color:var(--color-txt-muted);">
-                                        {{ defect.reported_by }} · {{ defect.date }}
-                                    </span>
-                                </div>
-                            </div>
-                            <span class="text-xs font-semibold px-2 py-1 rounded-lg ml-3 shrink-0"
-                                  style="background: color-mix(in srgb, var(--color-error) 12%, transparent);
-                                         color: var(--color-error);">
-                                ×{{ defect.qty }}
-                            </span>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="px-5 py-10 text-center">
-                            <span class="material-symbols-outlined text-[32px] block mb-2"
-                                  style="color: var(--color-border-strong);">check_circle</span>
-                            <p class="text-sm" style="color: var(--color-txt-muted);">
-                                No defects reported this month.
-                            </p>
-                        </div>
-                    {% endif %}
-                </div>
-
-            </div>
-
-        </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="px-4 py-10 text-center text-txt-muted text-xs">No inventory data.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "admin/_report_pagination.html" %}
     </div>
+  </div>
+  {% endif %}{# /inventory #}
 
-</div>
+
+  {# ╔═══════════════════════════════════════════════════════════════════╗
+     ║  STOCK-IN TAB                                                     ║
+     ╚═══════════════════════════════════════════════════════════════════╝ #}
+  {% if active_tab == 'stock' %}
+
+  <div class="grid grid-cols-2 gap-3">
+    <a href="{{ url_for('stocking.stock_in') }}"
+       class="bg-surface border border-border rounded-xl p-4 hover:border-border-strong transition-colors group">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px] text-blue-500">receipt</span>
+        </span>
+        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide">Stock-In Entries</p>
+      </div>
+      <p class="text-2xl font-semibold text-txt-primary">{{ data.stock.total_entries }}</p>
+      <p class="text-[10px] text-txt-muted mt-1 flex items-center gap-0.5 group-hover:text-blue-500 transition-colors">
+        New stock-in <span class="material-symbols-outlined text-[11px]">arrow_forward</span>
+      </p>
+    </a>
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px] text-emerald-500">move_up</span>
+        </span>
+        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide">Total Units Received</p>
+      </div>
+      <p class="text-2xl font-semibold text-txt-primary">{{ data.stock.total_units }}</p>
+      <p class="text-[10px] text-txt-muted mt-1">items across all entries</p>
+    </div>
+  </div>
+
+  {# Stock-in charts #}
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <p class="text-sm font-semibold text-txt-primary mb-3">Units Received per Day</p>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-stock"></canvas>
+      </div>
+    </div>
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <p class="text-sm font-semibold text-txt-primary mb-3">Top Products Restocked</p>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-stock-products"></canvas>
+      </div>
+    </div>
+  </div>
+
+  {# Stock-in table #}
+  <div class="bg-surface border border-border rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+      <p class="text-sm font-semibold text-txt-primary">Stock-In Records</p>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-txt-muted">{{ detail.total }} entries</span>
+        <button @click="showStockTbl = !showStockTbl"
+                class="flex items-center gap-1 text-xs text-txt-muted hover:text-txt-primary transition-colors px-2 py-1 rounded-lg border border-border hover:border-border-strong">
+          <span class="material-symbols-outlined text-[14px]" x-text="showStockTbl ? 'visibility_off' : 'visibility'"></span>
+          <span x-text="showStockTbl ? 'Hide' : 'Show'"></span>
+        </button>
+      </div>
+    </div>
+    <div x-show="showStockTbl" x-collapse>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-bg border-b border-border text-xs text-txt-muted uppercase tracking-wide">
+              <th class="text-left px-4 py-2.5 font-semibold whitespace-nowrap">Date & Time</th>
+              <th class="text-left px-4 py-2.5 font-semibold">Product</th>
+              <th class="text-right px-4 py-2.5 font-semibold">Qty</th>
+              <th class="text-left px-4 py-2.5 font-semibold whitespace-nowrap">Received By</th>
+              <th class="text-left px-4 py-2.5 font-semibold">Notes</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border">
+            {% for stock_in, product, user in detail.rows %}
+            {% if stock_in.stockin_datetime %}
+            <tr class="hover:bg-bg transition-colors">
+              <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
+                {{ stock_in.stockin_datetime | pht("%b %d, %Y") }}<br>
+                <span class="text-txt-muted/60">{{ stock_in.stockin_datetime | pht("%I:%M %p") }}</span>
+              </td>
+              <td class="px-4 py-2.5 font-medium text-txt-primary">{{ product.product_name.capitalize() }}</td>
+              <td class="px-4 py-2.5 text-right font-mono font-semibold text-emerald-600 dark:text-emerald-400">+{{ stock_in.quantity_received }}</td>
+              <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
+                {{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}
+              </td>
+              <td class="px-4 py-2.5 text-xs text-txt-muted max-w-[200px] truncate">{{ stock_in.notes or '—' }}</td>
+            </tr>
+            {% endif %}
+            {% else %}
+            <tr><td colspan="5" class="px-4 py-10 text-center text-txt-muted text-xs">No stock-in entries for this period.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "admin/_report_pagination.html" %}
+    </div>
+  </div>
+  {% endif %}{# /stock #}
+
+
+  {# ╔═══════════════════════════════════════════════════════════════════╗
+     ║  DEFECTS TAB                                                      ║
+     ╚═══════════════════════════════════════════════════════════════════╝ #}
+  {% if active_tab == 'defects' %}
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    {% for label, value, icon, icolor, ibg in [
+      ('Total Records',   data.defects.total|string,           'report_problem',            'text-rose-500',   'bg-rose-50 dark:bg-rose-900/20'),
+      ('Total Units',     data.defects.total_units|string,     'production_quantity_limits', 'text-orange-500', 'bg-orange-50 dark:bg-orange-900/20'),
+      ('Customer Origin', data.defects.customer_origin|string, 'person',                    'text-violet-500', 'bg-violet-50 dark:bg-violet-900/20'),
+      ('In-Store Origin', data.defects.store_origin|string,    'store',                     'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20'),
+    ] %}
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+        </span>
+        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+      </div>
+      <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# Loss breakdown #}
+  <div class="bg-surface border border-border rounded-xl p-4">
+    <p class="text-xs font-semibold text-txt-muted uppercase tracking-wide mb-3 flex items-center gap-1.5">
+      <span class="material-symbols-outlined text-[15px] text-red-500">money_off</span>
+      Financial Loss Breakdown (Active Defects)
+    </p>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div>
+        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Sales Loss</p>
+        <p class="text-lg font-semibold text-red-500">₱{{ "%.2f"|format(data.defects.total_sales_loss | default(0)) }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Cost Loss</p>
+        <p class="text-lg font-semibold text-orange-500">₱{{ "%.2f"|format(data.defects.total_cost_loss | default(0)) }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Profit Loss</p>
+        <p class="text-lg font-semibold text-amber-500">₱{{ "%.2f"|format(data.defects.total_profit_loss | default(0)) }}</p>
+      </div>
+      <div>
+        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Supplier Unrecovered</p>
+        <p class="text-lg font-semibold text-rose-600">₱{{ "%.2f"|format(data.defects.supplier_loss | default(0)) }}</p>
+        <p class="text-[10px] text-txt-muted">marked as loss</p>
+      </div>
+    </div>
+  </div>
+
+  {# Defect charts #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <p class="text-sm font-semibold text-txt-primary mb-3">Origin Breakdown</p>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-defects-origin"></canvas>
+      </div>
+    </div>
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <p class="text-sm font-semibold text-txt-primary mb-3">Defect Reasons</p>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-defects-reason"></canvas>
+      </div>
+    </div>
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <p class="text-sm font-semibold text-txt-primary mb-3">Supplier Compensation</p>
+      <div style="position:relative;height:200px">
+        <canvas id="chart-defects-supplier"></canvas>
+      </div>
+    </div>
+  </div>
+
+  {# Defects table #}
+  <div class="bg-surface border border-border rounded-xl overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-border">
+      <p class="text-sm font-semibold text-txt-primary">Defect Records</p>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-txt-muted">{{ detail.total }} records</span>
+        <button @click="showDefectTbl = !showDefectTbl"
+                class="flex items-center gap-1 text-xs text-txt-muted hover:text-txt-primary transition-colors px-2 py-1 rounded-lg border border-border hover:border-border-strong">
+          <span class="material-symbols-outlined text-[14px]" x-text="showDefectTbl ? 'visibility_off' : 'visibility'"></span>
+          <span x-text="showDefectTbl ? 'Hide' : 'Show'"></span>
+        </button>
+      </div>
+    </div>
+    <div x-show="showDefectTbl" x-collapse>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-bg border-b border-border text-xs text-txt-muted uppercase tracking-wide">
+              <th class="text-left px-4 py-2.5 font-semibold whitespace-nowrap">Date</th>
+              <th class="text-left px-4 py-2.5 font-semibold">Product</th>
+              <th class="text-right px-4 py-2.5 font-semibold">Qty</th>
+              <th class="text-left px-4 py-2.5 font-semibold">Origin</th>
+              <th class="text-left px-4 py-2.5 font-semibold">Reason</th>
+              <th class="text-right px-4 py-2.5 font-semibold">Sales</th>
+              <th class="text-right px-4 py-2.5 font-semibold">Cost</th>
+              <th class="text-right px-4 py-2.5 font-semibold">Profit</th>
+              <th class="text-left px-4 py-2.5 font-semibold">Status</th>
+              <th class="text-left px-4 py-2.5 font-semibold whitespace-nowrap">Logged By</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border">
+            {% for detail_row, defect, product, user in detail.rows %}
+            {% if defect.defect_datetime %}
+            <tr class="hover:bg-bg transition-colors">
+              <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
+                {{ defect.defect_datetime | pht("%b %d, %Y") }}<br>
+                <span class="text-txt-muted/60">{{ defect.defect_datetime | pht("%I:%M %p") }}</span>
+              </td>
+              <td class="px-4 py-2.5 font-medium text-txt-primary">{{ product.product_name.capitalize() }}</td>
+              <td class="px-4 py-2.5 text-right font-mono text-txt-primary">{{ detail_row.quantity }}</td>
+              <td class="px-4 py-2.5">
+                {% if detail_row.origin == 'customer' %}
+                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">Customer</span>
+                {% else %}
+                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">In-Store</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-2.5 text-txt-muted text-xs">{{ detail_row.reason.replace('_',' ').title() }}</td>
+              <td class="px-4 py-2.5 text-right text-xs font-mono text-txt-primary">
+                ₱{{ "%.2f"|format(detail_row.subtotal_amount | default(0) | float) }}
+              </td>
+              <td class="px-4 py-2.5 text-right text-xs font-mono text-orange-500">
+                ₱{{ "%.2f"|format(detail_row.subtotal_unit | default(0) | float) }}
+              </td>
+              <td class="px-4 py-2.5 text-right text-xs font-mono text-rose-500">
+                ₱{{ "%.2f"|format(detail_row.subtotal_revenue | default(0) | float) }}
+              </td>
+              <td class="px-4 py-2.5">
+                {% set st = detail_row.status %}
+                <span class="inline-flex px-2 py-0.5 rounded text-xs font-medium
+                  {{ 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' if st=='active'
+                  else ('bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' if st=='rejected'
+                  else 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400') }}">
+                  {{ st.title() }}
+                </span>
+              </td>
+              <td class="px-4 py-2.5 text-xs text-txt-muted whitespace-nowrap">
+                {{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}
+              </td>
+            </tr>
+            {% endif %}
+            {% else %}
+            <tr><td colspan="10" class="px-4 py-10 text-center text-txt-muted text-xs">No defect records for this period.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "admin/_report_pagination.html" %}
+    </div>
+  </div>
+  {% endif %}{# /defects #}
+
+
+  {# ══ CUSTOM DATE FILTER MODAL ═════════════════════════════════════════════ #}
+  <div x-show="showFilter" x-cloak
+       class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+       @keydown.escape.window="showFilter = false">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showFilter = false"></div>
+    <div class="relative bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-xs p-5"
+         @click.stop>
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="font-semibold text-txt-primary text-sm">Custom Range</h3>
+          <p class="text-[11px] text-txt-muted mt-0.5">Filter data by date</p>
+        </div>
+        <button @click="showFilter = false"
+                class="w-7 h-7 rounded-lg flex items-center justify-center text-txt-muted hover:bg-bg hover:text-txt-primary transition-colors">
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+      <div class="space-y-3 mb-4">
+        <div>
+          <label class="block text-[11px] text-txt-muted font-medium mb-1">From</label>
+          <input type="date" x-model="dateFrom"
+                 class="w-full text-sm bg-bg border border-border rounded-lg px-3 py-2
+                        text-txt-primary focus:outline-none focus:ring-1 focus:ring-border-strong">
+        </div>
+        <div>
+          <label class="block text-[11px] text-txt-muted font-medium mb-1">To</label>
+          <input type="date" x-model="dateTo"
+                 class="w-full text-sm bg-bg border border-border rounded-lg px-3 py-2
+                        text-txt-primary focus:outline-none focus:ring-1 focus:ring-border-strong">
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button @click="showFilter = false"
+                class="flex-1 py-2 text-sm rounded-lg border border-border text-txt-muted
+                       hover:text-txt-primary transition-colors">
+          Cancel
+        </button>
+        <button @click="applyFilter()"
+                class="flex-1 py-2 text-sm rounded-lg bg-txt-primary text-bg font-medium
+                       hover:opacity-90 transition-opacity">
+          Apply
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>{# /root #}
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+(function () {
+  const D   = {{ chart_json | safe }};
+  const TAB = '{{ active_tab }}';
+
+  const dark    = document.documentElement.classList.contains('dark');
+  const gridCol = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const txtCol  = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.40)';
+
+  Chart.defaults.font.family = 'inherit';
+  Chart.defaults.font.size   = 11;
+  Chart.defaults.color       = txtCol;
+
+  const scales = {
+    x: { grid: { color: gridCol }, ticks: { color: txtCol } },
+    y: { grid: { color: gridCol }, ticks: { color: txtCol }, beginAtZero: true },
+  };
+
+  const P = {
+    blue:   'rgba(59,130,246,0.82)',
+    green:  'rgba(16,185,129,0.82)',
+    amber:  'rgba(245,158,11,0.82)',
+    red:    'rgba(239,68,68,0.82)',
+    violet: 'rgba(139,92,246,0.82)',
+    rose:   'rgba(244,63,94,0.82)',
+    teal:   'rgba(20,184,166,0.82)',
+    orange: 'rgba(249,115,22,0.82)',
+    sky:    'rgba(14,165,233,0.82)',
+  };
+
+  const el = id => document.getElementById(id);
+
+  /* ── INVENTORY ──────────────────────────────────────────────────────────── */
+  if (TAB === 'inventory') {
+    const invEl = el('chart-inventory');
+    if (invEl && D.inventory.labels.length) {
+      new Chart(invEl, {
+        type: 'bar',
+        data: {
+          labels: D.inventory.labels,
+          datasets: [
+            { label: 'In Stock',
+              data: D.inventory.in_stock,
+              backgroundColor: D.inventory.in_stock.map((v, i) =>
+                v === 0 ? P.red : v <= D.inventory.threshold[i] ? P.amber : P.green),
+              borderRadius: 4, borderSkipped: false },
+            { label: 'Defective', data: D.inventory.defective,
+              backgroundColor: P.rose, borderRadius: 4, borderSkipped: false },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { ...scales },
+        },
+      });
+    }
+
+    const statusEl = el('chart-inv-status');
+    if (statusEl) {
+      const ok  = (D.inventory.status_ok  !== undefined) ? D.inventory.status_ok  :
+                  D.inventory.in_stock.filter((v,i) => v > 0 && v > D.inventory.threshold[i]).length;
+      const low = (D.inventory.status_low !== undefined) ? D.inventory.status_low :
+                  D.inventory.in_stock.filter((v,i) => v > 0 && v <= D.inventory.threshold[i]).length;
+      const out = (D.inventory.status_out !== undefined) ? D.inventory.status_out :
+                  D.inventory.in_stock.filter(v => v === 0).length;
+      new Chart(statusEl, {
+        type: 'doughnut',
+        data: {
+          labels: ['OK', 'Low Stock', 'Out of Stock'],
+          datasets: [{ data: [ok, low, out],
+            backgroundColor: [P.green, P.amber, P.red],
+            borderWidth: 0, hoverOffset: 6 }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '65%',
+          plugins: { legend: { position: 'bottom',
+            labels: { boxWidth: 10, padding: 12, color: txtCol } } },
+        },
+      });
+    }
+
+    const catEl = el('chart-inv-category');
+    if (catEl) {
+      const catLabels = D.inventory.category_labels || D.inventory.labels;
+      const catUnits  = D.inventory.category_units  || D.inventory.in_stock;
+      new Chart(catEl, {
+        type: 'bar',
+        data: {
+          labels: catLabels,
+          datasets: [{ label: 'Units', data: catUnits,
+            backgroundColor: [P.blue, P.green, P.violet, P.teal, P.amber, P.orange, P.sky, P.rose],
+            borderRadius: 4, borderSkipped: false }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { ...scales },
+        },
+      });
+    }
+  }
+
+  /* ── STOCK IN ───────────────────────────────────────────────────────────── */
+  if (TAB === 'stock') {
+    const skEl = el('chart-stock');
+    if (skEl && D.stock.labels.length) {
+      new Chart(skEl, {
+        type: 'bar',
+        data: {
+          labels: D.stock.labels,
+          datasets: [{ label: 'Units Received', data: D.stock.units,
+            backgroundColor: P.teal, borderRadius: 4 }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { ...scales },
+        },
+      });
+    }
+
+    const spEl = el('chart-stock-products');
+    if (spEl) {
+      const spLabels = D.stock.product_labels || D.inventory.labels.slice(0,8);
+      const spUnits  = D.stock.product_units  || D.stock.units.slice(0,8);
+      new Chart(spEl, {
+        type: 'bar',
+        data: {
+          labels: spLabels,
+          datasets: [{ label: 'Units Restocked', data: spUnits,
+            backgroundColor: P.sky, borderRadius: 4, borderSkipped: false }],
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ...scales.x, beginAtZero: true },
+            y: { grid: { display: false }, ticks: { color: txtCol } },
+          },
+        },
+      });
+    }
+  }
+
+  /* ── DEFECTS ────────────────────────────────────────────────────────────── */
+  if (TAB === 'defects') {
+    const origEl = el('chart-defects-origin');
+    if (origEl) {
+      new Chart(origEl, {
+        type: 'doughnut',
+        data: {
+          labels: D.defects.origin_labels,
+          datasets: [{ data: D.defects.origin_counts,
+            backgroundColor: [P.rose, P.amber], borderWidth: 0, hoverOffset: 6 }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '68%',
+          plugins: { legend: { position: 'bottom',
+            labels: { boxWidth: 10, padding: 14, color: txtCol } } },
+        },
+      });
+    }
+
+    const rsEl = el('chart-defects-reason');
+    if (rsEl && D.defects.reason_labels.length) {
+      new Chart(rsEl, {
+        type: 'bar',
+        data: {
+          labels: D.defects.reason_labels,
+          datasets: [{ label: 'Units', data: D.defects.reason_counts,
+            backgroundColor: P.violet, borderRadius: 4, borderSkipped: false }],
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ...scales.x, beginAtZero: true },
+            y: { grid: { display: false }, ticks: { color: txtCol } },
+          },
+        },
+      });
+    }
+
+    const supEl = el('chart-defects-supplier');
+    if (supEl) {
+      const supLabels = D.defects.supplier_labels || ['Loss','Same Item','Diff Item','Money','None','Pending'];
+      const supCounts = D.defects.supplier_counts || [0,0,0,0,0,0];
+      new Chart(supEl, {
+        type: 'doughnut',
+        data: {
+          labels: supLabels,
+          datasets: [{ data: supCounts,
+            backgroundColor: [P.red, P.green, P.teal, P.blue, P.orange, P.amber],
+            borderWidth: 0, hoverOffset: 6 }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '60%',
+          plugins: { legend: { position: 'bottom',
+            labels: { boxWidth: 10, padding: 10, color: txtCol } } },
+        },
+      });
+    }
+  }
+
+})();
+</script>
 {% endblock %}
