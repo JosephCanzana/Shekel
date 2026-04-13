@@ -333,25 +333,46 @@
      ╚═══════════════════════════════════════════════════════════════════╝ #}
   {% if active_tab == 'inventory' %}
 
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    {% set inv_cards = [
-      ('Total Products',  data.inventory.total_products|string, 'category',       'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20',   ''),
-      ('Total Units',     data.inventory.total_units|string,    'inventory_2',    'text-emerald-500','bg-emerald-50 dark:bg-emerald-900/20',''),
-      ('Low Stock',       data.inventory.low_stock|string,      'warning',        'text-amber-500',  'bg-amber-50 dark:bg-amber-900/20',  'text-amber-500'),
-      ('Out of Stock',    data.inventory.out_of_stock|string,   'do_not_disturb', 'text-red-500',    'bg-red-50 dark:bg-red-900/20',      'text-red-500'),
-    ] %}
-    {% for label, value, icon, icolor, ibg, vcolor in inv_cards %}
-    <div class="bg-surface border border-border rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
-        </span>
-        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+{# ── Inventory summary cards ── #}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  {% set inv_cards = [
+    ('Total Products',  data.inventory.total_products|string, 'category',       'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20',   ''),
+    ('Total Units',     data.inventory.total_units|string,    'inventory_2',    'text-emerald-500','bg-emerald-50 dark:bg-emerald-900/20',''),
+    ('Low Stock',       data.inventory.low_stock|string,      'warning',        'text-amber-500',  'bg-amber-50 dark:bg-amber-900/20',  'text-amber-500'),
+    ('Out of Stock',    data.inventory.out_of_stock|string,   'do_not_disturb', 'text-red-500',    'bg-red-50 dark:bg-red-900/20',      'text-red-500'),
+  ] %}
+  {% for label, value, icon, icolor, ibg, vcolor in inv_cards %}
+
+    {% if label == 'Total Products' %}
+      {# TODO ▶ Replace '#' with your products page URL, e.g. url_for('admin.products') #}
+      <a href="{{ url_for('inventory.index') }}"
+         class="bg-surface border border-border rounded-xl p-4 hover:border-border-strong transition-colors group block">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+          </span>
+          <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+        </div>
+        <p class="text-2xl font-semibold {{ vcolor if vcolor else 'text-txt-primary' }}">{{ value }}</p>
+        <p class="text-[10px] text-txt-muted mt-1 flex items-center gap-0.5 group-hover:text-blue-500 transition-colors">
+          View all <span class="material-symbols-outlined text-[11px]">arrow_forward</span>
+        </p>
+      </a>
+
+    {% else %}
+      <div class="bg-surface border border-border rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+          </span>
+          <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+        </div>
+        <p class="text-2xl font-semibold {{ vcolor if vcolor else 'text-txt-primary' }}">{{ value }}</p>
       </div>
-      <p class="text-2xl font-semibold {{ vcolor if vcolor else 'text-txt-primary' }}">{{ value }}</p>
-    </div>
-    {% endfor %}
-  </div>
+    {% endif %}
+
+  {% endfor %}
+</div>
 
   {# Inventory charts row #}
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -561,25 +582,45 @@
      ╚═══════════════════════════════════════════════════════════════════╝ #}
   {% if active_tab == 'defects' %}
 
-  {# Origin & volume cards #}
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    {% for label, value, icon, icolor, ibg in [
-      ('Total Records',   data.defects.total|string,           'report_problem',            'text-rose-500',   'bg-rose-50 dark:bg-rose-900/20'),
-      ('Total Units',     data.defects.total_units|string,     'production_quantity_limits', 'text-orange-500', 'bg-orange-50 dark:bg-orange-900/20'),
-      ('Customer Origin', data.defects.customer_origin|string, 'person',                    'text-violet-500', 'bg-violet-50 dark:bg-violet-900/20'),
-      ('In-Store Origin', data.defects.store_origin|string,    'store',                     'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20'),
-    ] %}
-    <div class="bg-surface border border-border rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
-        </span>
-        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+{# ── Defects summary cards ── #}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  {% for label, value, icon, icolor, ibg in [
+    ('Total Records',   data.defects.total|string,           'report_problem',            'text-rose-500',   'bg-rose-50 dark:bg-rose-900/20'),
+    ('Total Units',     data.defects.total_units|string,     'production_quantity_limits', 'text-orange-500', 'bg-orange-50 dark:bg-orange-900/20'),
+    ('Customer Origin', data.defects.customer_origin|string, 'person',                    'text-violet-500', 'bg-violet-50 dark:bg-violet-900/20'),
+    ('In-Store Origin', data.defects.store_origin|string,    'store',                     'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20'),
+  ] %}
+
+    {% if label == 'Total Records' %}
+      {# TODO ▶ Replace '#' with your defects page URL, e.g. url_for('admin.defects') #}
+      <a href="{{ url_for('defects.index') }}"
+         class="bg-surface border border-border rounded-xl p-4 hover:border-border-strong transition-colors group block">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+          </span>
+          <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+        </div>
+        <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
+        <p class="text-[10px] text-txt-muted mt-1 flex items-center gap-0.5 group-hover:text-rose-500 transition-colors">
+          View all <span class="material-symbols-outlined text-[11px]">arrow_forward</span>
+        </p>
+      </a>
+
+    {% else %}
+      <div class="bg-surface border border-border rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+          </span>
+          <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+        </div>
+        <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
       </div>
-      <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
-    </div>
-    {% endfor %}
-  </div>
+    {% endif %}
+
+  {% endfor %}
+</div>
 
   {# Loss breakdown cards — financial impact #}
   <div class="bg-surface border border-border rounded-xl p-4">

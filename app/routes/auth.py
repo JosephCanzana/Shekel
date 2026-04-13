@@ -75,7 +75,7 @@ def login():
             db.session.commit()
         try:
             if user.role == "superadmin":
-                return redirect(url_for("admin.dashboard"))
+                return redirect(url_for("superadmin.dashboard"))
             elif user.role == "admin":
                 return redirect(url_for("admin.dashboard"))
             elif user.role == "cashier":
@@ -146,7 +146,7 @@ def account_activation(user_id):
         db.session.commit()
 
         if user.role == "superadmin":
-            return redirect(url_for("admin.dashboard"))
+            return redirect(url_for("superadmin.dashboard"))
         elif user.role == "admin":
             return redirect(url_for("admin.dashboard"))
         elif user.role == "cashier":

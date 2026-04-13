@@ -778,6 +778,9 @@
   .min-w-\[16px\] {
     min-width: 16px;
   }
+  .min-w-\[200px\] {
+    min-width: 200px;
+  }
   .min-w-full {
     min-width: 100%;
   }
@@ -1969,6 +1972,13 @@
     &:is(:where(.group):hover *) {
       @media (hover: hover) {
         color: var(--color-blue-500);
+      }
+    }
+  }
+  .group-hover\:text-rose-500 {
+    &:is(:where(.group):hover *) {
+      @media (hover: hover) {
+        color: var(--color-rose-500);
       }
     }
   }

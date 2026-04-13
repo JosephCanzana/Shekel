@@ -1,0 +1,629 @@
+{% extends "base.html" %}
+{% block title %}Users — Superadmin{% endblock %}
+{% block nav_title %}User Management{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<div x-data="userDashboard()" x-init="init()" class="space-y-4">
+
+  {# ══ GREETING ══════════════════════════════════════════════════════════════ #}
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-semibold" style="color: var(--color-txt-primary);">
+        Good {{ time_of_day }}, {{ current_user.first_name.title() }}
+      </h1>
+      <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+        Manage all system users and their access
+      </p>
+    </div>
+    <a href="{{ url_for('manage_users.add') }}"
+       class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-opacity hover:opacity-90"
+       style="background: var(--color-txt-primary); color: var(--color-bg);">
+      <span class="material-symbols-outlined text-[16px]">person_add</span>
+      New User
+    </a>
+  </div>
+
+  {# ══ STAT CARDS ════════════════════════════════════════════════════════════ #}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+    <div class="rounded-xl p-4 border" style="background: var(--color-surface); border-color: var(--color-border);">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style="background: color-mix(in srgb, var(--color-accent) 10%, transparent);">
+          <span class="material-symbols-outlined text-[18px]" style="color: var(--color-accent);">group</span>
+        </span>
+        <p class="text-xs font-medium uppercase tracking-wide" style="color: var(--color-txt-muted);">Total Users</p>
+      </div>
+      <p class="text-2xl font-semibold" style="color: var(--color-txt-primary);" x-text="stats.total"></p>
+    </div>
+
+    <div class="rounded-xl p-4 border" style="background: var(--color-surface); border-color: var(--color-border);">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style="background: color-mix(in srgb, var(--color-success) 10%, transparent);">
+          <span class="material-symbols-outlined text-[18px]" style="color: var(--color-success);">check_circle</span>
+        </span>
+        <p class="text-xs font-medium uppercase tracking-wide" style="color: var(--color-txt-muted);">Active</p>
+      </div>
+      <p class="text-2xl font-semibold" style="color: var(--color-txt-primary);" x-text="stats.active"></p>
+    </div>
+
+    <div class="rounded-xl p-4 border" style="background: var(--color-surface); border-color: var(--color-border);">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style="background: color-mix(in srgb, var(--color-warning) 10%, transparent);">
+          <span class="material-symbols-outlined text-[18px]" style="color: var(--color-warning);">block</span>
+        </span>
+        <p class="text-xs font-medium uppercase tracking-wide" style="color: var(--color-txt-muted);">Suspended</p>
+      </div>
+      <p class="text-2xl font-semibold" style="color: var(--color-txt-primary);" x-text="stats.suspended"></p>
+    </div>
+
+    <div class="rounded-xl p-4 border" style="background: var(--color-surface); border-color: var(--color-border);">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style="background: color-mix(in srgb, var(--color-txt-muted) 10%, transparent);">
+          <span class="material-symbols-outlined text-[18px]" style="color: var(--color-txt-muted);">archive</span>
+        </span>
+        <p class="text-xs font-medium uppercase tracking-wide" style="color: var(--color-txt-muted);">Archived</p>
+      </div>
+      <p class="text-2xl font-semibold" style="color: var(--color-txt-primary);" x-text="stats.archived"></p>
+    </div>
+
+  </div>
+
+  {# ══ ROLE BREAKDOWN PILLS ══════════════════════════════════════════════════ #}
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <template x-for="r in roleStats" :key="r.role">
+      <button @click="filterRole = (filterRole === r.role ? 'all' : r.role); currentPage = 1"
+              class="rounded-xl p-3 border text-left transition-all"
+              :style="filterRole === r.role
+                ? `background: color-mix(in srgb, ${r.color} 10%, transparent); border-color: ${r.color};`
+                : 'background: var(--color-surface); border-color: var(--color-border);'">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-medium capitalize" style="color: var(--color-txt-muted);" x-text="r.role"></p>
+          <span class="material-symbols-outlined text-[14px]" :style="`color: ${r.color}`" x-text="r.icon"></span>
+        </div>
+        <p class="text-xl font-semibold mt-1" style="color: var(--color-txt-primary);" x-text="r.count"></p>
+      </button>
+    </template>
+  </div>
+
+  {# ══ CHARTS ROW ════════════════════════════════════════════════════════════ #}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+    {# Users by Role doughnut #}
+    <div class="rounded-xl border p-4" style="background: var(--color-surface); border-color: var(--color-border);">
+      <p class="text-sm font-semibold mb-3" style="color: var(--color-txt-primary);">Users by Role</p>
+      <div style="position:relative; height:200px;">
+        <canvas id="chart-role"></canvas>
+      </div>
+    </div>
+
+    {# Users by Status doughnut #}
+    <div class="rounded-xl border p-4" style="background: var(--color-surface); border-color: var(--color-border);">
+      <p class="text-sm font-semibold mb-3" style="color: var(--color-txt-primary);">Users by Status</p>
+      <div style="position:relative; height:200px;">
+        <canvas id="chart-status"></canvas>
+      </div>
+    </div>
+
+    {# Role × Status stacked bar #}
+    <div class="rounded-xl border p-4" style="background: var(--color-surface); border-color: var(--color-border);">
+      <p class="text-sm font-semibold mb-3" style="color: var(--color-txt-primary);">Status Breakdown by Role</p>
+      <div style="position:relative; height:200px;">
+        <canvas id="chart-role-status"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  {# ══ GROWTH CHART (only rendered if created_at is in users_json) ═══════════ #}
+  <template x-if="hasGrowthData">
+    <div class="rounded-xl border p-4" style="background: var(--color-surface); border-color: var(--color-border);">
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-sm font-semibold" style="color: var(--color-txt-primary);">User Registrations Over Time</p>
+        <div class="flex items-center gap-1 rounded-lg p-0.5 border text-[11px]"
+             style="background: var(--color-bg); border-color: var(--color-border);">
+          <template x-for="opt in [{label:'30d',val:'30d'},{label:'90d',val:'90d'},{label:'All',val:'all'}]" :key="opt.val">
+            <button @click="growthRange = opt.val; renderGrowthChart()"
+                    class="px-2.5 py-1 rounded-md transition-all"
+                    :style="growthRange === opt.val
+                      ? 'background: var(--color-surface); color: var(--color-txt-primary); font-weight:600;'
+                      : 'color: var(--color-txt-muted);'"
+                    x-text="opt.label"></button>
+          </template>
+        </div>
+      </div>
+      <div style="position:relative; height:180px;">
+        <canvas id="chart-growth"></canvas>
+      </div>
+    </div>
+  </template>
+
+  {# ══ SEARCH + FILTERS ══════════════════════════════════════════════════════ #}
+  <div class="flex flex-wrap items-center gap-2">
+
+    <div class="relative flex-1 min-w-[200px]">
+      <span class="material-symbols-outlined text-[16px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+            style="color: var(--color-txt-muted);">search</span>
+      <input type="text" x-model="search" placeholder="Search by name or ID…"
+             @input="currentPage = 1"
+             class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border outline-none transition-colors"
+             style="background: var(--color-bg); border-color: var(--color-border); color: var(--color-txt-primary);"
+             onfocus="this.style.borderColor='var(--color-border-strong)'"
+             onblur="this.style.borderColor='var(--color-border)'">
+    </div>
+
+    <select x-model="filterStatus" @change="currentPage = 1"
+            class="text-sm rounded-lg border px-3 py-2 outline-none"
+            style="background: var(--color-bg); border-color: var(--color-border); color: var(--color-txt-primary);">
+      <option value="all">All Statuses</option>
+      <option value="activated">Active</option>
+      <option value="not_activated">Not Activated</option>
+      <option value="suspended">Suspended</option>
+      <option value="archived">Archived</option>
+    </select>
+
+    <template x-if="search || filterRole !== 'all' || filterStatus !== 'all'">
+      <button @click="search = ''; filterRole = 'all'; filterStatus = 'all'; currentPage = 1"
+              class="flex items-center gap-1 px-3 py-2 text-xs rounded-lg border transition-colors"
+              style="border-color: var(--color-border); color: var(--color-txt-muted);"
+              onmouseover="this.style.borderColor='var(--color-border-strong)'; this.style.color='var(--color-txt-primary)'"
+              onmouseout="this.style.borderColor='var(--color-border)'; this.style.color='var(--color-txt-muted)'">
+        <span class="material-symbols-outlined text-[14px]">close</span>
+        Clear
+      </button>
+    </template>
+
+    <p class="text-xs ml-auto" style="color: var(--color-txt-muted);">
+      <span x-text="filtered.length"></span> user<span x-text="filtered.length !== 1 ? 's' : ''"></span>
+    </p>
+
+  </div>
+
+  {# ══ USER TABLE ════════════════════════════════════════════════════════════ #}
+  <div class="rounded-xl border overflow-hidden"
+       style="background: var(--color-surface); border-color: var(--color-border);">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr style="background: var(--color-bg); border-bottom: 1px solid var(--color-border);">
+            <th class="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide" style="color: var(--color-txt-muted);">ID</th>
+            <th class="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide" style="color: var(--color-txt-muted);">First Name</th>
+            <th class="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide" style="color: var(--color-txt-muted);">Last Name</th>
+            <th class="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide" style="color: var(--color-txt-muted);">Role</th>
+            <th class="text-left px-4 py-2.5 text-xs font-semibold uppercase tracking-wide" style="color: var(--color-txt-muted);">Status</th>
+            <th class="text-right px-4 py-2.5 text-xs font-semibold uppercase tracking-wide" style="color: var(--color-txt-muted);">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <template x-if="filtered.length === 0">
+            <tr>
+              <td colspan="6" class="px-4 py-14 text-center" style="color: var(--color-txt-muted);">
+                <span class="material-symbols-outlined text-[40px] block mb-2"
+                      style="color: var(--color-border-strong);">person_off</span>
+                No users match your search.
+              </td>
+            </tr>
+          </template>
+
+          <template x-for="user in paginated" :key="user.user_id">
+            <tr style="border-top: 1px solid var(--color-border);"
+                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                onmouseout="this.style.backgroundColor='transparent'">
+
+              <td class="px-4 py-3 text-xs font-mono" style="color: var(--color-txt-muted);" x-text="user.user_id"></td>
+              <td class="px-4 py-3 font-medium" style="color: var(--color-txt-primary);" x-text="titleCase(user.first_name)"></td>
+              <td class="px-4 py-3" style="color: var(--color-txt-secondary);" x-text="titleCase(user.last_name)"></td>
+
+              <td class="px-4 py-3">
+                <span class="px-2.5 py-1 rounded-full text-xs font-medium capitalize"
+                      :style='user.role === "superadmin" ? "background:color-mix(in srgb,var(--color-accent) 12%,transparent);color:var(--color-accent)"   :
+                              user.role === "admin"      ? "background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info)"        :
+                              user.role === "cashier"    ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"  :
+                                                           "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"'
+                      x-text="user.role"></span>
+              </td>
+
+              <td class="px-4 py-3">
+                <span class="px-2.5 py-1 rounded-full text-xs font-medium"
+                      :style='user.status === "activated"     ? "background:color-mix(in srgb,var(--color-success) 12%,transparent);color:var(--color-success)"   :
+                              user.status === "not_activated" ? "background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning)"   :
+                              user.status === "suspended"     ? "background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error)"       :
+                                                                "background:color-mix(in srgb,var(--color-txt-muted) 12%,transparent);color:var(--color-txt-muted)"'
+                      x-text="user.status.replace('_', ' ')"></span>
+              </td>
+
+              <td class="px-4 py-3">
+                <div class="flex items-center justify-end gap-1">
+
+                  {# Active non-superadmin #}
+                  <template x-if="user.status !== 'archived' && user.role !== 'superadmin'">
+                    <div class="flex items-center gap-1">
+                      <a :href="`/admin/users/${user.user_id}/edit`" title="Edit"
+                         class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                         style="color: var(--color-txt-muted);"
+                         onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-accent)'"
+                         onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                      </a>
+                      <button @click='$dispatch("confirm", {
+                                  title:   "Reset Password",
+                                  message: `Reset password for ${user.first_name} ${user.last_name}?`,
+                                  action:  `/admin/users/${user.user_id}/reset_password`,
+                                  fields:  []
+                              })'
+                              title="Reset password"
+                              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                              style="color: var(--color-txt-muted);"
+                              onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-info)'"
+                              onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                        <span class="material-symbols-outlined text-[18px]">lock_reset</span>
+                      </button>
+                      <button @click='$dispatch("confirm", {
+                                  title:   user.status === "suspended" ? "Unsuspend User" : "Suspend User",
+                                  message: user.status === "suspended"
+                                      ? `Restore access for ${user.first_name}?`
+                                      : `Suspend ${user.first_name}? They will lose access.`,
+                                  action:  `/admin/users/${user.user_id}/status_update`,
+                                  fields:  [{ name: "status", value: user.status === "suspended" ? "activated" : "suspended" }]
+                              })'
+                              :title='user.status === "suspended" ? "Unsuspend" : "Suspend"'
+                              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                              style="color: var(--color-txt-muted);"
+                              onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-warning)'"
+                              onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                        <span class="material-symbols-outlined text-[18px]"
+                              x-text='user.status === "suspended" ? "lock_open" : "block"'></span>
+                      </button>
+                      <button @click='$dispatch("confirm", {
+                                  title:   "Archive User",
+                                  message: `Archive ${user.first_name}? This will deactivate their account.`,
+                                  action:  `/admin/users/${user.user_id}/status_update`,
+                                  fields:  [{ name: "status", value: "archived" }]
+                              })'
+                              title="Archive"
+                              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                              style="color: var(--color-txt-muted);"
+                              onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-error)'"
+                              onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                        <span class="material-symbols-outlined text-[18px]">archive</span>
+                      </button>
+                    </div>
+                  </template>
+
+                  {# Superadmin row — no actions #}
+                  <template x-if="user.role === 'superadmin' && user.status !== 'archived'">
+                    <span class="text-xs px-2" style="color: var(--color-txt-muted);">—</span>
+                  </template>
+
+                  {# Archived row #}
+                  <template x-if="user.status === 'archived'">
+                    <div class="flex items-center gap-1">
+                      <button @click='$dispatch("confirm", {
+                                  title:   "Unarchive User",
+                                  message: `Restore ${user.first_name}?`,
+                                  action:  `/admin/users/${user.user_id}/status_update`,
+                                  fields:  [{ name: "status", value: "not_activated" }]
+                              })'
+                              title="Unarchive"
+                              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                              style="color: var(--color-txt-muted);"
+                              onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-warning)'"
+                              onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                        <span class="material-symbols-outlined text-[18px]">unarchive</span>
+                      </button>
+                      <button @click='$dispatch("confirm", {
+                                  title:   "Delete User",
+                                  message: `Permanently delete ${user.first_name} ${user.last_name}? This cannot be undone.`,
+                                  action:  `/admin/users/${user.user_id}/delete`,
+                                  fields:  []
+                              })'
+                              title="Delete permanently"
+                              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                              style="color: var(--color-txt-muted);"
+                              onmouseover="this.style.backgroundColor='var(--color-surface-alt)'; this.style.color='var(--color-error)'"
+                              onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--color-txt-muted)'">
+                        <span class="material-symbols-outlined text-[18px]">delete_forever</span>
+                      </button>
+                    </div>
+                  </template>
+
+                </div>
+              </td>
+            </tr>
+          </template>
+
+        </tbody>
+      </table>
+    </div>
+
+    {# Pagination #}
+    <div x-show="totalPages > 1"
+         class="flex items-center justify-between px-4 py-3 border-t"
+         style="border-color: var(--color-border);">
+      <p class="text-xs" style="color: var(--color-txt-muted);">
+        Page <span x-text="currentPage"></span> of <span x-text="totalPages"></span>
+        &mdash; <span x-text="filtered.length"></span> results
+      </p>
+      <div class="flex items-center gap-1">
+        <button @click="currentPage = Math.max(1, currentPage - 1)"
+                :disabled="currentPage === 1"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-30"
+                style="color: var(--color-txt-muted);"
+                onmouseover="if(!this.disabled){this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)';}"
+                onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
+          <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+        </button>
+        <template x-for="p in pageNumbers" :key="p">
+          <button @click="p !== '…' && (currentPage = p)"
+                  class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium transition-colors"
+                  :style="p === currentPage
+                    ? 'background: var(--color-txt-primary); color: var(--color-bg);'
+                    : 'color: var(--color-txt-muted);'"
+                  :class="p === '…' ? 'cursor-default' : ''"
+                  x-text="p"></button>
+        </template>
+        <button @click="currentPage = Math.min(totalPages, currentPage + 1)"
+                :disabled="currentPage === totalPages"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-30"
+                style="color: var(--color-txt-muted);"
+                onmouseover="if(!this.disabled){this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)';}"
+                onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
+          <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+function userDashboard() {
+  const ALL_USERS = {{ users_json | safe }};
+  const PER_PAGE  = 15;
+
+  const dark    = document.documentElement.classList.contains('dark');
+  const gridCol = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const txtCol  = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.40)';
+
+  Chart.defaults.font.family = 'inherit';
+  Chart.defaults.font.size   = 11;
+  Chart.defaults.color       = txtCol;
+
+  const P = {
+    info:    'rgba(59,130,246,0.85)',
+    success: 'rgba(16,185,129,0.85)',
+    warning: 'rgba(245,158,11,0.85)',
+    error:   'rgba(239,68,68,0.85)',
+    violet:  'rgba(139,92,246,0.85)',
+    muted:   'rgba(148,163,184,0.75)',
+  };
+
+  let growthChart = null;
+
+  return {
+    users:        ALL_USERS,
+    search:       '',
+    filterRole:   'all',
+    filterStatus: 'all',
+    currentPage:  1,
+    growthRange:  '30d',
+
+    init() {
+      this.$nextTick(() => {
+        this.renderRoleChart();
+        this.renderStatusChart();
+        this.renderRoleStatusChart();
+        if (this.hasGrowthData) this.$nextTick(() => this.renderGrowthChart());
+      });
+    },
+
+    titleCase(str) {
+      if (!str) return '';
+      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    },
+
+    /* ── Stats ──────────────────────────────────────────────────────────── */
+    get stats() {
+      return {
+        total:     this.users.length,
+        active:    this.users.filter(u => u.status === 'activated').length,
+        suspended: this.users.filter(u => u.status === 'suspended').length,
+        archived:  this.users.filter(u => u.status === 'archived').length,
+      };
+    },
+
+    get roleStats() {
+      return [
+        { role: 'admin',    icon: 'manage_accounts', color: 'var(--color-info)',    count: this.users.filter(u => u.role === 'admin').length },
+        { role: 'cashier',  icon: 'point_of_sale',   color: 'var(--color-success)', count: this.users.filter(u => u.role === 'cashier').length },
+        { role: 'stocking', icon: 'inventory_2',     color: 'var(--color-warning)', count: this.users.filter(u => u.role === 'stocking').length },
+      ];
+    },
+
+    get hasGrowthData() {
+      return this.users.some(u => u.created_at);
+    },
+
+    /* ── Filtering ──────────────────────────────────────────────────────── */
+    get filtered() {
+      const q = this.search.toLowerCase().trim();
+      return this.users.filter(u => {
+        if (u.role === 'superadmin')                                        return false;
+        if (this.filterRole   !== 'all' && u.role   !== this.filterRole)   return false;
+        if (this.filterStatus !== 'all' && u.status !== this.filterStatus) return false;
+        if (q && !`${u.first_name} ${u.last_name} ${u.user_id}`.toLowerCase().includes(q)) return false;
+        return true;
+      });
+    },
+
+    /* ── Pagination ─────────────────────────────────────────────────────── */
+    get totalPages() {
+      return Math.max(1, Math.ceil(this.filtered.length / PER_PAGE));
+    },
+    get paginated() {
+      const s = (this.currentPage - 1) * PER_PAGE;
+      return this.filtered.slice(s, s + PER_PAGE);
+    },
+    get pageNumbers() {
+      const total = this.totalPages, cur = this.currentPage;
+      if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+      const pages = [1];
+      if (cur > 3) pages.push('…');
+      for (let p = Math.max(2, cur - 1); p <= Math.min(total - 1, cur + 1); p++) pages.push(p);
+      if (cur < total - 2) pages.push('…');
+      pages.push(total);
+      return pages;
+    },
+
+    /* ── Charts ─────────────────────────────────────────────────────────── */
+    renderRoleChart() {
+      const el = document.getElementById('chart-role');
+      if (!el) return;
+      const ns     = this.users.filter(u => u.role !== 'superadmin');
+      const roles  = ['admin', 'cashier', 'stocking'];
+      new Chart(el, {
+        type: 'doughnut',
+        data: {
+          labels: ['Admin', 'Cashier', 'Stocking'],
+          datasets: [{
+            data: roles.map(r => ns.filter(u => u.role === r).length),
+            backgroundColor: [P.info, P.success, P.warning],
+            borderWidth: 0, hoverOffset: 6,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '65%',
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, color: txtCol } } },
+        },
+      });
+    },
+
+    renderStatusChart() {
+      const el = document.getElementById('chart-status');
+      if (!el) return;
+      const ns = this.users.filter(u => u.role !== 'superadmin');
+      new Chart(el, {
+        type: 'doughnut',
+        data: {
+          labels: ['Active', 'Not Activated', 'Suspended', 'Archived'],
+          datasets: [{
+            data: ['activated','not_activated','suspended','archived'].map(s => ns.filter(u => u.status === s).length),
+            backgroundColor: [P.success, P.warning, P.error, P.muted],
+            borderWidth: 0, hoverOffset: 6,
+          }],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '65%',
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, color: txtCol } } },
+        },
+      });
+    },
+
+    renderRoleStatusChart() {
+      const el = document.getElementById('chart-role-status');
+      if (!el) return;
+      const roles    = ['admin', 'cashier', 'stocking'];
+      const statuses = [
+        { key: 'activated',     label: 'Active',        color: P.success },
+        { key: 'not_activated', label: 'Not Activated', color: P.warning },
+        { key: 'suspended',     label: 'Suspended',     color: P.error   },
+        { key: 'archived',      label: 'Archived',      color: P.muted   },
+      ];
+      new Chart(el, {
+        type: 'bar',
+        data: {
+          labels: ['Admin', 'Cashier', 'Stocking'],
+          datasets: statuses.map(s => ({
+            label:           s.label,
+            data:            roles.map(r => this.users.filter(u => u.role === r && u.status === s.key).length),
+            backgroundColor: s.color,
+            borderRadius:    4,
+            borderSkipped:   false,
+          })),
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, color: txtCol } } },
+          scales: {
+            x: { stacked: true, grid: { color: gridCol }, ticks: { color: txtCol } },
+            y: { stacked: true, grid: { color: gridCol }, ticks: { color: txtCol }, beginAtZero: true },
+          },
+        },
+      });
+    },
+
+    renderGrowthChart() {
+      const el = document.getElementById('chart-growth');
+      if (!el) return;
+      if (growthChart) { growthChart.destroy(); growthChart = null; }
+
+      const now    = new Date();
+      const days   = this.growthRange === '30d' ? 30 : this.growthRange === '90d' ? 90 : 365;
+      const cutoff = new Date(now);
+      cutoff.setDate(cutoff.getDate() - days);
+      const fmt = d => d.toISOString().slice(0, 10);
+
+      /* Daily registration counts within range */
+      const map = {};
+      for (let d = new Date(cutoff); d <= now; d.setDate(d.getDate() + 1)) map[fmt(new Date(d))] = 0;
+      this.users.forEach(u => {
+        if (!u.created_at) return;
+        const day = u.created_at.slice(0, 10);
+        if (map[day] !== undefined) map[day]++;
+      });
+
+      /* Running cumulative total from before cutoff */
+      const baseline   = this.users.filter(u => u.created_at && u.created_at.slice(0, 10) < fmt(cutoff)).length;
+      const labels     = Object.keys(map).sort();
+      let running      = baseline;
+      const cumulative = labels.map(d => { running += map[d]; return running; });
+      const daily      = labels.map(d => map[d]);
+
+      growthChart = new Chart(el, {
+        data: {
+          labels,
+          datasets: [
+            {
+              type: 'line', label: 'Total Users',
+              data: cumulative,
+              borderColor: P.violet, backgroundColor: 'rgba(139,92,246,0.08)',
+              fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 4,
+              yAxisID: 'y', order: 1,
+            },
+            {
+              type: 'bar', label: 'New Registrations',
+              data: daily,
+              backgroundColor: P.success,
+              borderRadius: 3,
+              yAxisID: 'y2', order: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14, color: txtCol } } },
+          scales: {
+            x:  { grid: { display: false }, ticks: { color: txtCol, maxTicksLimit: 8 } },
+            y:  { position: 'left',  grid: { color: gridCol }, ticks: { color: txtCol }, beginAtZero: false },
+            y2: { position: 'right', grid: { display: false }, ticks: { color: txtCol }, beginAtZero: true },
+          },
+        },
+      });
+    },
+  };
+}
+</script>
+{% endblock %}

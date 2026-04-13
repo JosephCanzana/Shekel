@@ -102,14 +102,6 @@
 
       <span class="w-px h-4 bg-border mx-0.5"></span>
 
-      {# Stock-in shortcut — only shown on stock tab #}
-      {% if active_tab == 'stock' %}
-      <a href="{{ url_for('stocking.stock_in') }}"
-         class="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-full bg-txt-primary text-bg
-                font-medium hover:opacity-90 transition-all">
-        <span class="material-symbols-outlined text-[12px]">add</span> New Stock-In
-      </a>
-      {% endif %}
     </div>
   </div>
 

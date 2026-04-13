@@ -61,6 +61,9 @@ def create_app(test_config=None):
     from app.routes.admin import admin_bp
     app.register_blueprint(admin_bp)
 
+    from app.routes.superadmin import superadmin_bp
+    app.register_blueprint(superadmin_bp)
+
     from app.routes.cashier import cashier_bp
     app.register_blueprint(cashier_bp)
 
