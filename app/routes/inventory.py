@@ -25,10 +25,16 @@ inventory_bp = Blueprint("inventory", __name__, url_prefix="/inventory")
 def index():
     products      = Product.query.order_by(Product.created_at.desc()).all()
     products_data = [p.to_dict() for p in products]
+
+    submitted_items = []
+    if is_admin_or_coadmin():
+        submitted_items = StockAdjustmentRequest.query.filter_by(status="pending").all()
+
     return render_template("inventory/index.html",
-                           products=products,
-                           products_data=products_data,
-                           can_manage=is_admin_or_coadmin())
+        products=products,
+        products_data=products_data,
+        can_manage=is_admin_or_coadmin(),
+        submitted_items=submitted_items)
 
 
 @inventory_bp.route("/add", methods=["GET", "POST"])

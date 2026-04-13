@@ -315,7 +315,7 @@ def complete():
         audit(
             "INSERT",
             "Stock_In",
-            f"Stock-in request #{req.batch_id} submitted by {current_user.full_name} with {len(items)} items",
+            f"Stock-in request #{req.request_id} submitted by {current_user.full_name} with {len(items)} items",
             reference_id=req.request_id,
             reference_table="StockAdjustmentRequest",
             user_id=current_user.user_id
