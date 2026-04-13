@@ -41,3 +41,7 @@
 > npm install alpinejs
 2. Verify Installation
 > ls node_modules | grep alpinejs
+
+## Mysql
+1. schema
+> mysqldump -u username -p --no-data db_name > schema.sql

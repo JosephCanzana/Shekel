@@ -3,6 +3,8 @@ import json
 from collections import Counter, defaultdict
 from datetime import datetime, date as _date
 
+from collections import Counter, defaultdict
+
 from flask import (
     Blueprint, render_template, request,
     jsonify, url_for, send_file, redirect
@@ -49,27 +51,34 @@ def _serialize_exchange_items(detail):
 @role_required("superadmin", "admin")
 def dashboard():
     date_from, date_to, date_from_str, date_to_str = _parse_date_range()
-    active_tab = request.args.get("tab", "sales")
+    active_tab = request.args.get("tab",  "sales")
     page       = request.args.get("page", 1, type=int)
-
+ 
     data       = _build_report_data(date_from, date_to)
     chart_json = json.dumps(_build_chart_data(data))
     stats      = get_admin_stats()
-
-    pending = StockAdjustmentRequest.query \
-        .filter_by(status="pending") \
-        .order_by(StockAdjustmentRequest.submitted_at.asc()) \
-        .limit(3).all()
-
+ 
+    pending = (
+        StockAdjustmentRequest.query
+        .filter_by(status="pending")
+        .order_by(StockAdjustmentRequest.submitted_at.asc())
+        .limit(3)
+        .all()
+    )
+ 
+    # ── Detail rows (paginated table per tab) ─────────────────────────────────
+    # Sales tab: paginate the *daily* breakdown (not hourly).
+    # The template's breakdown table should iterate detail.rows;
+    # for single-day it falls through to data.sales.hourly in the Jinja block.
     if active_tab == "inventory":
         detail = _paginate_list(data["inventory"]["rows"], page)
     elif active_tab == "stock":
         detail = _paginate_list(data["stock"]["rows"], page)
     elif active_tab == "defects":
         detail = _paginate_list(data["defects"]["rows"], page)
-    else:
+    else:  # sales — paginate daily breakdown for the table
         detail = _paginate_list(list(data["sales"]["daily"]), page)
-
+ 
     return render_template(
         "admin/reports.html",
         time_of_day              = get_time_of_day(),
@@ -84,7 +93,6 @@ def dashboard():
         defects                  = get_defects(),
         pending_requests_preview = [r.to_dict() for r in pending],
     )
-
 
 # ── Approval page ─────────────────────────────────────────────────────────────
 @admin_bp.route("/requests")
@@ -516,12 +524,12 @@ def export_audit_logs():
 
 def _paginate_list(lst, page, per_page=25):
     """Slice a plain Python list into a pagination dict."""
-    total    = len(lst)
-    pages    = max(1, (total + per_page - 1) // per_page)
-    page     = max(1, min(page, pages))
-    start    = (page - 1) * per_page
+    total  = len(lst)
+    pages  = max(1, (total + per_page - 1) // per_page)
+    page   = max(1, min(page, pages))
+    start  = (page - 1) * per_page
     return {
-        "rows":     lst[start: start + per_page],
+        "rows":     lst[start : start + per_page],
         "total":    total,
         "page":     page,
         "pages":    pages,
@@ -531,71 +539,111 @@ def _paginate_list(lst, page, per_page=25):
         "prev_num": page - 1,
         "next_num": page + 1,
     }
+ 
+ 
+def _parse_date_range():
+    """Return (date_from, date_to, date_from_str, date_to_str).
+    Defaults to *today* (Philippine time converted to UTC for queries).
+    """
+    today   = datetime.utcnow().date()
+    dfrom_s = request.args.get("date_from", today.isoformat())
+    dto_s   = request.args.get("date_to",   today.isoformat())
+ 
+    try:
+        dfrom = datetime.strptime(dfrom_s, "%Y-%m-%d").replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+    except ValueError:
+        dfrom   = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        dfrom_s = dfrom.date().isoformat()
+ 
+    try:
+        dto = datetime.strptime(dto_s, "%Y-%m-%d").replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        )
+    except ValueError:
+        dto   = datetime.utcnow().replace(hour=23, minute=59, second=59)
+        dto_s = dto.date().isoformat()
+ 
+    return dfrom, dto, dfrom_s, dto_s
 
 
 def _build_chart_data(data):
     """
     Produce JSON-serialisable dicts consumed by Chart.js in reports.html.
-    All Decimal / date values are cast to native Python types here.
+ 
+    Key naming contract (must match the JS in reports.html):
+        D.sales.labels / revenue / transactions / cost / profit   ← daily arrays
+        D.sales.hourly_labels / hourly_revenue / hourly_txn /     ← hourly arrays
+                hourly_cost / hourly_profit                         (flat, not nested)
+        D.top_products.labels / units
+        D.inventory.labels / in_stock / defective / threshold
+        D.inventory.category_labels / category_units              ← units by category
+        D.inventory.status_ok / status_low / status_out           ← individual counts
+        D.stock.labels / units / product_labels / product_units
+        D.defects.origin_labels / origin_counts
+        D.defects.reason_labels / reason_counts
+        D.defects.supplier_labels / supplier_counts
     """
+ 
     # ── Sales ─────────────────────────────────────────────────────────────────
-    # Reverse so chart x-axis runs oldest → newest
-    daily_asc = list(reversed(list(data["sales"]["daily"])))
+    daily_asc = list(reversed(data["sales"]["daily"]))  # oldest → newest
+    hourly    = data["sales"]["hourly"]                  # [] for multi-day
+ 
     sales_chart = {
-        "labels":       [r["date"]         for r in daily_asc],
-        "revenue":      [r["total"]         for r in daily_asc],
-        "transactions": [r["transactions"]  for r in daily_asc],
-        "cost":         [r["cost"]          for r in daily_asc],
-        "profit":       [r["profit"]        for r in daily_asc],
+        # Daily arrays (multi-day view)
+        "labels":       [r["date"]        for r in daily_asc],
+        "revenue":      [r["total"]        for r in daily_asc],
+        "transactions": [r["transactions"] for r in daily_asc],
+        "cost":         [r["cost"]         for r in daily_asc],
+        "profit":       [r["profit"]       for r in daily_asc],
+        # Flat hourly arrays (single-day view) — named so JS can read them as
+        # D.sales.hourly_labels etc. without a nested object
+        "hourly_labels":  [f"{r['hour']:02d}:00" for r in hourly],
+        "hourly_revenue": [r["total"]             for r in hourly],
+        "hourly_txn":     [r["transactions"]      for r in hourly],
+        "hourly_cost":    [r["cost"]              for r in hourly],
+        "hourly_profit":  [r["profit"]            for r in hourly],
     }
-
-    # Hourly breakdown (populated only for single-day range)
-    hourly_rows = data["sales"].get("hourly", [])
-    sales_chart["hourly"] = {
-        "labels":       [f"{r['hour']:02d}:00" for r in hourly_rows],
-        "revenue":      [r["total"]             for r in hourly_rows],
-        "transactions": [r["transactions"]      for r in hourly_rows],
-        "cost":         [r["cost"]              for r in hourly_rows],
-        "profit":       [r["profit"]            for r in hourly_rows],
-    }
-
+ 
     top_products_chart = {
         "labels":  [r.product_name[:22].capitalize() for r in data["sales"]["top_products"]],
-        "units":   [int(r.units_sold or 0)           for r in data["sales"]["top_products"]],
-        "revenue": [float(r.revenue or 0)            for r in data["sales"]["top_products"]],
+        "units":   [int(r.units_sold or 0)            for r in data["sales"]["top_products"]],
+        "revenue": [float(r.revenue  or 0)            for r in data["sales"]["top_products"]],
     }
-
+ 
     # ── Inventory ─────────────────────────────────────────────────────────────
+    # Top 12 products by available stock
     inv_sorted = sorted(
         data["inventory"]["rows"],
         key=lambda x: x[1].quantity_available,
         reverse=True,
     )[:12]
+ 
     inv_chart = {
         "labels":    [p.product_name[:22].capitalize() for p, inv, _ in inv_sorted],
         "in_stock":  [inv.quantity_available            for _, inv, _ in inv_sorted],
-        "defective": [inv.quantity_defective or 0       for _, inv, _ in inv_sorted],
+        "defective": [(inv.quantity_defective or 0)     for _, inv, _ in inv_sorted],
         "threshold": [p.low_reorder_threshold           for p, _, _ in inv_sorted],
     }
-
-    # Category breakdown
-    cat_counter: Counter = Counter()
+ 
+    # Category breakdown — units by category (used by D.inventory.category_*)
+    cat_units: Counter = Counter()
     for p, inv, cat in data["inventory"]["rows"]:
         label = cat.category_name.capitalize() if cat else "Uncategorised"
-        cat_counter[label] += inv.quantity_available
-    inv_chart["category_labels"] = [k for k, _ in cat_counter.most_common()]
-    inv_chart["category_counts"] = [v for _, v in cat_counter.most_common()]
-
-    # Status counts
-    ok_count  = sum(
-        1 for p, inv, _ in data["inventory"]["rows"]
+        cat_units[label] += inv.quantity_available
+    inv_chart["category_labels"] = [k for k, _ in cat_units.most_common()]
+    inv_chart["category_units"]  = [v for _, v in cat_units.most_common()]
+ 
+    # Status counts (individual keys so JS can read D.inventory.status_ok etc.)
+    all_inv = data["inventory"]["rows"]
+    inv_chart["status_ok"]  = sum(
+        1 for p, inv, _ in all_inv
         if inv.quantity_available > p.low_reorder_threshold
     )
-    low_count = data["inventory"]["low_stock"]
-    out_count = data["inventory"]["out_of_stock"]
-    inv_chart["status_labels"] = ["OK", "Low Stock", "Out of Stock"]
-    inv_chart["status_counts"] = [ok_count, low_count, out_count]
-
+    inv_chart["status_low"] = data["inventory"]["low_stock"]
+    inv_chart["status_out"] = data["inventory"]["out_of_stock"]
+ 
     # ── Stock In ──────────────────────────────────────────────────────────────
     stock_by_date: dict[str, int] = defaultdict(int)
     for s, _, _ in data["stock"]["rows"]:
@@ -603,21 +651,33 @@ def _build_chart_data(data):
             d = str(to_pht(s.stockin_datetime).date())
             stock_by_date[d] += s.quantity_received
     stock_dates = sorted(stock_by_date)
+ 
     stock_chart = {
         "labels": stock_dates,
         "units":  [stock_by_date[d] for d in stock_dates],
+        "product_labels": [
+            r.product_name[:22].capitalize() for r in data["stock"]["by_product"]
+        ],
+        "product_units":  [
+            int(r.units or 0) for r in data["stock"]["by_product"]
+        ],
     }
-
-    # Per-product breakdown (top 8 by units received)
-    by_product = data["stock"].get("by_product", [])
-    stock_chart["product_labels"] = [r.product_name[:22].capitalize() for r in by_product]
-    stock_chart["product_units"]  = [int(r.units or 0)                for r in by_product]
-
+ 
     # ── Defects ───────────────────────────────────────────────────────────────
     reason_counter: Counter = Counter()
     for detail, _, _, _ in data["defects"]["rows"]:
         reason_counter[detail.reason.replace("_", " ").title()] += detail.quantity
-
+ 
+    # Supplier compensation — canonical order matches DB enum values
+    _SUP_MAP = {
+        "pending":        "Pending",
+        "loss":           "Loss",
+        "same_item":      "Same Item",
+        "different_item": "Diff Item",
+        "money":          "Money",
+        "none":           "None",
+    }
+    sup_breakdown = data["defects"].get("supplier_comp_breakdown", {})
     defects_chart = {
         "origin_labels": ["Customer", "In-Store"],
         "origin_counts": [
@@ -626,8 +686,10 @@ def _build_chart_data(data):
         ],
         "reason_labels": [k for k, _ in reason_counter.most_common(8)],
         "reason_counts": [v for _, v in reason_counter.most_common(8)],
+        "supplier_labels": list(_SUP_MAP.values()),
+        "supplier_counts": [sup_breakdown.get(k, 0) for k in _SUP_MAP],
     }
-
+ 
     return {
         "sales":        sales_chart,
         "top_products": top_products_chart,
@@ -635,77 +697,32 @@ def _build_chart_data(data):
         "stock":        stock_chart,
         "defects":      defects_chart,
     }
-
-
-def _parse_date_range():
-    """Return (date_from, date_to, date_from_str, date_to_str) from request args.
-    Defaults to today (not start of month).
-    """
-    today   = datetime.utcnow().date()
-    # Default: today → today  (was: start-of-month → today)
-    dfrom_s = request.args.get("date_from", today.isoformat())
-    dto_s   = request.args.get("date_to",   today.isoformat())
-
-    try:
-        dfrom = datetime.strptime(dfrom_s, "%Y-%m-%d")
-    except ValueError:
-        dfrom   = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        dfrom_s = dfrom.date().isoformat()
-
-    try:
-        dto = datetime.strptime(dto_s, "%Y-%m-%d").replace(
-            hour=23, minute=59, second=59, microsecond=999999
-        )
-    except ValueError:
-        dto   = datetime.utcnow().replace(hour=23, minute=59, second=59)
-        dto_s = dto.date().isoformat()
-
-    return dfrom, dto, dfrom_s, dto_s
-
-
+ 
 def _build_report_data(date_from, date_to):
-    """
-    Collect data for all four report tabs.
-
-    Column mapping verified against actual DB schema (shekel_db dump):
-        Sales.transaction_id        ← PK  (NOT sale_id)
-        Sales.total_amount          ← final selling total
-        Sales.total_revenue_price   ← revenue component
-        Sales.total_cost_price      ← cost component
-        Sales.sale_datetime         ✓
-        Sales.payment_method        ✓
-
-        Sales_Details.sale_detail_id      ← PK
-        Sales_Details.transaction_id      ← FK to Sales
-        Sales_Details.product_id          ← FK to Products (varchar)
-        Sales_Details.quantity            ✓
-        Sales_Details.price_at_sale       ← unit selling price
-        Sales_Details.subtotal_amount     ← line total
-
-        Products.product_id               ← varchar(100) PK
-        Products.low_reorder_threshold    ← per-product low stock level
-        Products.total_price              ← current selling price
-
-        Stock_In.stockin_id               ← PK  (NOT stock_in_id)
-    """
+    """Collect all four report-tab datasets for the given date range."""
     from app.models.sale        import Sale
     from app.models.sale_detail import SaleDetail
     from app.models.category    import Category
     from sqlalchemy import func as _f
-
-    # ── 1. Sales ─────────────────────────────────────────────────────────────
+ 
+    is_single_day = (date_from.date() == date_to.date())
+ 
+    # ── 1. SALES ──────────────────────────────────────────────────────────────
     sales_list = (
         Sale.query
         .filter(Sale.sale_datetime.between(date_from, date_to))
         .order_by(Sale.sale_datetime.desc())
         .all()
     )
-
-    # Daily breakdown — includes cost & profit columns
+ 
+    # Daily breakdown (oldest → newest after reversal in _build_chart_data)
     daily_sales = [
         {
             "date":         str(r.date),
             "transactions": int(r.transactions),
+            # total_amount       = customer paid    ("Sales")
+            # total_cost_price   = COGS             ("Cost")
+            # total_revenue_price= markup/profit    ("Profit")
             "total":        float(r.total  or 0),
             "cost":         float(r.cost   or 0),
             "profit":       float(r.profit or 0),
@@ -714,7 +731,7 @@ def _build_report_data(date_from, date_to):
             db.session.query(
                 _f.date(Sale.sale_datetime).label("date"),
                 _f.count(Sale.transaction_id).label("transactions"),
-                _f.sum(Sale.total_amount).label("total"),
+                _f.coalesce(_f.sum(Sale.total_amount),        0).label("total"),
                 _f.coalesce(_f.sum(Sale.total_cost_price),    0).label("cost"),
                 _f.coalesce(_f.sum(Sale.total_revenue_price), 0).label("profit"),
             )
@@ -724,29 +741,32 @@ def _build_report_data(date_from, date_to):
             .all()
         )
     ]
-
+ 
     total_revenue = sum(float(s.total_amount        or 0) for s in sales_list)
     total_cost    = sum(float(s.total_cost_price    or 0) for s in sales_list)
     total_profit  = sum(float(s.total_revenue_price or 0) for s in sales_list)
-    avg_order     = (total_revenue / len(sales_list)) if sales_list else 0
-
-    # Top 10 products by units sold
+    avg_order     = (total_revenue / len(sales_list)) if sales_list else 0.0
+ 
+    # Top 10 products by units sold (uses Sales_Details.subtotal_amount for revenue)
     top_products = (
         db.session.query(
             Product.product_name,
             _f.sum(SaleDetail.quantity).label("units_sold"),
             _f.sum(SaleDetail.subtotal_amount).label("revenue"),
         )
-        .join(SaleDetail, SaleDetail.product_id == Product.product_id)
-        .join(Sale,       Sale.transaction_id    == SaleDetail.transaction_id)
+        .join(SaleDetail, SaleDetail.product_id    == Product.product_id)
+        .join(Sale,       Sale.transaction_id       == SaleDetail.transaction_id)
         .filter(Sale.sale_datetime.between(date_from, date_to))
         .group_by(Product.product_id, Product.product_name)
         .order_by(_f.sum(SaleDetail.quantity).desc())
         .limit(10)
         .all()
     )
-
-    # Defect financial deductions (active defects within the period)
+ 
+    # Defect deductions — active + non-archived defects within the period
+    # subtotal_amount  → selling-price loss  ("Sales Loss")
+    # subtotal_unit    → cost loss           ("Cost Loss")
+    # subtotal_revenue → profit/markup loss  ("Profit Loss")
     def _defect_sum(col):
         return float(
             db.session.query(_f.coalesce(_f.sum(col), 0))
@@ -758,13 +778,12 @@ def _build_report_data(date_from, date_to):
             )
             .scalar() or 0
         )
-
+ 
     defect_sales_loss  = _defect_sum(DefectDetail.subtotal_amount)
     defect_cost_loss   = _defect_sum(DefectDetail.subtotal_unit)
     defect_profit_loss = _defect_sum(DefectDetail.subtotal_revenue)
-
-    # Hourly breakdown — only populated when date_from and date_to are the same day
-    is_single_day = (date_from.date() == date_to.date())
+ 
+    # Hourly breakdown (populated only for same-day ranges)
     if is_single_day:
         hourly_sales = [
             {
@@ -790,23 +809,28 @@ def _build_report_data(date_from, date_to):
         ]
     else:
         hourly_sales = []
-
+ 
     sales_data = {
-        "total_revenue":      total_revenue,
-        "total_cost":         total_cost,
-        "total_profit":       total_profit,
-        "total_transactions": len(sales_list),
-        "avg_order":          avg_order,
+        # Raw gross figures
+        "total_revenue":      total_revenue,   # sum(total_amount)
+        "total_cost":         total_cost,       # sum(total_cost_price)
+        "total_profit":       total_profit,     # sum(total_revenue_price)
+        # Net figures after active-defect deductions
+        "net_revenue":        max(0.0, total_revenue - defect_sales_loss),
+        "net_cost":           max(0.0, total_cost    - defect_cost_loss),
+        "net_profit":         max(0.0, total_profit  - defect_profit_loss),
+        # Defect deduction amounts (displayed as footnotes on cards)
         "defect_sales_loss":  defect_sales_loss,
         "defect_cost_loss":   defect_cost_loss,
         "defect_profit_loss": defect_profit_loss,
+        "total_transactions": len(sales_list),
+        "avg_order":          avg_order,
         "daily":              daily_sales,
         "hourly":             hourly_sales,
         "top_products":       top_products,
     }
-
-    # ── 2. Inventory ──────────────────────────────────────────────────────────
-    # Shows current state — intentionally NOT date-filtered.
+ 
+    # ── 2. INVENTORY (always current state — not date-filtered) ───────────────
     inv_rows = (
         db.session.query(Product, Inventory, Category)
         .join(Inventory, Inventory.product_id == Product.product_id)
@@ -815,19 +839,22 @@ def _build_report_data(date_from, date_to):
         .order_by(Product.product_name)
         .all()
     )
-
+ 
     inventory_data = {
-        "total_products": len(inv_rows),
-        "total_units":    sum(inv.quantity_available for _, inv, _ in inv_rows),
-        "low_stock":    sum(
+        "total_products":  len(inv_rows),
+        "total_units":     sum(inv.quantity_available      for _, inv, _ in inv_rows),
+        "total_defective": sum((inv.quantity_defective or 0) for _, inv, _ in inv_rows),
+        "low_stock": sum(
             1 for p, inv, _ in inv_rows
             if 0 < inv.quantity_available <= p.low_reorder_threshold
         ),
-        "out_of_stock": sum(1 for _, inv, _ in inv_rows if inv.quantity_available == 0),
-        "rows":         inv_rows,
+        "out_of_stock": sum(
+            1 for _, inv, _ in inv_rows if inv.quantity_available == 0
+        ),
+        "rows": inv_rows,
     }
-
-    # ── 3. Stock Movement ─────────────────────────────────────────────────────
+ 
+    # ── 3. STOCK-IN ───────────────────────────────────────────────────────────
     stock_rows = (
         db.session.query(StockIn, Product, User)
         .join(Product, Product.product_id == StockIn.product_id)
@@ -836,8 +863,8 @@ def _build_report_data(date_from, date_to):
         .order_by(StockIn.stockin_datetime.desc())
         .all()
     )
-
-    # Per-product breakdown for chart (top 8 by units received)
+ 
+    # Top 8 products by units received (for chart)
     stock_by_product = (
         db.session.query(
             Product.product_name,
@@ -850,45 +877,260 @@ def _build_report_data(date_from, date_to):
         .limit(8)
         .all()
     )
-
+ 
     stock_data = {
-        "total_entries": len(stock_rows),
+        "total_entries": len({s.batch_id for s, _, _ in stock_rows}),
         "total_units":   sum(s.quantity_received for s, _, _ in stock_rows),
         "by_product":    stock_by_product,
         "rows":          stock_rows,
     }
-
-    # ── 4. Defects ────────────────────────────────────────────────────────────
+ 
+    # ── 4. DEFECTS ────────────────────────────────────────────────────────────
     defect_rows = (
         db.session.query(DefectDetail, Defect, Product, User)
-        .join(Defect,  Defect.defect_id    == DefectDetail.defect_id)
-        .join(Product, Product.product_id  == DefectDetail.product_id)
+        .join(Defect,  Defect.defect_id   == DefectDetail.defect_id)
+        .join(Product, Product.product_id == DefectDetail.product_id)
         .join(User,    User.user_id        == Defect.user_id)
         .filter(Defect.defect_datetime.between(date_from, date_to))
         .filter(DefectDetail.is_archived == False)
         .order_by(Defect.defect_datetime.desc())
         .all()
     )
-
+ 
+    # Supplier compensation breakdown (active records only)
+    supplier_comp: Counter = Counter()
+    for d, _, _, _ in defect_rows:
+        if d.status == "active":
+            supplier_comp[d.supplier_compensation] += 1
+ 
     defects_data = {
-        "total":             len(defect_rows),
-        "total_units":       sum(d.quantity for d, _, _, _ in defect_rows),
-        "customer_origin":   sum(1 for d, _, _, _ in defect_rows if d.origin == "customer"),
-        "store_origin":      sum(1 for d, _, _, _ in defect_rows if d.origin == "in_store"),
-        # Financial loss figures — only for approved (active) defects
-        "total_sales_loss":  sum(float(d.subtotal_amount  or 0) for d, _, _, _ in defect_rows if d.status == "active"),
-        "total_cost_loss":   sum(float(d.subtotal_unit    or 0) for d, _, _, _ in defect_rows if d.status == "active"),
-        "total_profit_loss": sum(float(d.subtotal_revenue or 0) for d, _, _, _ in defect_rows if d.status == "active"),
-        "supplier_loss":     sum(float(d.subtotal_amount  or 0) for d, _, _, _ in defect_rows if d.supplier_compensation == "loss"),
-        "rows":              defect_rows,
+        "total":        len(defect_rows),
+        "total_units":  sum(d.quantity for d, _, _, _ in defect_rows),
+        "customer_origin": sum(
+            1 for d, _, _, _ in defect_rows if d.origin == "customer"
+        ),
+        "store_origin":    sum(
+            1 for d, _, _, _ in defect_rows if d.origin == "in_store"
+        ),
+        # Financial loss totals — active records only
+        # subtotal_amount  → selling-price loss
+        # subtotal_unit    → cost loss
+        # subtotal_revenue → profit/markup loss
+        "total_sales_loss":  sum(
+            float(d.subtotal_amount  or 0)
+            for d, _, _, _ in defect_rows if d.status == "active"
+        ),
+        "total_cost_loss":   sum(
+            float(d.subtotal_unit    or 0)
+            for d, _, _, _ in defect_rows if d.status == "active"
+        ),
+        "total_profit_loss": sum(
+            float(d.subtotal_revenue or 0)
+            for d, _, _, _ in defect_rows if d.status == "active"
+        ),
+        # Amount where supplier was marked as absorbing the full loss
+        "supplier_loss":     sum(
+            float(d.subtotal_amount  or 0)
+            for d, _, _, _ in defect_rows if d.supplier_compensation == "loss"
+        ),
+        "supplier_comp_breakdown": dict(supplier_comp),
+        "rows": defect_rows,
     }
-
+ 
     return {
         "sales":     sales_data,
         "inventory": inventory_data,
         "stock":     stock_data,
         "defects":   defects_data,
     }
+ 
+ 
+@admin_bp.route("/reports/data")
+@login_required
+@role_required("superadmin", "admin")
+def reports_data():
+    """
+    JSON feed consumed by the reports dashboard frontend.
+ 
+    Query params (all optional – fall back to today):
+        date_from   YYYY-MM-DD
+        date_to     YYYY-MM-DD
+ 
+    Returns a single JSON object with four top-level keys:
+        date_from, date_to, sales, inventory, stock, defects
+    """
+    date_from, date_to, date_from_str, date_to_str = _parse_date_range()
+    data = _build_report_data(date_from, date_to)
+ 
+    s   = data["sales"]
+    inv = data["inventory"]
+    sk  = data["stock"]
+    df  = data["defects"]
+ 
+    # ── Sales rows (latest 50 transactions) ───────────────────────────────────
+    # Uses Sale model imported inside _build_report_data; re-import cleanly here.
+    from app.models.sale import Sale
+ 
+    sales_rows_json = [
+        {
+            "transaction_id":    sale.transaction_id,
+            # PHT-localised display string
+            "sale_datetime":     to_pht(sale.sale_datetime).strftime("%b %d, %Y %I:%M %p")
+                                 if sale.sale_datetime else "—",
+            "user":              f"{sale.user.first_name} {sale.user.last_name}".strip().title()
+                                 if sale.user else "—",
+            # ── KEY COLUMNS ──────────────────────────────────────────────────
+            # total_amount       = what the customer paid          (Revenue)
+            # total_cost_price   = cost of goods sold              (Cost)
+            # total_revenue_price = markup / profit component      (Profit)
+            # Invariant: total_amount = total_cost_price + total_revenue_price
+            "total_amount":         float(sale.total_amount        or 0),
+            "total_cost_price":     float(sale.total_cost_price    or 0),
+            "total_revenue_price":  float(sale.total_revenue_price or 0),
+            "payment_method":       sale.payment_method or "—",
+        }
+        for sale in (
+            Sale.query
+            .filter(Sale.sale_datetime.between(date_from, date_to))
+            .order_by(Sale.sale_datetime.desc())
+            .limit(50)
+            .all()
+        )
+    ]
+ 
+    # ── Top products (already queried in _build_report_data) ─────────────────
+    top_products_json = [
+        {
+            "product_name": r.product_name,
+            "units_sold":   int(r.units_sold or 0),
+            "revenue":      float(r.revenue  or 0),   # sum(subtotal_amount)
+        }
+        for r in s["top_products"]
+    ]
+ 
+    # ── Inventory rows ────────────────────────────────────────────────────────
+    inv_rows_json = [
+        {
+            "product_id":             product.product_id,
+            "product_name":           product.product_name,
+            "category_name":          category.category_name if category else "—",
+            # Current stock counts (not date-filtered – always current state)
+            "quantity_available":     inventory.quantity_available,
+            "quantity_defective":     inventory.quantity_defective or 0,
+            "low_reorder_threshold":  product.low_reorder_threshold,
+            "status":                 product.status,
+            "last_updated":           to_pht(inventory.last_updated).strftime("%b %d, %Y")
+                                      if inventory.last_updated else "—",
+        }
+        for product, inventory, category in inv["rows"]
+    ]
+ 
+    # ── Stock In rows ─────────────────────────────────────────────────────────
+    stock_rows_json = [
+        {
+            "stockin_id":        stock_in.stockin_id,          # PK: stockin_id (NOT stock_in_id)
+            "stockin_datetime":  to_pht(stock_in.stockin_datetime).strftime("%b %d, %Y %I:%M %p")
+                                 if stock_in.stockin_datetime else "—",
+            "product_name":      product.product_name,
+            "quantity_received": stock_in.quantity_received,   # field: quantity_received
+            "user":              f"{user.first_name} {user.last_name}".strip().title(),
+            "notes":             stock_in.notes or "—",
+            "batch_id":          stock_in.batch_id,            # nullable FK → Stock_In_Batch
+        }
+        for stock_in, product, user in sk["rows"]
+    ]
+ 
+    # ── Stock by-product breakdown (top 8 for chart) ─────────────────────────
+    stock_by_product_json = [
+        {
+            "product_name": r.product_name,
+            "units":        int(r.units or 0),
+        }
+        for r in sk["by_product"]
+    ]
+ 
+    # ── Defect rows ───────────────────────────────────────────────────────────
+    # Financial columns:
+    #   subtotal_amount   = selling-price loss  (used for "sales loss")
+    #   subtotal_unit     = cost loss            (used for "cost loss")
+    #   subtotal_revenue  = profit/markup loss   (used for "profit loss")
+    #
+    # IMPORTANT: aggregate loss figures are for status='active' records ONLY.
+    # submitted / rejected records are EXCLUDED from all ₱ loss totals.
+    defect_rows_json = [
+        {
+            "defect_detail_id":       detail.defect_detail_id,
+            "defect_datetime":        to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p")
+                                      if defect.defect_datetime else "—",
+            "product_name":           product.product_name,
+            "quantity":               detail.quantity,
+            "origin":                 detail.origin,                # 'customer' | 'in_store'
+            "reason":                 detail.reason,                # 'damaged' | 'expired' | 'change_of_mind'
+            "status":                 detail.status,                # 'submitted' | 'active' | 'rejected'
+            "subtotal_amount":        float(detail.subtotal_amount  or 0),
+            "subtotal_unit":          float(detail.subtotal_unit    or 0),
+            "subtotal_revenue":       float(detail.subtotal_revenue or 0),
+            "customer_compensation":  detail.customer_compensation,
+            "supplier_compensation":  detail.supplier_compensation,
+            "user":                   f"{user.first_name} {user.last_name}".strip().title(),
+        }
+        for detail, defect, product, user in df["rows"]
+    ]
+ 
+    return jsonify({
+        "date_from": date_from_str,
+        "date_to":   date_to_str,
+ 
+        # ── Sales ──────────────────────────────────────────────────────────
+        "sales": {
+            # Aggregate totals
+            "total_revenue":       float(s["total_revenue"]),      # sum(total_amount)
+            "total_cost":          float(s["total_cost"]),         # sum(total_cost_price)
+            "total_profit":        float(s["total_profit"]),       # sum(total_revenue_price)
+            "total_transactions":  s["total_transactions"],
+            "avg_order":           float(s["avg_order"]),
+            # Defect deductions (active defects only)
+            "defect_sales_loss":   float(s["defect_sales_loss"]),  # sum(subtotal_amount)  active
+            "defect_cost_loss":    float(s["defect_cost_loss"]),   # sum(subtotal_unit)    active
+            "defect_profit_loss":  float(s["defect_profit_loss"]), # sum(subtotal_revenue) active
+            # Chart series
+            "daily":          s["daily"],     # [{date, transactions, total, cost, profit}, ...]
+            "hourly":         s["hourly"],    # populated only when date_from == date_to
+            "top_products":   top_products_json,
+            "rows":           sales_rows_json,
+        },
+ 
+        # ── Inventory (current state, not date-filtered) ────────────────
+        "inventory": {
+            "total_products": inv["total_products"],
+            "total_units":    inv["total_units"],    # sum(quantity_available)
+            "low_stock":      inv["low_stock"],      # 0 < qty_available <= low_reorder_threshold
+            "out_of_stock":   inv["out_of_stock"],   # qty_available == 0
+            "rows":           inv_rows_json,
+        },
+ 
+        # ── Stock In ───────────────────────────────────────────────────────
+        "stock": {
+            "total_entries": sk["total_entries"],
+            "total_units":   sk["total_units"],      # sum(quantity_received)
+            "by_product":    stock_by_product_json,
+            "rows":          stock_rows_json,
+        },
+ 
+        # ── Defects ────────────────────────────────────────────────────────
+        "defects": {
+            "total":              df["total"],
+            "total_units":        df["total_units"],
+            "customer_origin":    df["customer_origin"],
+            "store_origin":       df["store_origin"],
+            # Loss totals — status='active' records only
+            "total_sales_loss":   float(df["total_sales_loss"]),   # sum(subtotal_amount)
+            "total_cost_loss":    float(df["total_cost_loss"]),    # sum(subtotal_unit)
+            "total_profit_loss":  float(df["total_profit_loss"]),  # sum(subtotal_revenue)
+            "supplier_loss":      float(df["supplier_loss"]),      # where supplier_compensation='loss'
+            "rows":               defect_rows_json,
+        },
+    })
 
 
 @admin_bp.route("/audit_logs/<int:log_id>")
@@ -1295,15 +1537,16 @@ def sale_detail(transaction_id):
     u    = sale.user
 
     details = [
-        {
-            "product_id":   d.product_id,
-            "product_name": d.product.product_name.capitalize() if d.product else d.product_id,
-            "quantity":     d.quantity,
-            "price":        float(d.price_at_sale),
-            "subtotal":     float(d.subtotal_amount),
-        }
-        for d in sale.sale_details
-    ]
+    {
+        "product_id":   d.product_id,
+        "product_name": d.product.product_name.capitalize() if d.product else d.product_id,
+        "quantity":     d.quantity,
+        "price":        float(d.price_at_sale),
+        "subtotal":     float(d.subtotal_amount),
+        "override_used": d.override_used,   # ← add this
+    }
+    for d in sale.sale_details
+]
 
     return jsonify({
         "transaction_id":      sale.transaction_id,

@@ -3,9 +3,9 @@
 {% block nav_title %}Sales History{% endblock %}
 
 {% block body %}
-<div class="flex flex-col gap-4" style="margin-top:-17px;">
+<div x-data="salesHistory()" class="flex flex-col gap-4" style="margin-top:-17px;">
 
-  {# ── Page header ──────────────────────────────────────────────────────── #}
+  {# ── Page header ───────────────────────────────────────────────────────── #}
   <div>
     <h1 class="text-lg font-bold" style="color:var(--color-txt-primary);">Sales History</h1>
     <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
@@ -13,224 +13,142 @@
     </p>
   </div>
 
-  {# ── Period stats ─────────────────────────────────────────────────────── #}
+  {# ── Period stats ──────────────────────────────────────────────────────── #}
   <div class="rounded-2xl overflow-hidden"
        style="background-color:var(--color-surface); border:1px solid var(--color-border);">
 
-    {# Period selector #}
     <div class="flex items-center gap-1 px-4 pt-3 pb-2 flex-wrap">
-      {% for pid, plabel in [('today','Today'),('week','This Week'),('month','This Month'),('year','This Year')] %}
-      <button id="period-btn-{{ pid }}"
-              onclick="setPeriod('{{ pid }}')"
-              class="px-3 py-1 rounded-lg text-xs font-semibold transition"
-              style="{% if loop.first %}background:var(--color-primary);color:var(--color-bg){% else %}background:transparent;color:var(--color-txt-muted);border:1px solid var(--color-border){% endif %}">
-        {{ plabel }}
-      </button>
-      {% endfor %}
+      <template x-for="p in periods" :key="p.id">
+        <button @click="activePeriod = p.id"
+                class="px-3 py-1 rounded-lg text-xs font-semibold transition"
+                :style="activePeriod === p.id
+                  ? 'background:var(--color-primary);color:var(--color-bg);border:none'
+                  : 'background:transparent;color:var(--color-txt-muted);border:1px solid var(--color-border)'"
+                x-text="p.label"></button>
+      </template>
     </div>
 
-    {# Stat cards #}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 px-4 pb-4">
-
-      {% set stat_items = [
-        ('stat-count',  'Transactions', 'receipt_long',    False),
-        ('stat-sales',  'Sales',        'payments',        True),
-        ('stat-cost',   'Cost',         'price_check',     True),
-        ('stat-profit', 'Profit',       'trending_up',     True),
-      ] %}
-
-      {% for sid, slabel, sicon, is_money in stat_items %}
-      <div class="rounded-xl flex items-center gap-3 px-4 py-3"
-           style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-             style="background-color:var(--color-surface);">
-          <span class="material-symbols-outlined text-[18px]"
-                style="color:var(--color-txt-muted);">{{ sicon }}</span>
+      <template x-for="s in statCards" :key="s.id">
+        <div class="rounded-xl flex items-center gap-3 px-4 py-3"
+             style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
+          <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+               style="background-color:var(--color-surface);">
+            <span class="material-symbols-outlined text-[18px]"
+                  style="color:var(--color-txt-muted);" x-text="s.icon"></span>
+          </div>
+          <div class="min-w-0">
+            <p class="text-[10px] font-semibold uppercase tracking-wide"
+               style="color:var(--color-txt-muted);" x-text="s.label"></p>
+            <p class="text-xl font-bold truncate" style="color:var(--color-txt-primary);"
+               x-text="s.money ? fmt(currentStats[s.key]) : fmtInt(currentStats[s.key])"></p>
+          </div>
         </div>
-        <div class="min-w-0">
-          <p class="text-[10px] font-semibold uppercase tracking-wide"
-             style="color:var(--color-txt-muted);">{{ slabel }}</p>
-          <p class="text-xl font-bold truncate" id="{{ sid }}"
-             style="color:var(--color-txt-primary);">—</p>
-        </div>
-      </div>
-      {% endfor %}
-
+      </template>
     </div>
   </div>
 
-  {# ── Filters (horizontal bar) ─────────────────────────────────────────── #}
-  <form method="GET"
-        action="{{ url_for('admin.sales_history' if is_admin else 'cashier.sales_history') }}">
-    <div class="flex flex-wrap items-end gap-2">
+  {# ── Filter trigger bar ────────────────────────────────────────────────── #}
+  {% set active_count = [filters.q, filters.date_from, filters.date_to,
+                         filters.user_id if is_admin else None]
+                        | select | list | length %}
+  <div class="flex items-center gap-2 flex-wrap">
 
-      {# Transaction ID search #}
-      <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
-        <label class="text-[10px] font-semibold uppercase tracking-wide"
-               style="color:var(--color-txt-muted);">Transaction ID</label>
-        <div class="relative">
-          <span class="material-symbols-outlined text-[14px] absolute left-2.5
-                       top-1/2 -translate-y-1/2 pointer-events-none"
-                style="color:var(--color-txt-muted);">search</span>
-          <input type="text" name="q" value="{{ filters.q }}"
-                 placeholder="e.g. 42"
-                 class="w-full pl-7 pr-3 py-2 rounded-xl text-sm focus:outline-none transition"
-                 style="border:1px solid var(--color-border);
-                        background:var(--color-surface);
-                        color:var(--color-txt-primary);"
-                 onfocus="this.style.borderColor='var(--color-accent)'"
-                 onblur="this.style.borderColor='var(--color-border)'">
-        </div>
-      </div>
-
-      {% if is_admin %}
-      {# Cashier filter #}
-      <div class="flex flex-col gap-1 flex-1 min-w-[140px]">
-        <label class="text-[10px] font-semibold uppercase tracking-wide"
-               style="color:var(--color-txt-muted);">Cashier</label>
-        <select name="user_id"
-                class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
-                style="border:1px solid var(--color-border);
-                       background:var(--color-surface);
-                       color:var(--color-txt-primary);"
-                onfocus="this.style.borderColor='var(--color-accent)'"
-                onblur="this.style.borderColor='var(--color-border)'">
-          <option value="">All cashiers</option>
-          {% for u in all_users %}
-          <option value="{{ u.user_id }}"
-            {{ "selected" if filters.user_id == u.user_id }}>
-            {{ (u.first_name ~ " " ~ u.last_name).strip().title() }}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
+    <button @click="filterOpen = true"
+            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition"
+            style="border:1px solid var(--color-border); background:var(--color-surface); color:var(--color-txt-primary);"
+            onmouseover="this.style.borderColor='var(--color-border-strong)'"
+            onmouseout="this.style.borderColor='var(--color-border)'">
+      <span class="material-symbols-outlined text-[16px]">tune</span>
+      Filters
+      {% if active_count > 0 %}
+      <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold"
+            style="background:var(--color-primary); color:var(--color-bg);">{{ active_count }}</span>
       {% endif %}
+    </button>
 
-      {# Date from #}
-      <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
-        <label class="text-[10px] font-semibold uppercase tracking-wide"
-               style="color:var(--color-txt-muted);">From</label>
-        <input type="date" name="date_from" value="{{ filters.date_from or '' }}"
-               class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
-               style="border:1px solid var(--color-border);
-                      background:var(--color-surface);
-                      color:var(--color-txt-primary);"
-               onfocus="this.style.borderColor='var(--color-accent)'"
-               onblur="this.style.borderColor='var(--color-border)'">
-      </div>
+    {% if active_count > 0 %}
+    <a href="{{ url_for('admin.sales_history' if is_admin else 'cashier.sales_history') }}"
+       class="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium transition"
+       style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+       onmouseover="this.style.borderColor='var(--color-border-strong)'"
+       onmouseout="this.style.borderColor='var(--color-border)'">
+      <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
+      Clear
+    </a>
+    {% if filters.q %}
+    <span class="px-2.5 py-1 rounded-full text-[11px] font-medium"
+          style="background:color-mix(in srgb,var(--color-primary) 12%,transparent);
+                 color:var(--color-primary);
+                 border:1px solid color-mix(in srgb,var(--color-primary) 25%,transparent);">
+      ID: {{ filters.q }}
+    </span>
+    {% endif %}
+    {% if filters.date_from %}
+    <span class="px-2.5 py-1 rounded-full text-[11px] font-medium"
+          style="background:color-mix(in srgb,var(--color-primary) 12%,transparent);
+                 color:var(--color-primary);
+                 border:1px solid color-mix(in srgb,var(--color-primary) 25%,transparent);">
+      From: {{ filters.date_from }}
+    </span>
+    {% endif %}
+    {% if filters.date_to %}
+    <span class="px-2.5 py-1 rounded-full text-[11px] font-medium"
+          style="background:color-mix(in srgb,var(--color-primary) 12%,transparent);
+                 color:var(--color-primary);
+                 border:1px solid color-mix(in srgb,var(--color-primary) 25%,transparent);">
+      To: {{ filters.date_to }}
+    </span>
+    {% endif %}
+    {% if is_admin and filters.user_id %}
+    <span class="px-2.5 py-1 rounded-full text-[11px] font-medium"
+          style="background:color-mix(in srgb,var(--color-primary) 12%,transparent);
+                 color:var(--color-primary);
+                 border:1px solid color-mix(in srgb,var(--color-primary) 25%,transparent);">
+      Cashier filtered
+    </span>
+    {% endif %}
+    {% endif %}
 
-      {# Date to #}
-      <div class="flex flex-col gap-1 flex-1 min-w-[130px]">
-        <label class="text-[10px] font-semibold uppercase tracking-wide"
-               style="color:var(--color-txt-muted);">To</label>
-        <input type="date" name="date_to" value="{{ filters.date_to or '' }}"
-               class="w-full px-3 py-2 rounded-xl text-sm focus:outline-none transition"
-               style="border:1px solid var(--color-border);
-                      background:var(--color-surface);
-                      color:var(--color-txt-primary);"
-               onfocus="this.style.borderColor='var(--color-accent)'"
-               onblur="this.style.borderColor='var(--color-border)'">
-      </div>
+  </div>
 
-      {# Buttons row #}
-      <div class="flex items-end gap-2 shrink-0">
-        {% set active_count = [filters.q, filters.date_from, filters.date_to,
-                               filters.user_id if is_admin else None]
-                              | select | list | length %}
-        {% if active_count > 0 %}
-        <a href="{{ url_for('admin.sales_history' if is_admin else 'cashier.sales_history') }}"
-           class="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-medium transition"
-           style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
-           onmouseover="this.style.borderColor='var(--color-border-strong)'"
-           onmouseout="this.style.borderColor='var(--color-border)'">
-          <span class="material-symbols-outlined text-[15px]">filter_alt_off</span>
-          Clear
-        </a>
-        {% endif %}
-        <button type="submit"
-                class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition"
-                style="background:var(--color-primary); color:var(--color-bg);"
-                onmouseover="this.style.opacity='0.85'"
-                onmouseout="this.style.opacity='1'">
-          <span class="material-symbols-outlined text-[15px]">tune</span>
-          Apply
-        </button>
-      </div>
-
-    </div>
-  </form>
-
-  {# ── Table (desktop) ──────────────────────────────────────────────────── #}
+  {# ── Table (desktop) ───────────────────────────────────────────────────── #}
   <div class="hidden sm:block rounded-2xl overflow-hidden"
        style="background-color:var(--color-surface); border:1px solid var(--color-border);">
 
-    {# Table meta bar #}
     <div class="flex items-center justify-between px-5 py-2.5"
-         style="border-bottom:1px solid var(--color-border);
-                background-color:var(--color-surface-alt);">
+         style="border-bottom:1px solid var(--color-border); background-color:var(--color-surface-alt);">
       <p class="text-xs" style="color:var(--color-txt-muted);">
-        Showing
-        <span class="font-semibold" style="color:var(--color-txt-primary);">{{ sales.items | length }}</span>
-        of
-        <span class="font-semibold" style="color:var(--color-txt-primary);">{{ sales.total }}</span>
-        transactions
+        Showing <span class="font-semibold" style="color:var(--color-txt-primary);">{{ sales.items | length }}</span>
+        of <span class="font-semibold" style="color:var(--color-txt-primary);">{{ sales.total }}</span> transactions
       </p>
-      <p class="text-xs" style="color:var(--color-txt-muted);">
-        Page {{ sales.page }} / {{ sales.pages }}
-      </p>
+      <p class="text-xs" style="color:var(--color-txt-muted);">Page {{ sales.page }} / {{ sales.pages }}</p>
     </div>
 
     <div class="overflow-x-auto">
       <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-          <colgroup>
-            <col style="width:60px">    <!-- # -->
-            <col style="width:110px">   <!-- TXN ID -->
-            <col style="width:190px">   <!-- Date -->
-            {% if is_admin %}
-            <col style="width:180px">   <!-- Cashier -->
-            {% endif %}
-            <col style="width:120px">   <!-- Total -->
-            <col style="width:90px">    <!-- Items -->
-            <col style="width:90px">    <!-- Detail -->
+        <colgroup>
+          <col style="width:60px">
+          <col style="width:110px">
+          <col style="width:190px">
+          {% if is_admin %}<col style="width:180px">{% endif %}
+          <col style="width:120px">
+          <col style="width:90px">
+          <col style="width:90px">
         </colgroup>
-
-        {# Header #}
         <thead>
-          <tr style="background-color:var(--color-surface-alt);
-                     border-bottom:1px solid var(--color-border);">
-            <th style="color:var(--color-txt-muted); white-space:nowrap; 
-                       padding:10px 12px 10px 20px; text-align:left;
-                       font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;"
-                >#</th>
-            <th style="color:var(--color-txt-muted); white-space:nowrap; 
-                       padding:10px 12px; text-align:left;
-                       font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;"
-                >TXN&nbsp;ID</th>
-            <th style="color:var(--color-txt-muted); white-space:nowrap;
-                       padding:10px 12px; text-align:left;
-                       font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;"
-                >Date &amp; Time</th>
+          <tr style="background-color:var(--color-surface-alt); border-bottom:1px solid var(--color-border);">
+            <th style="color:var(--color-txt-muted);padding:10px 12px 10px 20px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">#</th>
+            <th style="color:var(--color-txt-muted);padding:10px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">TXN&nbsp;ID</th>
+            <th style="color:var(--color-txt-muted);padding:10px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Date &amp; Time</th>
             {% if is_admin %}
-            <th style="color:var(--color-txt-muted); white-space:nowrap; 
-                       padding:10px 12px; text-align:left;
-                       font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;"
-                >Cashier</th>
+            <th style="color:var(--color-txt-muted);padding:10px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Cashier</th>
             {% endif %}
-            <th style="color:var(--color-txt-muted); white-space:nowrap; 
-                       padding:10px 12px; text-align:right;
-                       font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;"
-                >Total</th>
-            <th style="color:var(--color-txt-muted); white-space:nowrap; 
-                       padding:10px 12px; text-align:right;
-                       font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;"
-                >Items</th>
-            <th style="color:var(--color-txt-muted); white-space:nowrap; 
-                       padding:10px 20px 10px 12px; text-align:center;
-                       font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;"
-                >Detail</th>
+            <th style="color:var(--color-txt-muted);padding:10px 12px;text-align:right;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Total</th>
+            <th style="color:var(--color-txt-muted);padding:10px 12px;text-align:right;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Items</th>
+            <th style="color:var(--color-txt-muted);padding:10px 20px 10px 12px;text-align:center;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Detail</th>
           </tr>
         </thead>
-
         <tbody>
           {% set offset = (sales.page - 1) * 50 %}
           {% if sales.items %}
@@ -238,145 +156,88 @@
             <tr style="border-top:1px solid var(--color-border);"
                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                 onmouseout="this.style.backgroundColor='transparent'">
-
-              {# # #}
-              <td style="padding:10px 12px 12px 20px; vertical-align:middle;
-                         font-size:12px; font-variant-numeric:tabular-nums;
-                         color:var(--color-txt-muted); white-space:nowrap;">
-                {{ offset + loop.index }}
+              <td style="padding:10px 12px 12px 20px;vertical-align:middle;font-size:12px;font-variant-numeric:tabular-nums;color:var(--color-txt-muted);">{{ offset + loop.index }}</td>
+              <td style="padding:10px;vertical-align:middle;white-space:nowrap;">
+                <span style="font-size:13px;font-family:monospace;font-weight:600;color:var(--color-txt-primary);">#{{ "%05d" | format(sale.transaction_id) }}</span>
               </td>
-
-              {# TXN ID #}
-              <td style="padding:10px; vertical-align:middle; white-space:nowrap;">
-                <span style="font-size:13px; font-family:monospace; font-weight:600;
-                             color:var(--color-txt-primary);">
-                  #{{ "%05d" | format(sale.transaction_id) }}
-                </span>
+              <td style="padding:10px;vertical-align:middle;white-space:nowrap;">
+                <span style="font-size:13px;color:var(--color-txt-primary);">{{ sale.sale_datetime | pht('%b %d, %Y') }}</span>
+                <span style="font-size:11px;color:var(--color-txt-muted);margin-left:6px;">{{ sale.sale_datetime | pht('%I:%M %p') }}</span>
               </td>
-
-              {# Date & Time #}
-              <td style="padding:10px; vertical-align:middle; white-space:nowrap;">
-                <span style="font-size:13px; color:var(--color-txt-primary);">
-                    {{ sale.sale_datetime | pht('%b %d, %Y') }}
-                </span>
-                <span style="font-size:11px; color:var(--color-txt-muted); margin-left:6px;">
-                    {{ sale.sale_datetime | pht('%I:%M %p') }}
-                </span>
-                </td>
-
               {% if is_admin %}
-              {# Cashier #}
-              <td style="padding:10px; vertical-align:middle; white-space:nowrap;">
+              <td style="padding:10px;vertical-align:middle;white-space:nowrap;">
                 {% if sale.user %}
-                <p style="font-size:13px; font-weight:500; color:var(--color-txt-primary);">
-                  {{ (sale.user.first_name ~ " " ~ sale.user.last_name).strip().title() }}
-                </p>
-                <p style="font-size:11px; text-transform:capitalize; color:var(--color-txt-muted);">
-                  {{ sale.user.role }}
-                </p>
-                {% else %}
-                <span style="color:var(--color-txt-muted);">—</span>
-                {% endif %}
+                <p style="font-size:13px;font-weight:500;color:var(--color-txt-primary);">{{ (sale.user.first_name ~ " " ~ sale.user.last_name).strip().title() }}</p>
+                <p style="font-size:11px;text-transform:capitalize;color:var(--color-txt-muted);">{{ sale.user.role }}</p>
+                {% else %}<span style="color:var(--color-txt-muted);">—</span>{% endif %}
               </td>
               {% endif %}
-
-              {# Total #}
-              <td style="padding:10px; vertical-align:middle; text-align:right;
-                         white-space:nowrap; font-variant-numeric:tabular-nums;">
-                <span style="font-size:13px; font-weight:600; color:var(--color-success);">
-                  ₱{{ "%.2f" | format(sale.total_amount) }}
-                </span>
+              <td style="padding:10px;vertical-align:middle;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;">
+                <span style="font-size:13px;font-weight:600;color:var(--color-success);">₱{{ "%.2f" | format(sale.total_amount) }}</span>
               </td>
-
-              {# Item count #}
-              <td style="padding:10px; vertical-align:middle; text-align:right;
-                         white-space:nowrap; color:var(--color-txt-muted);">
+              <td style="padding:10px;vertical-align:middle;text-align:right;white-space:nowrap;color:var(--color-txt-muted);">
                 <span style="font-size:13px;">{{ sale.sale_details | length }}</span>
                 <span style="font-size:11px;">item{{ "s" if sale.sale_details | length != 1 }}</span>
               </td>
-
-              {# Detail button #}
-              <td style="padding:10px 20px 12px 12px; vertical-align:middle; text-align:center;">
+              <td style="padding:10px 20px 12px 12px;vertical-align:middle;text-align:center;">
                 <button type="button"
-                        data-txn-id="{{ sale.transaction_id }}"
-                        onclick="openSaleDetail(this)"
-                        title="View details"
+                        @click="openDetail({{ sale.transaction_id }})"
                         class="w-8 h-8 rounded-xl inline-flex items-center justify-center transition"
-                        style="border:1px solid var(--color-border);
-                               color:var(--color-txt-muted);"
-                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)';
-                                     this.style.borderColor='var(--color-border-strong)'"
-                        onmouseout="this.style.backgroundColor='transparent';
-                                    this.style.borderColor='var(--color-border)'">
+                        style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.borderColor='var(--color-border-strong)'"
+                        onmouseout="this.style.backgroundColor='transparent';this.style.borderColor='var(--color-border)'">
                   <span class="material-symbols-outlined text-[18px] pointer-events-none">visibility</span>
                 </button>
               </td>
-
             </tr>
             {% endfor %}
           {% else %}
             <tr>
-              <td colspan="{{ 7 if is_admin else 6 }}"
-                  class="py-16 text-center">
-                <span class="material-symbols-outlined text-[52px] block mb-3 mx-auto"
-                      style="color:var(--color-border-strong);">receipt_long</span>
-                <p class="text-sm" style="color:var(--color-txt-muted);">
-                  No transactions found for the selected filters.
-                </p>
+              <td colspan="{{ 7 if is_admin else 6 }}" class="py-16 text-center">
+                <span class="material-symbols-outlined text-[52px] block mb-3 mx-auto" style="color:var(--color-border-strong);">receipt_long</span>
+                <p class="text-sm" style="color:var(--color-txt-muted);">No transactions found for the selected filters.</p>
               </td>
             </tr>
           {% endif %}
         </tbody>
-
       </table>
     </div>
   </div>
 
-  {# ── Cards (mobile) ───────────────────────────────────────────────────── #}
+  {# ── Cards (mobile) ────────────────────────────────────────────────────── #}
   <div class="sm:hidden space-y-2">
     {% if sales.items %}
       {% for sale in sales.items %}
-      <button type="button"
-              data-txn-id="{{ sale.transaction_id }}"
-              onclick="openSaleDetail(this)"
+      <button type="button" @click="openDetail({{ sale.transaction_id }})"
               class="w-full text-left rounded-xl px-4 py-3 transition"
-              style="border:1px solid var(--color-border); background-color:var(--color-surface);"
+              style="border:1px solid var(--color-border);background-color:var(--color-surface);"
               onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
               onmouseout="this.style.backgroundColor='var(--color-surface)'">
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-mono font-bold" style="color:var(--color-txt-primary);">
-              #{{ "%05d" | format(sale.transaction_id) }}
-            </p>
+            <p class="text-sm font-mono font-bold" style="color:var(--color-txt-primary);">#{{ "%05d" | format(sale.transaction_id) }}</p>
             <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
-              {{ sale.sale_datetime | pht('%b %d, %Y') }}
-              · {{ sale.sale_datetime | pht('%I:%M %p') }}
+              {{ sale.sale_datetime | pht('%b %d, %Y') }} · {{ sale.sale_datetime | pht('%I:%M %p') }}
             </p>
             {% if is_admin and sale.user %}
-            <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
-              {{ (sale.user.first_name ~ " " ~ sale.user.last_name).strip().title() }}
-            </p>
+            <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">{{ (sale.user.first_name ~ " " ~ sale.user.last_name).strip().title() }}</p>
             {% endif %}
-            <p class="text-base font-bold mt-1" style="color:var(--color-success);">
-              ₱{{ "%.2f" | format(sale.total_amount) }}
-            </p>
+            <p class="text-base font-bold mt-1" style="color:var(--color-success);">₱{{ "%.2f" | format(sale.total_amount) }}</p>
           </div>
-          <span class="material-symbols-outlined text-[18px] mt-1 shrink-0"
-                style="color:var(--color-txt-muted);">chevron_right</span>
+          <span class="material-symbols-outlined text-[18px] mt-1 shrink-0" style="color:var(--color-txt-muted);">chevron_right</span>
         </div>
       </button>
       {% endfor %}
     {% else %}
       <div class="rounded-xl py-14 text-center"
-           style="border:1px solid var(--color-border); background-color:var(--color-surface);">
-        <span class="material-symbols-outlined text-[40px] block mb-2"
-              style="color:var(--color-border-strong);">receipt_long</span>
+           style="border:1px solid var(--color-border);background-color:var(--color-surface);">
+        <span class="material-symbols-outlined text-[40px] block mb-2" style="color:var(--color-border-strong);">receipt_long</span>
         <p class="text-sm" style="color:var(--color-txt-muted);">No transactions found.</p>
       </div>
     {% endif %}
   </div>
 
-  {# ── Pagination ───────────────────────────────────────────────────────── #}
+  {# ── Pagination ────────────────────────────────────────────────────────── #}
   {% if sales.pages > 1 %}
   {% set ep = 'admin.sales_history' if is_admin else 'cashier.sales_history' %}
   <div class="flex items-center justify-between">
@@ -384,316 +245,448 @@
       Page {{ sales.page }} of {{ sales.pages }} · {{ sales.total }} entries
     </p>
     <div class="flex items-center gap-1">
-
       {% if sales.has_prev %}
       <a href="{{ url_for(ep, page=sales.prev_num, **filters) }}"
          class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-         style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+         style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
          onmouseout="this.style.backgroundColor='transparent'">
         <span class="material-symbols-outlined text-[16px]">chevron_left</span>
       </a>
       {% endif %}
-
       {% set win_start = [1, sales.page - 2] | max %}
       {% set win_end   = [sales.pages, sales.page + 2] | min %}
-
       {% if win_start > 1 %}
         <a href="{{ url_for(ep, page=1, **filters) }}"
            class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition"
-           style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+           style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
            onmouseout="this.style.backgroundColor='transparent'">1</a>
-        {% if win_start > 2 %}
-        <span class="text-xs px-1" style="color:var(--color-txt-muted);">…</span>
-        {% endif %}
+        {% if win_start > 2 %}<span class="text-xs px-1" style="color:var(--color-txt-muted);">…</span>{% endif %}
       {% endif %}
-
       {% for p in range(win_start, win_end + 1) %}
       <a href="{{ url_for(ep, page=p, **filters) }}"
          class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition"
-         style="{% if p == sales.page %}
-                  background:var(--color-primary); color:var(--color-bg)
-                {% else %}
-                  border:1px solid var(--color-border); color:var(--color-txt-muted)
-                {% endif %}"
+         style="{% if p == sales.page %}background:var(--color-primary);color:var(--color-bg){% else %}border:1px solid var(--color-border);color:var(--color-txt-muted){% endif %}"
          {% if p != sales.page %}
          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
          onmouseout="this.style.backgroundColor='transparent'"
          {% endif %}>{{ p }}</a>
       {% endfor %}
-
       {% if win_end < sales.pages %}
-        {% if win_end < sales.pages - 1 %}
-        <span class="text-xs px-1" style="color:var(--color-txt-muted);">…</span>
-        {% endif %}
+        {% if win_end < sales.pages - 1 %}<span class="text-xs px-1" style="color:var(--color-txt-muted);">…</span>{% endif %}
         <a href="{{ url_for(ep, page=sales.pages, **filters) }}"
            class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition"
-           style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+           style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
            onmouseout="this.style.backgroundColor='transparent'">{{ sales.pages }}</a>
       {% endif %}
-
       {% if sales.has_next %}
       <a href="{{ url_for(ep, page=sales.next_num, **filters) }}"
          class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-         style="border:1px solid var(--color-border); color:var(--color-txt-muted);"
+         style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
          onmouseout="this.style.backgroundColor='transparent'">
         <span class="material-symbols-outlined text-[16px]">chevron_right</span>
       </a>
       {% endif %}
-
     </div>
   </div>
   {% endif %}
 
-</div>
 
+  {# ════════════════════════════════════════════════════════════════════════ #}
+  {# Filter Modal                                                             #}
+  {# ════════════════════════════════════════════════════════════════════════ #}
+  <div x-show="filterOpen"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-120"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 flex items-center justify-center px-4"
+       style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);"
+       @click.self="filterOpen = false"
+       @keydown.escape.window="if(filterOpen && !detailOpen) filterOpen = false"
+       x-cloak>
 
-{# ═══════════════════════════════════════════════════════════════════════════ #}
-{# Detail Modal                                                                #}
-{# ═══════════════════════════════════════════════════════════════════════════ #}
-<div id="saleDetailModal"
-     class="fixed inset-0 z-50 hidden items-center justify-center px-4"
-     style="background:rgba(0,0,0,0.45); backdrop-filter:blur(4px);"
-     onclick="if(event.target===this) closeSaleDetail()">
+    <div x-show="filterOpen"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-120"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="w-full max-w-md rounded-2xl overflow-hidden"
+         style="background-color:var(--color-surface);border:1px solid var(--color-border);">
 
-  <div id="saleModalCard"
-       class="w-full max-w-lg rounded-2xl overflow-hidden"
-       style="background-color:var(--color-surface);
-              border:1px solid var(--color-border);
-              transform:scale(0.95); opacity:0;
-              transition:transform 0.2s ease, opacity 0.2s ease;">
-
-    {# Header #}
-    <div class="flex items-center justify-between px-6 py-4"
-         style="border-bottom:1px solid var(--color-border);
-                background-color:var(--color-surface-alt);">
-      <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[20px]"
-              style="color:var(--color-txt-muted);">receipt_long</span>
-        <h2 class="text-base font-bold" style="color:var(--color-txt-primary);">
-          Transaction Detail
-        </h2>
-      </div>
-      <button onclick="closeSaleDetail()"
-              class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-              style="color:var(--color-txt-muted);"
-              onmouseover="this.style.backgroundColor='var(--color-border)'"
-              onmouseout="this.style.backgroundColor='transparent'">
-        <span class="material-symbols-outlined text-[20px]">close</span>
-      </button>
-    </div>
-
-    {# Loading #}
-    <div id="saleModalLoading" class="px-6 py-12 flex flex-col items-center gap-3">
-      <span class="material-symbols-outlined text-[36px] animate-spin"
-            style="color:var(--color-txt-muted);">progress_activity</span>
-      <span class="text-sm" style="color:var(--color-txt-muted);">Loading…</span>
-    </div>
-
-    {# Error #}
-    <div id="saleModalError"
-         class="hidden px-6 py-10 flex-col items-center gap-2 text-center">
-      <span class="material-symbols-outlined text-[32px]"
-            style="color:var(--color-error);">error</span>
-      <p class="text-sm" style="color:var(--color-error);">
-        Failed to load transaction details. Please try again.
-      </p>
-    </div>
-
-    {# Content #}
-    <div id="saleModalContent" class="hidden px-6 py-5 flex-col gap-4">
-
-      {# TXN ID + total #}
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-mono font-bold" id="dTxnId"
-              style="color:var(--color-txt-muted);"></span>
-        <span class="text-xl font-bold" id="dTotal"
-              style="color:var(--color-success);"></span>
-      </div>
-
-      {# Meta row: Date + Cashier #}
-      <div class="grid grid-cols-2 gap-3">
-        <div class="rounded-xl px-4 py-3"
-             style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
-          <p class="text-xs font-medium mb-1" style="color:var(--color-txt-muted);">Date &amp; Time</p>
-          <p class="text-sm font-semibold" id="dDatetime"
-             style="color:var(--color-txt-primary);"></p>
+      <div class="flex items-center justify-between px-6 py-4"
+           style="border-bottom:1px solid var(--color-border);background-color:var(--color-surface-alt);">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px]" style="color:var(--color-txt-muted);">tune</span>
+          <h2 class="text-base font-bold" style="color:var(--color-txt-primary);">Filter Transactions</h2>
         </div>
-        <div class="rounded-xl px-4 py-3"
-             style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
-          <p class="text-xs font-medium mb-1" style="color:var(--color-txt-muted);">Cashier</p>
-          <p class="text-sm font-semibold" id="dCashier"
-             style="color:var(--color-txt-primary);"></p>
-          <p class="text-xs capitalize" id="dCashierRole"
-             style="color:var(--color-txt-muted);"></p>
-        </div>
+        <button @click="filterOpen = false"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                style="color:var(--color-txt-muted);"
+                onmouseover="this.style.backgroundColor='var(--color-border)'"
+                onmouseout="this.style.backgroundColor='transparent'">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
       </div>
 
-      {# Breakdown row: Sales / Cost / Profit #}
-      <div class="grid grid-cols-3 gap-2">
-        {% for bid, blabel, bcolor in [
-          ('dSales',  'Sales',  'var(--color-txt-primary)'),
-          ('dCost',   'Cost',   'var(--color-error)'),
-          ('dProfit', 'Profit', 'var(--color-success)'),
-        ] %}
-        <div class="rounded-xl px-3 py-2.5 text-center"
-             style="background-color:var(--color-surface-alt); border:1px solid var(--color-border);">
-          <p class="text-[10px] font-semibold uppercase tracking-wide mb-1"
-             style="color:var(--color-txt-muted);">{{ blabel }}</p>
-          <p class="text-sm font-bold tabular-nums" id="{{ bid }}"
-             style="color:{{ bcolor }};"></p>
-        </div>
-        {% endfor %}
-      </div>
+      <form method="GET" action="{{ url_for('admin.sales_history' if is_admin else 'cashier.sales_history') }}">
+        <div class="px-6 py-5 flex flex-col gap-4">
 
-      {# Items table #}
-      <div class="rounded-xl overflow-hidden"
-           style="border:1px solid var(--color-border);">
-        <div class="px-4 py-2.5 flex items-center gap-1.5"
-             style="background-color:var(--color-surface-alt);
-                    border-bottom:1px solid var(--color-border);">
-          <span class="material-symbols-outlined text-[15px]"
-                style="color:var(--color-txt-muted);">inventory_2</span>
-          <p class="text-xs font-semibold uppercase tracking-wide"
-             style="color:var(--color-txt-muted);">Items</p>
-        </div>
-        <div id="dItemsList" style="border-color:var(--color-border);"></div>
-      </div>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Transaction ID</label>
+            <div class="relative">
+              <span class="material-symbols-outlined text-[14px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style="color:var(--color-txt-muted);">search</span>
+              <input type="text" name="q" value="{{ filters.q }}" placeholder="e.g. 42"
+                     class="w-full pl-8 pr-3 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                     style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);"
+                     onfocus="this.style.borderColor='var(--color-accent)'"
+                     onblur="this.style.borderColor='var(--color-border)'">
+            </div>
+          </div>
 
+          {% if is_admin %}
+          <div class="flex flex-col gap-1.5">
+            <label class="text-[10px] font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Cashier</label>
+            <select name="user_id"
+                    class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                    style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);"
+                    onfocus="this.style.borderColor='var(--color-accent)'"
+                    onblur="this.style.borderColor='var(--color-border)'">
+              <option value="">All cashiers</option>
+              {% for u in all_users %}
+              <option value="{{ u.user_id }}" {{ "selected" if filters.user_id == u.user_id }}>
+                {{ (u.first_name ~ " " ~ u.last_name).strip().title() }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
+          <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[10px] font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">From</label>
+              <input type="date" name="date_from" value="{{ filters.date_from or '' }}"
+                     class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                     style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);"
+                     onfocus="this.style.borderColor='var(--color-accent)'"
+                     onblur="this.style.borderColor='var(--color-border)'">
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <label class="text-[10px] font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">To</label>
+              <input type="date" name="date_to" value="{{ filters.date_to or '' }}"
+                     class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none transition"
+                     style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);"
+                     onfocus="this.style.borderColor='var(--color-accent)'"
+                     onblur="this.style.borderColor='var(--color-border)'">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="flex items-center justify-between px-6 py-4 gap-3"
+             style="border-top:1px solid var(--color-border);background-color:var(--color-surface-alt);">
+          <button type="button" @click="filterOpen = false"
+                  class="px-4 py-2 rounded-xl text-sm font-medium transition"
+                  style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
+                  onmouseover="this.style.borderColor='var(--color-border-strong)'"
+                  onmouseout="this.style.borderColor='var(--color-border)'">Cancel</button>
+          <button type="submit"
+                  class="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-semibold transition"
+                  style="background:var(--color-primary);color:var(--color-bg);"
+                  onmouseover="this.style.opacity='0.85'"
+                  onmouseout="this.style.opacity='1'">
+            <span class="material-symbols-outlined text-[15px]">check</span>
+            Apply Filters
+          </button>
+        </div>
+      </form>
     </div>
-
-    {# Footer #}
-    <div id="saleModalFooter"
-         class="hidden px-6 py-4 flex justify-end"
-         style="border-top:1px solid var(--color-border);
-                background-color:var(--color-surface-alt);">
-      <button onclick="closeSaleDetail()"
-              class="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-semibold transition"
-              style="background:var(--color-primary); color:var(--color-bg);"
-              onmouseover="this.style.opacity='0.85'"
-              onmouseout="this.style.opacity='1'">
-        Close
-      </button>
-    </div>
-
   </div>
+
+
+  {# ════════════════════════════════════════════════════════════════════════ #}
+  {# Detail Modal                                                             #}
+  {# ════════════════════════════════════════════════════════════════════════ #}
+  <div x-show="detailOpen"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-120"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 z-50 flex items-center justify-center px-4"
+       style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);"
+       @click.self="detailOpen = false"
+       @keydown.escape.window="if(detailOpen) detailOpen = false"
+       x-cloak>
+
+    <div x-show="detailOpen"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-120"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+         style="background-color:var(--color-surface);border:1px solid var(--color-border);max-height:90vh;">
+
+      {# Header #}
+      <div class="flex items-center justify-between px-6 py-4 shrink-0"
+           style="border-bottom:1px solid var(--color-border);background-color:var(--color-surface-alt);">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px]" style="color:var(--color-txt-muted);">receipt_long</span>
+          <h2 class="text-base font-bold" style="color:var(--color-txt-primary);">Transaction Detail</h2>
+        </div>
+        <button @click="detailOpen = false"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                style="color:var(--color-txt-muted);"
+                onmouseover="this.style.backgroundColor='var(--color-border)'"
+                onmouseout="this.style.backgroundColor='transparent'">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      {# Loading #}
+      <div x-show="detailState === 'loading'" class="px-6 py-14 flex flex-col items-center gap-3">
+        <span class="material-symbols-outlined text-[36px] animate-spin" style="color:var(--color-txt-muted);">progress_activity</span>
+        <span class="text-sm" style="color:var(--color-txt-muted);">Loading…</span>
+      </div>
+
+      {# Error #}
+      <div x-show="detailState === 'error'" class="px-6 py-12 flex flex-col items-center gap-2 text-center">
+        <span class="material-symbols-outlined text-[32px]" style="color:var(--color-error);">error</span>
+        <p class="text-sm" style="color:var(--color-error);">Failed to load transaction details. Please try again.</p>
+      </div>
+
+      {# Content #}
+      <div x-show="detailState === 'done'" class="px-6 py-5 flex flex-col gap-4 overflow-y-auto flex-1">
+
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-mono font-bold" style="color:var(--color-txt-muted);"
+                x-text="detail ? `TXN #${String(detail.transaction_id).padStart(5,'0')}` : ''"></span>
+          <span class="text-xl font-bold" style="color:var(--color-success);"
+                x-text="detail ? fmt(detail.total_amount) : ''"></span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-xl px-4 py-3"
+               style="background-color:var(--color-surface-alt);border:1px solid var(--color-border);">
+            <p class="text-xs font-medium mb-1" style="color:var(--color-txt-muted);">Date &amp; Time</p>
+            <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="detail?.sale_datetime"></p>
+          </div>
+          <div class="rounded-xl px-4 py-3"
+               style="background-color:var(--color-surface-alt);border:1px solid var(--color-border);">
+            <p class="text-xs font-medium mb-1" style="color:var(--color-txt-muted);">Cashier</p>
+            <p class="text-sm font-semibold" style="color:var(--color-txt-primary);" x-text="detail?.cashier.name"></p>
+            <p class="text-xs capitalize" style="color:var(--color-txt-muted);" x-text="detail?.cashier.role"></p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div class="rounded-xl px-3 py-2.5 text-center"
+               style="background-color:var(--color-surface-alt);border:1px solid var(--color-border);">
+            <p class="text-[10px] font-semibold uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);">Sales</p>
+            <p class="text-sm font-bold tabular-nums" style="color:var(--color-txt-primary);"
+               x-text="detail ? fmt(detail.total_amount) : ''"></p>
+          </div>
+          <div class="rounded-xl px-3 py-2.5 text-center"
+               style="background-color:var(--color-surface-alt);border:1px solid var(--color-border);">
+            <p class="text-[10px] font-semibold uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);">Cost</p>
+            <p class="text-sm font-bold tabular-nums" style="color:var(--color-error);"
+               x-text="detail ? fmt(detail.total_cost_price) : ''"></p>
+          </div>
+          <div class="rounded-xl px-3 py-2.5 text-center"
+               style="background-color:var(--color-surface-alt);border:1px solid var(--color-border);">
+            <p class="text-[10px] font-semibold uppercase tracking-wide mb-1" style="color:var(--color-txt-muted);">Profit</p>
+            <p class="text-sm font-bold tabular-nums" style="color:var(--color-success);"
+               x-text="detail ? fmt(detail.total_revenue_price) : ''"></p>
+          </div>
+        </div>
+
+        {# Items #}
+        <div class="rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
+          <div class="px-4 py-2.5 flex items-center justify-between"
+               style="background-color:var(--color-surface-alt);border-bottom:1px solid var(--color-border);">
+            <div class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px]" style="color:var(--color-txt-muted);">inventory_2</span>
+              <p class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Items</p>
+            </div>
+            <div x-show="detail && detail.items.some(i => i.override_used)"
+                 class="flex items-center gap-1.5 text-[10px] font-semibold"
+                 style="color:#d97706;">
+              <span class="inline-block w-2.5 h-2.5 rounded-sm shrink-0"
+                    style="background:color-mix(in srgb,#d97706 20%,transparent);border:1.5px solid #d97706;"></span>
+              Stock override used
+            </div>
+          </div>
+
+          <template x-if="detail">
+            <div>
+              <template x-for="(item, i) in detail.items" :key="i">
+                <div :style="`
+                  ${i > 0 ? 'border-top:1px solid var(--color-border);' : ''}
+                  border-left:3px solid ${item.override_used ? '#d97706' : 'transparent'};
+                  ${item.override_used ? 'background:color-mix(in srgb,#d97706 7%,transparent);' : ''}
+                `">
+                  <div class="flex items-center justify-between px-4 py-2.5 gap-3">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-1.5 flex-wrap">
+                        <p class="text-sm font-medium truncate" style="color:var(--color-txt-primary);"
+                           x-text="item.product_name"></p>
+                        <template x-if="item.override_used">
+                          <span class="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0"
+                                style="background:color-mix(in srgb,#d97706 15%,transparent);color:#d97706;">
+                            <span class="material-symbols-outlined text-[11px]">warning</span>
+                            Override
+                          </span>
+                        </template>
+                      </div>
+                      <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                         x-text="`${item.quantity} × ${fmt(item.price)}`"></p>
+                    </div>
+                    <p class="text-sm font-semibold tabular-nums shrink-0"
+                       style="color:var(--color-txt-primary);" x-text="fmt(item.subtotal)"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+
+      </div>
+
+      {# Footer #}
+      <div x-show="detailState === 'done'"
+           class="px-6 py-4 flex items-center justify-between gap-3 shrink-0"
+           style="border-top:1px solid var(--color-border);background-color:var(--color-surface-alt);">
+
+        <button @click="printDetail()"
+                :disabled="printing"
+                class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition"
+                style="border:1px solid var(--color-border);color:var(--color-txt-muted);"
+                onmouseover="this.style.backgroundColor='var(--color-surface)';this.style.borderColor='var(--color-border-strong)'"
+                onmouseout="this.style.backgroundColor='transparent';this.style.borderColor='var(--color-border)'">
+          <span class="material-symbols-outlined text-[16px]"
+                :class="printing ? 'animate-spin' : ''"
+                x-text="printing ? 'progress_activity' : 'print'"></span>
+          <span x-text="printing ? 'Printing…' : 'Print'"></span>
+        </button>
+
+        <button @click="detailOpen = false"
+                class="flex items-center gap-1.5 px-5 py-2 rounded-xl text-sm font-semibold transition"
+                style="background:var(--color-primary);color:var(--color-bg);"
+                onmouseover="this.style.opacity='0.85'"
+                onmouseout="this.style.opacity='1'">Close</button>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 
 <script>
-  // ── Period stat cards ────────────────────────────────────────────────────
-  const STATS = {{ stats | tojson }};
-  const PERIODS = ['today', 'week', 'month', 'year'];
-  let activePeriod = 'today';
+const STATS      = {{ stats | tojson }};
+const IS_ADMIN   = {{ "true" if is_admin else "false" }};
+const DETAIL_URL = IS_ADMIN
+  ? "{{ url_for('admin.sale_detail',   transaction_id=0) }}".replace('/0', '/')
+  : "{{ url_for('cashier.sale_detail', transaction_id=0) }}".replace('/0', '/');
 
-  function fmt(n)   { return '₱' + n.toFixed(2); }
-  function fmtInt(n){ return n.toLocaleString(); }
+function salesHistory() {
+  return {
+    // ── Period stats ─────────────────────────────────────────────────────
+    activePeriod: 'today',
+    periods: [
+      { id: 'today', label: 'Today'      },
+      { id: 'week',  label: 'This Week'  },
+      { id: 'month', label: 'This Month' },
+      { id: 'year',  label: 'This Year'  },
+    ],
+    statCards: [
+      { id: 'count',  label: 'Transactions', icon: 'receipt_long', key: 'count',  money: false },
+      { id: 'sales',  label: 'Sales',         icon: 'payments',    key: 'sales',  money: true  },
+      { id: 'cost',   label: 'Cost',           icon: 'price_check', key: 'cost',   money: true  },
+      { id: 'profit', label: 'Profit',         icon: 'trending_up', key: 'profit', money: true  },
+    ],
+    get currentStats() { return STATS[this.activePeriod]; },
 
-  function setPeriod(pid) {
-    activePeriod = pid;
-    const s = STATS[pid];
+    // ── Modals ────────────────────────────────────────────────────────────
+    filterOpen:  false,
+    detailOpen:  false,
+    detailState: 'loading',   // 'loading' | 'done' | 'error'
+    detail:      null,
+    printing:    false,
 
-    document.getElementById('stat-count').textContent  = fmtInt(s.count);
-    document.getElementById('stat-sales').textContent  = fmt(s.sales);
-    document.getElementById('stat-cost').textContent   = fmt(s.cost);
-    document.getElementById('stat-profit').textContent = fmt(s.profit);
+    // ── Helpers ───────────────────────────────────────────────────────────
+    fmt(n)    { return '₱' + Number(n).toFixed(2); },
+    fmtInt(n) { return Number(n).toLocaleString(); },
 
-    PERIODS.forEach(p => {
-      const btn = document.getElementById('period-btn-' + p);
-      if (!btn) return;
-      if (p === pid) {
-        btn.style.background = 'var(--color-primary)';
-        btn.style.color      = 'var(--color-bg)';
-        btn.style.border     = 'none';
-      } else {
-        btn.style.background = 'transparent';
-        btn.style.color      = 'var(--color-txt-muted)';
-        btn.style.border     = '1px solid var(--color-border)';
+    // ── Detail modal ──────────────────────────────────────────────────────
+    async openDetail(txnId) {
+      this.detail      = null;
+      this.detailState = 'loading';
+      this.detailOpen  = true;
+
+      try {
+        const res = await fetch(DETAIL_URL + txnId);
+        if (!res.ok) throw new Error(res.status);
+        this.detail      = await res.json();
+        this.detailState = 'done';
+      } catch (e) {
+        console.error('Detail fetch failed:', e);
+        this.detailState = 'error';
       }
-    });
-  }
+    },
 
-  // Initialise with today
-  setPeriod('today');
+    // ── Print ─────────────────────────────────────────────────────────────
+    async printDetail() {
+      if (!this.detail || this.printing) return;
+      this.printing = true;
 
+      const payload = {
+        transaction_id: this.detail.transaction_id,
+        datetime:       this.detail.sale_datetime,
+        cashier:        this.detail.cashier.name,
+        total_price:    this.detail.total_amount,
+        tendered:       this.detail.total_amount,
+        change:         0,
+        items: this.detail.items.map(item => ({
+          product_name:  item.product_name,
+          qty:           item.quantity,
+          price:         item.price,
+          subtotal:      item.subtotal,
+          override_used: item.override_used ?? false,
+        })),
+      };
 
-  // ── Sale detail modal ────────────────────────────────────────────────────
-  const IS_ADMIN   = {{ "true" if is_admin else "false" }};
-  const DETAIL_URL = IS_ADMIN
-    ? "{{ url_for('admin.sale_detail',   transaction_id=0) }}".replace("/0", "/")
-    : "{{ url_for('cashier.sale_detail', transaction_id=0) }}".replace("/0", "/");
-
-  const modal   = document.getElementById("saleDetailModal");
-  const card    = document.getElementById("saleModalCard");
-  const loading = document.getElementById("saleModalLoading");
-  const errorEl = document.getElementById("saleModalError");
-  const content = document.getElementById("saleModalContent");
-  const footer  = document.getElementById("saleModalFooter");
-
-  function show(el)  { el.classList.remove("hidden"); el.classList.add("flex"); }
-  function hide(el)  { el.classList.add("hidden");    el.classList.remove("flex"); }
-
-  function openSaleDetail(btn) {
-    const txnId = btn.dataset.txnId;
-
-    show(loading); hide(errorEl); hide(content); hide(footer);
-    show(modal);
-    requestAnimationFrame(() => {
-      card.style.transform = "scale(1)";
-      card.style.opacity   = "1";
-    });
-
-    fetch(DETAIL_URL + txnId)
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(d => {
-        document.getElementById("dTxnId").textContent    = `TXN #${String(d.transaction_id).padStart(5, "0")}`;
-        document.getElementById("dTotal").textContent    = `₱${d.total_amount.toFixed(2)}`;
-        document.getElementById("dDatetime").textContent = d.sale_datetime;
-        document.getElementById("dCashier").textContent  = d.cashier.name;
-        document.getElementById("dCashierRole").textContent = d.cashier.role;
-
-        document.getElementById("dSales").textContent  = `₱${d.total_amount.toFixed(2)}`;
-        document.getElementById("dCost").textContent   = `₱${d.total_cost_price.toFixed(2)}`;
-        document.getElementById("dProfit").textContent = `₱${d.total_revenue_price.toFixed(2)}`;
-
-        const list = document.getElementById("dItemsList");
-        list.innerHTML = d.items.map((item, i) => `
-          <div class="flex items-center justify-between px-4 py-2.5 gap-3"
-               style="${i > 0 ? 'border-top:1px solid var(--color-border)' : ''}">
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium truncate" style="color:var(--color-txt-primary);">
-                ${item.product_name}
-              </p>
-              <p class="text-xs" style="color:var(--color-txt-muted);">
-                ${item.quantity} × ₱${item.price.toFixed(2)}
-              </p>
-            </div>
-            <p class="text-sm font-semibold tabular-nums shrink-0"
-               style="color:var(--color-txt-primary);">
-              ₱${item.subtotal.toFixed(2)}
-            </p>
-          </div>
-        `).join("");
-
-        hide(loading); show(content); show(footer);
-      })
-      .catch(() => {
-        hide(loading); show(errorEl);
-      });
-  }
-
-  function closeSaleDetail() {
-    card.style.transform = "scale(0.95)";
-    card.style.opacity   = "0";
-    setTimeout(() => { hide(modal); }, 180);
-  }
-
-  document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && !modal.classList.contains("hidden"))
-      closeSaleDetail();
-  });
+      try {
+        const res  = await fetch('http://localhost:8765/print', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload),
+        });
+        const text = await res.text();
+        if (!res.ok) {
+          console.error('Print agent error:', res.status, text);
+          let msg = `Print failed (${res.status}).`;
+          try { msg = JSON.parse(text).error || msg; } catch {}
+          alert(msg);
+        }
+      } catch {
+        alert('Print agent is not running. Please start shekel-agent.');
+      } finally {
+        this.printing = false;
+      }
+    },
+  };
+}
 </script>
 {% endblock %}

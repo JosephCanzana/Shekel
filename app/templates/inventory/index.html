@@ -374,6 +374,29 @@
             </template>
         </div>
     </div>
+    {# admin approval quick link #}
+    {% if submitted_items %}
+    <div class="rounded-2xl p-4 flex items-center justify-between"
+        style="background:var(--color-surface); border:1px solid var(--color-border);">
+
+        <div>
+            <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">
+                Submitted defects need approval
+            </p>
+            <p class="text-xs" style="color:var(--color-txt-muted);">
+                Go to Admin Requests to review them.
+            </p>
+        </div>
+
+    <a href="/admin/requests"
+    class="px-4 py-2 rounded-xl text-sm font-semibold transition"
+    style="background:var(--color-accent);
+            color:white;">
+        Review Requests ({{ submitted_items|length }}) →
+    </a>
+
+    </div>
+    {% endif %}
 
     {# ── Search + Filters + Columns ── #}
     <div class="flex gap-3">

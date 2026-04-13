@@ -9,87 +9,6 @@
   .pill-active { background: color-mix(in srgb, currentColor 8%, transparent); }
 </style>
 {% endblock %}
-
-{#
-  ══════════════════════════════════════════════════════════════════════════════
-  BACKEND CHANGES NEEDED IN _build_report_data() — admin.py
-  ──────────────────────────────────────────────────────────────────────────────
-  Sales:
-    sales_data["total_cost"]   = sum(float(s.total_cost_price   or 0) for s in sales_list)
-    sales_data["total_profit"] = sum(float(s.total_revenue_price or 0) for s in sales_list)
-
-    # Defect financial deductions (active defects that fall in the period)
-    from sqlalchemy import func as _f
-    def _defect_sum(col):
-        return float(
-            db.session.query(_f.coalesce(_f.sum(col), 0))
-            .join(Defect, Defect.defect_id == DefectDetail.defect_id)
-            .filter(Defect.defect_datetime.between(date_from, date_to),
-                    DefectDetail.status     == "active",
-                    DefectDetail.is_archived == False)
-            .scalar() or 0
-        )
-    sales_data["defect_sales_loss"]  = _defect_sum(DefectDetail.subtotal_amount)
-    sales_data["defect_cost_loss"]   = _defect_sum(DefectDetail.subtotal_unit)     # cost×qty
-    sales_data["defect_profit_loss"] = _defect_sum(DefectDetail.subtotal_revenue)  # revenue×qty
-
-    # Hourly breakdown for single-day views
-    is_single = (date_from.date() == date_to.date())
-    if is_single:
-        from sqlalchemy import func as _f
-        from app.models.sale import Sale as _Sale
-        sales_data["hourly"] = (
-            db.session.query(
-                _f.hour(_Sale.sale_datetime).label("hour"),
-                _f.count(_Sale.transaction_id).label("transactions"),
-                _f.coalesce(_f.sum(_Sale.total_amount),        0).label("total"),
-                _f.coalesce(_f.sum(_Sale.total_cost_price),    0).label("cost"),
-                _f.coalesce(_f.sum(_Sale.total_revenue_price), 0).label("profit"),
-            )
-            .filter(_Sale.sale_datetime.between(date_from, date_to))
-            .group_by(_f.hour(_Sale.sale_datetime))
-            .order_by(_f.hour(_Sale.sale_datetime))
-            .all()
-        )
-    else:
-        sales_data["hourly"] = []
-
-  Stock:
-    # total_units already = sum(quantity_received) ✓
-    # Add per-product breakdown for chart
-    from app.models.stock_in import StockIn as _SI
-    stock_data["by_product"] = (
-        db.session.query(Product.product_name,
-                         _f.sum(_SI.quantity_received).label("units"))
-        .join(Product, Product.product_id == _SI.product_id)
-        .filter(_SI.stockin_datetime.between(date_from, date_to))
-        .group_by(Product.product_id, Product.product_name)
-        .order_by(_f.sum(_SI.quantity_received).desc())
-        .limit(8).all()
-    )
-
-  Defects:
-    defects_data["total_sales_loss"]  = sum(float(d.subtotal_amount  or 0) for d,_,_,_ in defect_rows if d.status=="active")
-    defects_data["total_cost_loss"]   = sum(float(d.subtotal_unit    or 0) for d,_,_,_ in defect_rows if d.status=="active")
-    defects_data["total_profit_loss"] = sum(float(d.subtotal_revenue or 0) for d,_,_,_ in defect_rows if d.status=="active")
-    defects_data["supplier_loss"]     = sum(float(d.subtotal_amount  or 0) for d,_,_,_ in defect_rows if d.supplier_compensation=="loss")
-
-  _build_chart_data() additions:
-    In "Sales" section:
-      daily_asc costs/profits parallel arrays
-      hourly arrays from sales_data["hourly"]
-    In "Stock" section:
-      by_product labels + units
-    In "Inventory" section:
-      category breakdown
-      status counts (ok / low / out)
-  ══════════════════════════════════════════════════════════════════════════════
-
-  Also update _parse_date_range() to default to today (not start of month):
-    dfrom_s = request.args.get("date_from", today.isoformat())
-    dto_s   = request.args.get("date_to",   today.isoformat())
-#}
-
 {% block body %}
 {% set is_single_day = (date_from == date_to) %}
 
@@ -375,10 +294,10 @@
           </thead>
           <tbody class="divide-y divide-border">
             {% if is_single_day and data.sales.hourly is defined and data.sales.hourly %}
-              {% for row in data.sales.hourly %}
+              {% for row in detail.rows %}
               <tr class="hover:bg-bg transition-colors">
                 <td class="px-4 py-2.5 font-medium text-txt-primary">
-                  {{ '%02d:00'|format(row.hour) }}–{{ '%02d:59'|format(row.hour) }}
+                  {{ '%02d:00' }}–{{ '%02d:59'}}
                 </td>
                 <td class="px-4 py-2.5 text-right text-txt-muted">{{ row.transactions }}</td>
                 <td class="px-4 py-2.5 text-right font-semibold text-txt-primary">₱{{ "%.2f"|format(row.total|float) }}</td>
@@ -387,7 +306,7 @@
               </tr>
               {% endfor %}
             {% else %}
-              {% for row in data.sales.hourly %}
+              {% for row in detail.rows %}
               <tr class="hover:bg-bg transition-colors">
                 <td class="px-4 py-2.5 font-medium text-txt-primary">{{ row.date }}</td>
                 <td class="px-4 py-2.5 text-right text-txt-muted">{{ row.transactions }}</td>
