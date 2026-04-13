@@ -270,17 +270,27 @@ async printReceipt() {
 }" x-init="
     $nextTick(() => $refs.searchField && $refs.searchField.focus());
     window.addEventListener('keydown', (e) => {
-        const tag = document.activeElement.tagName;
-        const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-        if (e.key === 'F2' || (e.key === '/' && !isTyping)) {
-            e.preventDefault();
-            let visibleField = null;
-            document.querySelectorAll('input[x-ref=searchField]').forEach(f => {
-                if (f.offsetParent !== null) visibleField = f;
-            });
-            if (visibleField) { visibleField.focus(); visibleField.select(); }
-        }
-    });
+    const tag = document.activeElement.tagName;
+    const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+    if (e.key === 'F2' || (e.key === '/' && !isTyping)) {
+        e.preventDefault();
+        let visibleField = null;
+        document.querySelectorAll('input[x-ref=searchField]').forEach(f => {
+            if (f.offsetParent !== null) visibleField = f;
+        });
+        if (visibleField) { visibleField.focus(); visibleField.select(); }
+    }
+
+    if (e.key === 'F4' || (e.key === 'c' && !isTyping)) {
+        e.preventDefault();
+        let cashField = null;
+        document.querySelectorAll('input[x-ref=cashField]').forEach(f => {
+            if (f.offsetParent !== null) cashField = f;
+        });
+        if (cashField) { cashField.focus(); cashField.select(); }
+    }
+});
 ">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -431,8 +441,6 @@ async printReceipt() {
                         </div>
                         <span class="text-[10px] flex items-center gap-1" style="color:var(--color-txt-muted);">
                             <kbd class="px-1 py-0.5 rounded text-[10px]" style="border:1px solid var(--color-border); background:var(--color-surface-alt);">F2</kbd>
-                            <span>or</span>
-                            <kbd class="px-1 py-0.5 rounded text-[10px]" style="border:1px solid var(--color-border); background:var(--color-surface-alt);">/</kbd>
                             to focus
                         </span>
                         <template x-if="suggestions.length > 0">
@@ -599,14 +607,20 @@ async printReceipt() {
                         <label class="text-xs mb-1 block" style="color:var(--color-txt-muted);">Cash Received</label>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style="color:var(--color-txt-muted);">₱</span>
-                            <input type="number" x-model="cashReceived"
+                            <input type="number" x-model="cashReceived" x-ref="cashField"
                                    @focus="if(cashReceived==0) cashReceived=''" @blur="if(cashReceived==='') cashReceived=''"
                                    min="0" step="0.01" placeholder="0.00"
                                    class="w-full pl-7 pr-3 py-2 rounded-xl text-sm font-semibold focus:outline-none transition"
                                    style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
                                    onfocus="this.style.borderColor='var(--color-accent)'; this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                                    onblur="this.style.borderColor='var(--color-border)'; this.style.boxShadow='none'">
+                                   
                         </div>
+                                            <p class="text-[10px] mt-1" style="color:var(--color-txt-muted);">
+                        Press <kbd style="font-family:monospace; font-size:9px; padding:1px 5px; border-radius:4px;
+                                        border:1px solid var(--color-border); background:var(--color-surface);">F4</kbd>
+                        to focus
+                    </p>
                     </div>
                 </div>
                 <div class="h-9 flex items-center">
@@ -1000,6 +1014,7 @@ async printReceipt() {
                                    style="border:2px solid var(--color-border); background:var(--color-surface); color:var(--color-txt-primary); font-size:24px;"
                                    onfocus="this.style.borderColor='var(--color-accent)'; this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                                    onblur="this.style.borderColor='var(--color-border)'; this.style.boxShadow='none'">
+                                   
                         </div>
                         <div class="grid grid-cols-4 gap-2 mt-3">
                             <template x-for="amt in [50,100,200,500]" :key="amt">
