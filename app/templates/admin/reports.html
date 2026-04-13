@@ -157,7 +157,7 @@
       </p>
     </a>
 
-    {# Sales / Revenue #}
+    {# Sales / Revenue — net figure is primary #}
     <div class="bg-surface border border-border rounded-xl p-4">
       <div class="flex items-center gap-2 mb-3">
         <span class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center shrink-0">
@@ -165,15 +165,13 @@
         </span>
         <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">Sales</p>
       </div>
-      <p class="text-2xl font-semibold text-txt-primary">₱{{ "%.2f"|format(data.sales.total_revenue) }}</p>
-      {% if data.sales.defect_sales_loss is defined and data.sales.defect_sales_loss > 0 %}
-        <p class="text-[10px] text-slate-500 mt-1 flex items-center gap-0.5">
-          - ₱{{ "%.2f"|format(data.sales.defect_sales_loss) }} defect/returns deduction
-        </p>
-        {% endif %}
-    </div>
 
-    {# Cost #}
+        <p class="text-2xl font-semibold text-txt-primary">₱{{ "%.2f"|format(data.sales.total_revenue) }}</p>
+
+    </div>
+ 
+
+        {# Cost — net figure is primary #}
     <div class="bg-surface border border-border rounded-xl p-4">
       <div class="flex items-center gap-2 mb-3">
         <span class="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center shrink-0">
@@ -181,19 +179,12 @@
         </span>
         <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">Cost</p>
       </div>
-      <p class="text-2xl font-semibold text-txt-primary">
-        ₱{{ "%.2f"|format(data.sales.total_cost | default(0)) }}
-      </p>
-      {% if data.sales.defect_cost_loss is defined and data.sales.defect_cost_loss > 0 %}
-        <p class="text-[10px] text-slate-500 mt-1 flex items-center gap-0.5">
-          <!-- <span class="material-symbols-outlined text-[11px] opacity-70">remove_circle</span> -->
-          - ₱{{ "%.2f"|format(data.sales.defect_cost_loss) }} defect/returns cost
-        </p>
-      {% endif %}
+
+        <p class="text-2xl font-semibold text-txt-primary">₱{{ "%.2f"|format(data.sales.total_cost | default(0)) }}</p>
 
     </div>
-
-    {# Profit (stored as revenue_price in DB — mislabeled, handled later) #}
+ 
+    {# Profit — net figure is primary #}
     <div class="bg-surface border border-border rounded-xl p-4">
       <div class="flex items-center gap-2 mb-3">
         <span class="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center shrink-0">
@@ -201,20 +192,14 @@
         </span>
         <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">Profit</p>
       </div>
-      <p class="text-2xl font-semibold text-txt-primary">
-        ₱{{ "%.2f"|format(data.sales.total_profit | default(0)) }}
-      </p>
-      {% if data.sales.defect_profit_loss is defined and data.sales.defect_profit_loss > 0 %}
-      <p class="text-[10px] text-slate-500 mt-1 flex items-center gap-0.5">
-        - ₱{{ "%.2f"|format(data.sales.defect_profit_loss) }} defect/returns loss
-      </p>
-      {% endif %}
+
+        <p class="text-2xl font-semibold text-txt-primary">₱{{ "%.2f"|format(data.sales.total_profit | default(0)) }}</p>
+  
+    </div>
     </div>
 
-  </div>
-
-  {# Secondary cards: avg + top product #}
-  <div class="grid grid-cols-2 gap-3">
+    {# Secondary cards: avg + units sold + top product #}
+  <div class="grid grid-cols-2 lg:grid-cols-3 gap-3">
     <div class="bg-surface border border-border rounded-xl p-4">
       <div class="flex items-center gap-2 mb-2">
         <span class="material-symbols-outlined text-[18px] text-sky-500">analytics</span>
@@ -222,14 +207,32 @@
       </div>
       <p class="text-xl font-semibold text-txt-primary">₱{{ "%.2f"|format(data.sales.avg_order) }}</p>
     </div>
+ 
+    {# Net units sold — reflects returns #}
+    <div class="bg-surface border border-border rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="material-symbols-outlined text-[18px] text-teal-500">shopping_bag</span>
+        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide">Units Sold</p>
+      </div>
+      {% set net_u   = data.sales.net_units_sold      | default(0) %}
+      {% set gross_u = data.sales.total_units_sold    | default(0) %}
+      {% set ret_u   = data.sales.total_units_returned | default(0) %}
+      <p class="text-xl font-semibold text-txt-primary">{{ gross_u }}</p>
+    </div>
+ 
     <div class="bg-surface border border-border rounded-xl p-4">
       <div class="flex items-center gap-2 mb-2">
         <span class="material-symbols-outlined text-[18px] text-amber-500">star</span>
         <p class="text-xs text-txt-muted font-medium uppercase tracking-wide">Top Product</p>
       </div>
       {% if data.sales.top_products %}
-      <p class="text-sm font-semibold text-txt-primary truncate">{{ data.sales.top_products[0].product_name[:24].capitalize() }}</p>
-      <p class="text-xs text-txt-muted mt-0.5">{{ data.sales.top_products[0].units_sold }} units sold</p>
+      {# top_products is now a list of dicts — use ['key'] or .key (both work in Jinja) #}
+      <p class="text-sm font-semibold text-txt-primary truncate">
+        {{ data.sales.top_products[0]['product_name'][:24].capitalize() }}
+      </p>
+      <p class="text-xs text-txt-muted mt-0.5">
+        {{ data.sales.top_products[0]['units_sold'] }} units sold (net)
+      </p>
       {% else %}
       <p class="text-sm text-txt-muted">—</p>
       {% endif %}
@@ -294,10 +297,16 @@
           </thead>
           <tbody class="divide-y divide-border">
             {% if is_single_day and data.sales.hourly is defined and data.sales.hourly %}
+              {# Single-day: paginate hourly rows #}
               {% for row in detail.rows %}
               <tr class="hover:bg-bg transition-colors">
                 <td class="px-4 py-2.5 font-medium text-txt-primary">
-                  {{ '%02d:00' }}–{{ '%02d:59'}}
+                  {# row.hour is an int (0–23) — format as HH:00–HH:59 #}
+                  {% if "hour" in row %}
+                      {{ "%02d"|format(row["hour"]) }}:00–{{ "%02d"|format(row["hour"]) }}:59
+                  {% else %}
+                      {{ row["date"] }}
+                  {% endif %}
                 </td>
                 <td class="px-4 py-2.5 text-right text-txt-muted">{{ row.transactions }}</td>
                 <td class="px-4 py-2.5 text-right font-semibold text-txt-primary">₱{{ "%.2f"|format(row.total|float) }}</td>
@@ -306,16 +315,18 @@
               </tr>
               {% endfor %}
             {% else %}
+              {# Multi-day: daily rows — cost and profit are available, show them #}
               {% for row in detail.rows %}
               <tr class="hover:bg-bg transition-colors">
                 <td class="px-4 py-2.5 font-medium text-txt-primary">{{ row.date }}</td>
                 <td class="px-4 py-2.5 text-right text-txt-muted">{{ row.transactions }}</td>
                 <td class="px-4 py-2.5 text-right font-semibold text-txt-primary">₱{{ "%.2f"|format(row.total|default(0)|float) }}</td>
-                <td class="px-4 py-2.5 text-right text-orange-500">—</td>
-                <td class="px-4 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-semibold">—</td>
+                <td class="px-4 py-2.5 text-right text-orange-500">₱{{ "%.2f"|format(row.cost|default(0)|float) }}</td>
+                <td class="px-4 py-2.5 text-right text-emerald-600 dark:text-emerald-400 font-semibold">₱{{ "%.2f"|format(row.profit|default(0)|float) }}</td>
               </tr>
               {% endfor %}
             {% endif %}
+ 
             {% if not detail.rows %}
             <tr><td colspan="5" class="px-4 py-10 text-center text-txt-muted text-xs">No sales in this period.</td></tr>
             {% endif %}
@@ -622,40 +633,93 @@
   {% endfor %}
 </div>
 
-  {# Loss breakdown cards — financial impact #}
-  <div class="bg-surface border border-border rounded-xl p-4">
-    <p class="text-xs font-semibold text-txt-muted uppercase tracking-wide mb-3 flex items-center gap-1.5">
-      <span class="material-symbols-outlined text-[15px] text-red-500">money_off</span>
-      Financial Loss Breakdown (Active Defects)
-    </p>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <div>
-        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Sales Loss</p>
-        <p class="text-lg font-semibold text-red-500">
-          ₱{{ "%.2f"|format(data.defects.total_sales_loss | default(0)) }}
-        </p>
-      </div>
-      <div>
-        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Cost Loss</p>
-        <p class="text-lg font-semibold text-orange-500">
-          ₱{{ "%.2f"|format(data.defects.total_cost_loss | default(0)) }}
-        </p>
-      </div>
-      <div>
-        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Profit Loss</p>
-        <p class="text-lg font-semibold text-amber-500">
-          ₱{{ "%.2f"|format(data.defects.total_profit_loss | default(0)) }}
-        </p>
-      </div>
-      <div>
-        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Supplier Unrecovered</p>
-        <p class="text-lg font-semibold text-rose-600">
-          ₱{{ "%.2f"|format(data.defects.supplier_loss | default(0)) }}
-        </p>
-        <p class="text-[10px] text-txt-muted">marked as loss</p>
-      </div>
+  {# Loss breakdown — financial impact (active defects only) #}
+<div class="bg-surface border border-border rounded-xl p-4">
+  <p class="text-xs font-semibold text-txt-muted uppercase tracking-wide mb-3 flex items-center gap-1.5">
+    <span class="material-symbols-outlined text-[15px] text-red-500">money_off</span>
+    Financial Loss Breakdown <span class="text-txt-muted/60 normal-case font-normal">(active defects only)</span>
+  </p>
+
+  {# Row 1: Sales / Cost / Profit losses #}
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <div>
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Sales Loss</p>
+      <p class="text-lg font-semibold text-red-500">
+        ₱{{ "%.2f"|format(data.defects.total_sales_loss | default(0)) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">customer refunds</p>
+    </div>
+    <div>
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Profit Loss</p>
+      <p class="text-lg font-semibold text-amber-500">
+        ₱{{ "%.2f"|format(data.defects.total_profit_loss | default(0)) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">customer refunds</p>
+    </div>
+    <div>
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Cost Loss</p>
+      <p class="text-lg font-semibold text-orange-500">
+        ₱{{ "%.2f"|format(data.defects.total_cost_loss | default(0)) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">all origins</p>
     </div>
   </div>
+
+  <div class="border-t border-border mb-4"></div>
+
+  {# Row 2: Supplier recovery — cost basis #}
+  <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-3">
+    Supplier Recovery <span class="normal-case font-normal">(cost basis)</span>
+  </p>
+  <div class="grid grid-cols-3 gap-3">
+
+    {# Recovered #}
+    <div class="bg-emerald-50 dark:bg-emerald-900/10 rounded-lg p-3">
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Recovered</p>
+      {% set recovered = data.defects.supplier_recovered | default(0) %}
+      <p class="text-lg font-semibold {{ 'text-emerald-500' if recovered > 0 else 'text-txt-muted' }}">
+        ₱{{ "%.2f"|format(recovered) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">money / item returned</p>
+    </div>
+
+    {# Absorbed loss #}
+    <div class="bg-red-50 dark:bg-red-900/10 rounded-lg p-3">
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Absorbed</p>
+      {% set absorbed = data.defects.supplier_loss | default(0) %}
+      <p class="text-lg font-semibold {{ 'text-rose-600' if absorbed > 0 else 'text-txt-muted' }}">
+        ₱{{ "%.2f"|format(absorbed) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">supplier won't cover</p>
+    </div>
+
+    {# Pending #}
+    <div class="bg-amber-50 dark:bg-amber-900/10 rounded-lg p-3">
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Pending</p>
+      {% set pending = data.defects.supplier_pending | default(0) %}
+      <p class="text-lg font-semibold {{ 'text-amber-400' if pending > 0 else 'text-txt-muted' }}">
+        ₱{{ "%.2f"|format(pending) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">unresolved</p>
+    </div>
+
+  </div>
+
+  {# Sanity check: recovered + absorbed + pending should ≈ total_cost_loss #}
+  {% set accounted = (data.defects.supplier_recovered | default(0))
+                   + (data.defects.supplier_loss      | default(0))
+                   + (data.defects.supplier_pending   | default(0)) %}
+  {% set cost_loss = data.defects.total_cost_loss | default(0) %}
+  {% if (accounted - cost_loss) | abs > 0.01 %}
+  <p class="text-[10px] text-txt-muted/50 mt-3 text-right">
+    ⚠ Unclassified: ₱{{ "%.2f"|format(cost_loss - accounted) }}
+    (supplier compensation not set on some records)
+  </p>
+  {% endif %}
+
+</div>
+ 
+ 
 
   {# Defect charts #}
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">

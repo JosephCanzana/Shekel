@@ -1,7 +1,7 @@
 import io
 import json
 from collections import Counter, defaultdict
-from datetime import datetime, date as _date
+from datetime import datetime,  timedelta , date as _date
 
 from collections import Counter, defaultdict
 
@@ -50,6 +50,7 @@ def _serialize_exchange_items(detail):
 @login_required
 @role_required("superadmin", "admin")
 def dashboard():
+    
     date_from, date_to, date_from_str, date_to_str = _parse_date_range()
     active_tab = request.args.get("tab",  "sales")
     page       = request.args.get("page", 1, type=int)
@@ -171,8 +172,7 @@ def requests_page():
     proposal_data = [
         {
             "detail_id":    detail.defect_detail_id,
-            "product_name": product.product_name.capitalize(),
-            "product_id":   product.product_id,
+            "product_name": product.product_name,
             "quantity":     detail.quantity,
             "origin_label": "Customer" if detail.origin == "customer" else "In-Store",
             "reason_label": detail.reason.replace("_", " ").title(),
@@ -541,31 +541,44 @@ def _paginate_list(lst, page, per_page=25):
     }
  
  
+PHT_OFFSET = timedelta(hours=8)
+ 
 def _parse_date_range():
     """Return (date_from, date_to, date_from_str, date_to_str).
-    Defaults to *today* (Philippine time converted to UTC for queries).
+    Dates are treated as PHT then converted to UTC for DB queries,
+    so 'today' always means the full PHT calendar day.
     """
-    today   = datetime.utcnow().date()
-    dfrom_s = request.args.get("date_from", today.isoformat())
-    dto_s   = request.args.get("date_to",   today.isoformat())
+    today_pht = (datetime.utcnow() + PHT_OFFSET).date()
+ 
+    dfrom_s = request.args.get("date_from", today_pht.isoformat())
+    dto_s   = request.args.get("date_to",   today_pht.isoformat())
  
     try:
-        dfrom = datetime.strptime(dfrom_s, "%Y-%m-%d").replace(
+        dfrom_pht = datetime.strptime(dfrom_s, "%Y-%m-%d").replace(
             hour=0, minute=0, second=0, microsecond=0
         )
+        dfrom = dfrom_pht - PHT_OFFSET
     except ValueError:
-        dfrom   = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        dfrom_s = dfrom.date().isoformat()
+        dfrom_pht = (datetime.utcnow() + PHT_OFFSET).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        dfrom   = dfrom_pht - PHT_OFFSET
+        dfrom_s = dfrom_pht.date().isoformat()
  
     try:
-        dto = datetime.strptime(dto_s, "%Y-%m-%d").replace(
+        dto_pht = datetime.strptime(dto_s, "%Y-%m-%d").replace(
             hour=23, minute=59, second=59, microsecond=999999
         )
+        dto = dto_pht - PHT_OFFSET
     except ValueError:
-        dto   = datetime.utcnow().replace(hour=23, minute=59, second=59)
-        dto_s = dto.date().isoformat()
+        dto_pht = (datetime.utcnow() + PHT_OFFSET).replace(
+            hour=23, minute=59, second=59, microsecond=999999
+        )
+        dto   = dto_pht - PHT_OFFSET
+        dto_s = dto_pht.date().isoformat()
  
     return dfrom, dto, dfrom_s, dto_s
+ 
 
 
 def _build_chart_data(data):
@@ -589,7 +602,7 @@ def _build_chart_data(data):
     # ── Sales ─────────────────────────────────────────────────────────────────
     daily_asc = list(reversed(data["sales"]["daily"]))  # oldest → newest
     hourly    = data["sales"]["hourly"]                  # [] for multi-day
- 
+
     sales_chart = {
         # Daily arrays (multi-day view)
         "labels":       [r["date"]        for r in daily_asc],
@@ -607,9 +620,9 @@ def _build_chart_data(data):
     }
  
     top_products_chart = {
-        "labels":  [r.product_name[:22].capitalize() for r in data["sales"]["top_products"]],
-        "units":   [int(r.units_sold or 0)            for r in data["sales"]["top_products"]],
-        "revenue": [float(r.revenue  or 0)            for r in data["sales"]["top_products"]],
+        "labels":  [r["product_name"][:22].capitalize() for r in data["sales"]["top_products"]],
+        "units":   [int(r["units_sold"]   or 0)          for r in data["sales"]["top_products"]],
+        "revenue": [float(r["revenue"]    or 0)          for r in data["sales"]["top_products"]],
     }
  
     # ── Inventory ─────────────────────────────────────────────────────────────
@@ -704,9 +717,11 @@ def _build_report_data(date_from, date_to):
     from app.models.sale_detail import SaleDetail
     from app.models.category    import Category
     from sqlalchemy import func as _f
- 
-    is_single_day = (date_from.date() == date_to.date())
- 
+
+    is_single_day = (
+        (date_from + PHT_OFFSET).date() == (date_to + PHT_OFFSET).date()
+    )
+
     # ── 1. SALES ──────────────────────────────────────────────────────────────
     sales_list = (
         Sale.query
@@ -714,15 +729,12 @@ def _build_report_data(date_from, date_to):
         .order_by(Sale.sale_datetime.desc())
         .all()
     )
- 
+
     # Daily breakdown (oldest → newest after reversal in _build_chart_data)
     daily_sales = [
         {
             "date":         str(r.date),
             "transactions": int(r.transactions),
-            # total_amount       = customer paid    ("Sales")
-            # total_cost_price   = COGS             ("Cost")
-            # total_revenue_price= markup/profit    ("Profit")
             "total":        float(r.total  or 0),
             "cost":         float(r.cost   or 0),
             "profit":       float(r.profit or 0),
@@ -741,49 +753,77 @@ def _build_report_data(date_from, date_to):
             .all()
         )
     ]
- 
+
     total_revenue = sum(float(s.total_amount        or 0) for s in sales_list)
     total_cost    = sum(float(s.total_cost_price    or 0) for s in sales_list)
     total_profit  = sum(float(s.total_revenue_price or 0) for s in sales_list)
     avg_order     = (total_revenue / len(sales_list)) if sales_list else 0.0
- 
-    # Top 10 products by units sold (uses Sales_Details.subtotal_amount for revenue)
-    top_products = (
+
+    # Top 10 products by units sold
+    gross_units = (
         db.session.query(
+            Product.product_id,
             Product.product_name,
             _f.sum(SaleDetail.quantity).label("units_sold"),
             _f.sum(SaleDetail.subtotal_amount).label("revenue"),
         )
-        .join(SaleDetail, SaleDetail.product_id    == Product.product_id)
-        .join(Sale,       Sale.transaction_id       == SaleDetail.transaction_id)
+        .join(SaleDetail, SaleDetail.product_id     == Product.product_id)
+        .join(Sale,       Sale.transaction_id        == SaleDetail.transaction_id)
         .filter(Sale.sale_datetime.between(date_from, date_to))
         .group_by(Product.product_id, Product.product_name)
-        .order_by(_f.sum(SaleDetail.quantity).desc())
-        .limit(10)
         .all()
     )
- 
-    # Defect deductions — active + non-archived defects within the period
-    # subtotal_amount  → selling-price loss  ("Sales Loss")
-    # subtotal_unit    → cost loss           ("Cost Loss")
-    # subtotal_revenue → profit/markup loss  ("Profit Loss")
-    def _defect_sum(col):
-        return float(
-            db.session.query(_f.coalesce(_f.sum(col), 0))
-            .join(Defect, Defect.defect_id == DefectDetail.defect_id)
-            .filter(
-                Defect.defect_datetime.between(date_from, date_to),
-                DefectDetail.status      == "active",
-                DefectDetail.is_archived == False,
-            )
-            .scalar() or 0
+
+    # ── FIX: anchor returned_units to the ORIGINAL sale_datetime, not defect_datetime
+    # This ensures a return processed today deducts from the period the sale occurred,
+    # not from whichever period the return was logged in.
+    returned_units = (
+        db.session.query(
+            DefectDetail.product_id,
+            _f.sum(DefectDetail.quantity).label("units_returned"),
         )
- 
-    defect_sales_loss  = _defect_sum(DefectDetail.subtotal_amount)
-    defect_cost_loss   = _defect_sum(DefectDetail.subtotal_unit)
-    defect_profit_loss = _defect_sum(DefectDetail.subtotal_revenue)
- 
-    # Hourly breakdown (populated only for same-day ranges)
+        .join(Defect,      Defect.defect_id           == DefectDetail.defect_id)
+        .join(SaleDetail,  SaleDetail.product_id      == DefectDetail.product_id)
+        .join(Sale,        Sale.transaction_id         == SaleDetail.transaction_id)
+        .filter(
+            Sale.sale_datetime.between(date_from, date_to),   # ← anchored to sale date
+            DefectDetail.status      == "active",
+            DefectDetail.is_archived == False,
+            DefectDetail.origin      == "customer",
+            DefectDetail.customer_compensation.in_(
+                ["full_refund", "exchange_same", "exchange_different"]
+            ),
+        )
+        .group_by(DefectDetail.product_id)
+        .all()
+    )
+
+    returned_map = {r.product_id: int(r.units_returned or 0) for r in returned_units}
+
+    top_products_net = []
+    for row in gross_units:
+        net_units   = max(0, int(row.units_sold or 0) - returned_map.get(row.product_id, 0))
+        net_revenue = max(0.0, float(row.revenue or 0))
+        top_products_net.append({
+            "product_id":   row.product_id,
+            "product_name": row.product_name,
+            "units_sold":   net_units,
+            "revenue":      net_revenue,
+        })
+
+    top_products = sorted(top_products_net, key=lambda x: x["units_sold"], reverse=True)[:10]
+
+    total_units_sold_gross = sum(int(r.units_sold or 0) for r in gross_units)
+    total_units_returned   = sum(returned_map.values())
+    net_units_sold         = max(0, total_units_sold_gross - total_units_returned)
+
+    # ── FIX: no longer deducting defect losses from sales figures.
+    # Defect losses live exclusively in defects_data, filtered by defect_datetime,
+    # which is correct for the Defects tab. Mixing them here caused cross-period
+    # distortion (a return logged today silently reduced a different period's profit).
+    # net_* = gross_* intentionally — the Defects tab is the source of truth for losses.
+
+    # Hourly breakdown (single-day only)
     if is_single_day:
         hourly_sales = [
             {
@@ -809,28 +849,32 @@ def _build_report_data(date_from, date_to):
         ]
     else:
         hourly_sales = []
- 
+
     sales_data = {
-        # Raw gross figures
-        "total_revenue":      total_revenue,   # sum(total_amount)
-        "total_cost":         total_cost,       # sum(total_cost_price)
-        "total_profit":       total_profit,     # sum(total_revenue_price)
-        # Net figures after active-defect deductions
-        "net_revenue":        max(0.0, total_revenue - defect_sales_loss),
-        "net_cost":           max(0.0, total_cost    - defect_cost_loss),
-        "net_profit":         max(0.0, total_profit  - defect_profit_loss),
-        # Defect deduction amounts (displayed as footnotes on cards)
-        "defect_sales_loss":  defect_sales_loss,
-        "defect_cost_loss":   defect_cost_loss,
-        "defect_profit_loss": defect_profit_loss,
-        "total_transactions": len(sales_list),
-        "avg_order":          avg_order,
-        "daily":              daily_sales,
-        "hourly":             hourly_sales,
-        "top_products":       top_products,
+        # Gross figures — source of truth for the Sales tab
+        "total_revenue":      total_revenue,
+        "total_cost":         total_cost,
+        "total_profit":       total_profit,
+        # net_* kept for frontend compatibility — equal to gross intentionally.
+        # Defect losses are reported separately in defects_data, not deducted here.
+        "net_revenue":        total_revenue,
+        "net_cost":           total_cost,
+        "net_profit":         total_profit,
+        # Zeroed out — losses belong to the Defects tab, not Sales
+        "defect_sales_loss":  0.0,
+        "defect_cost_loss":   0.0,
+        "defect_profit_loss": 0.0,
+        "total_transactions":   len(sales_list),
+        "avg_order":            avg_order,
+        "total_units_sold":     total_units_sold_gross,
+        "net_units_sold":       net_units_sold,
+        "total_units_returned": total_units_returned,
+        "daily":                daily_sales,
+        "hourly":               hourly_sales,
+        "top_products":         top_products,
     }
- 
-    # ── 2. INVENTORY (always current state — not date-filtered) ───────────────
+
+    # ── 2. INVENTORY ──────────────────────────────────────────────────────────
     inv_rows = (
         db.session.query(Product, Inventory, Category)
         .join(Inventory, Inventory.product_id == Product.product_id)
@@ -839,10 +883,10 @@ def _build_report_data(date_from, date_to):
         .order_by(Product.product_name)
         .all()
     )
- 
+
     inventory_data = {
         "total_products":  len(inv_rows),
-        "total_units":     sum(inv.quantity_available      for _, inv, _ in inv_rows),
+        "total_units":     sum(inv.quantity_available        for _, inv, _ in inv_rows),
         "total_defective": sum((inv.quantity_defective or 0) for _, inv, _ in inv_rows),
         "low_stock": sum(
             1 for p, inv, _ in inv_rows
@@ -853,7 +897,7 @@ def _build_report_data(date_from, date_to):
         ),
         "rows": inv_rows,
     }
- 
+
     # ── 3. STOCK-IN ───────────────────────────────────────────────────────────
     stock_rows = (
         db.session.query(StockIn, Product, User)
@@ -863,8 +907,7 @@ def _build_report_data(date_from, date_to):
         .order_by(StockIn.stockin_datetime.desc())
         .all()
     )
- 
-    # Top 8 products by units received (for chart)
+
     stock_by_product = (
         db.session.query(
             Product.product_name,
@@ -877,15 +920,16 @@ def _build_report_data(date_from, date_to):
         .limit(8)
         .all()
     )
- 
+
     stock_data = {
         "total_entries": len({s.batch_id for s, _, _ in stock_rows}),
         "total_units":   sum(s.quantity_received for s, _, _ in stock_rows),
         "by_product":    stock_by_product,
         "rows":          stock_rows,
     }
- 
+
     # ── 4. DEFECTS ────────────────────────────────────────────────────────────
+    # All defect figures are correctly anchored to defect_datetime — no change needed.
     defect_rows = (
         db.session.query(DefectDetail, Defect, Product, User)
         .join(Defect,  Defect.defect_id   == DefectDetail.defect_id)
@@ -896,47 +940,57 @@ def _build_report_data(date_from, date_to):
         .order_by(Defect.defect_datetime.desc())
         .all()
     )
- 
-    # Supplier compensation breakdown (active records only)
+
     supplier_comp: Counter = Counter()
     for d, _, _, _ in defect_rows:
         if d.status == "active":
             supplier_comp[d.supplier_compensation] += 1
- 
+
+    active_defect_rows = [(d, df, p, u) for d, df, p, u in defect_rows if d.status == "active"]
+
     defects_data = {
-        "total":        len(defect_rows),
-        "total_units":  sum(d.quantity for d, _, _, _ in defect_rows),
-        "customer_origin": sum(
-            1 for d, _, _, _ in defect_rows if d.origin == "customer"
+        "total":           len(defect_rows),
+        "total_units":     sum(d.quantity for d, _, _, _ in defect_rows),
+        "customer_origin": sum(1 for d, _, _, _ in defect_rows if d.origin == "customer"),
+        "store_origin":    sum(1 for d, _, _, _ in defect_rows if d.origin == "in_store"),
+        "total_sales_loss": sum(
+            float(d.subtotal_amount or 0)
+            if d.customer_compensation == "full_refund"
+            else abs(float(d.price_difference or 0))
+            for d, _, _, _ in active_defect_rows
+            if d.origin == "customer"
+            and d.customer_compensation in ("full_refund", "partial_refund")
         ),
-        "store_origin":    sum(
-            1 for d, _, _, _ in defect_rows if d.origin == "in_store"
+        "supplier_recovered": sum(
+            float(d.subtotal_unit or 0)
+            for d, _, _, _ in active_defect_rows
+            if d.supplier_compensation in ("money", "exchange_same", "exchange_different")
         ),
-        # Financial loss totals — active records only
-        # subtotal_amount  → selling-price loss
-        # subtotal_unit    → cost loss
-        # subtotal_revenue → profit/markup loss
-        "total_sales_loss":  sum(
-            float(d.subtotal_amount  or 0)
-            for d, _, _, _ in defect_rows if d.status == "active"
+        "supplier_pending": sum(
+            float(d.subtotal_unit or 0)
+            for d, _, _, _ in active_defect_rows
+            if d.supplier_compensation == "pending"
         ),
-        "total_cost_loss":   sum(
-            float(d.subtotal_unit    or 0)
-            for d, _, _, _ in defect_rows if d.status == "active"
+        "total_cost_loss": sum(
+            float(d.subtotal_unit or 0) for d, _, _, _ in active_defect_rows
         ),
         "total_profit_loss": sum(
             float(d.subtotal_revenue or 0)
-            for d, _, _, _ in defect_rows if d.status == "active"
+            if d.customer_compensation == "full_refund"
+            else abs(float(d.price_difference or 0))
+            for d, _, _, _ in active_defect_rows
+            if d.origin == "customer"
+            and d.customer_compensation in ("full_refund", "partial_refund")
         ),
-        # Amount where supplier was marked as absorbing the full loss
-        "supplier_loss":     sum(
-            float(d.subtotal_amount  or 0)
-            for d, _, _, _ in defect_rows if d.supplier_compensation == "loss"
+        "supplier_loss": sum(
+            float(d.subtotal_unit or 0)
+            for d, _, _, _ in active_defect_rows
+            if d.supplier_compensation == "loss"
         ),
         "supplier_comp_breakdown": dict(supplier_comp),
         "rows": defect_rows,
     }
- 
+
     return {
         "sales":     sales_data,
         "inventory": inventory_data,
@@ -1001,12 +1055,13 @@ def reports_data():
     # ── Top products (already queried in _build_report_data) ─────────────────
     top_products_json = [
         {
-            "product_name": r.product_name,
-            "units_sold":   int(r.units_sold or 0),
-            "revenue":      float(r.revenue  or 0),   # sum(subtotal_amount)
+            "product_name": r["product_name"],
+            "units_sold":   r["units_sold"],    # already net (returns subtracted)
+            "revenue":      r["revenue"],
         }
         for r in s["top_products"]
     ]
+ 
  
     # ── Inventory rows ────────────────────────────────────────────────────────
     inv_rows_json = [
@@ -1087,8 +1142,11 @@ def reports_data():
             "total_revenue":       float(s["total_revenue"]),      # sum(total_amount)
             "total_cost":          float(s["total_cost"]),         # sum(total_cost_price)
             "total_profit":        float(s["total_profit"]),       # sum(total_revenue_price)
-            "total_transactions":  s["total_transactions"],
-            "avg_order":           float(s["avg_order"]),
+            "total_transactions":   s["total_transactions"],
+            "avg_order":            float(s["avg_order"]),
+            "total_units_sold":     s["total_units_sold"],    # gross
+            "net_units_sold":       s["net_units_sold"],      # after returns ← use this on frontend
+            "total_units_returned": s["total_units_returned"],
             # Defect deductions (active defects only)
             "defect_sales_loss":   float(s["defect_sales_loss"]),  # sum(subtotal_amount)  active
             "defect_cost_loss":    float(s["defect_cost_loss"]),   # sum(subtotal_unit)    active
@@ -1288,10 +1346,11 @@ def export_report():
         make_header(ws2, ["Product", "Units Sold", "Revenue (₱)"], [36, 14, 16])
         for ri, row in enumerate(s["top_products"], 2):
             write_row(ws2, ri, [
-                row.product_name.capitalize(),
-                int(row.units_sold or 0),
-                round(float(row.revenue or 0), 2),
+                row["product_name"].capitalize(),
+                int(row["units_sold"]  or 0),
+                round(float(row["revenue"] or 0), 2),
             ])
+ 
 
     # ── Inventory ─────────────────────────────────────────────────────────────
     elif tab == "inventory":
