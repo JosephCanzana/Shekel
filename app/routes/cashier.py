@@ -250,8 +250,8 @@ def refresh_token():
 @login_required
 @role_required("superadmin", "admin", "cashier")
 def sales_history():
-    from sqlalchemy  import func
-    from datetime    import date as _date, timedelta
+    from sqlalchemy import func
+    from datetime   import date as _date, timedelta
 
     PER_PAGE = 50
 
@@ -292,12 +292,17 @@ def sales_history():
 
     sales = qry.paginate(page=page, per_page=PER_PAGE, error_out=False)
 
+    # ── Annotate each sale with has_override so the template doesn't need
+    #    to iterate sale_details itself (avoids N+1 queries via lazy load)
+    for sale in sales.items:
+        sale.has_override = any(d.override_used for d in sale.sale_details)
+
     # ── Period stats (scoped to this cashier) ────────────────────────────
-    uid         = current_user.user_id
-    today_dt    = datetime.combine(_date.today(), datetime.min.time())
-    week_dt     = today_dt - timedelta(days=today_dt.weekday())
-    month_dt    = today_dt.replace(day=1)
-    year_dt     = today_dt.replace(month=1, day=1)
+    uid      = current_user.user_id
+    today_dt = datetime.combine(_date.today(), datetime.min.time())
+    week_dt  = today_dt - timedelta(days=today_dt.weekday())
+    month_dt = today_dt.replace(day=1)
+    year_dt  = today_dt.replace(month=1, day=1)
 
     def _period(start):
         row = db.session.query(
@@ -306,8 +311,8 @@ def sales_history():
             func.coalesce(func.sum(Sale.total_cost_price),    0),
             func.coalesce(func.sum(Sale.total_revenue_price), 0),
         ).filter(
-            Sale.user_id        == uid,
-            Sale.sale_datetime  >= start,
+            Sale.user_id       == uid,
+            Sale.sale_datetime >= start,
         ).first()
         return dict(
             count  = int(row[0]),
@@ -341,18 +346,18 @@ def sales_history():
 def sale_detail(transaction_id):
     sale = Sale.query.get_or_404(transaction_id)
 
-    # Cashiers can only view their own transactions
     if current_user.role == "cashier" and sale.user_id != current_user.user_id:
         return jsonify({"error": "Not authorised."}), 403
 
     u = sale.user
     details = [
         {
-            "product_id":   d.product_id,
-            "product_name": d.product.product_name.capitalize() if d.product else d.product_id,
-            "quantity":     d.quantity,
-            "price":        float(d.price_at_sale),
-            "subtotal":     float(d.subtotal_amount),
+            "product_id":    d.product_id,
+            "product_name":  d.product.product_name.capitalize() if d.product else d.product_id,
+            "quantity":      d.quantity,
+            "price":         float(d.price_at_sale),
+            "subtotal":      float(d.subtotal_amount),
+            "override_used": d.override_used,   # ← per-line flag
         }
         for d in sale.sale_details
     ]
@@ -365,6 +370,7 @@ def sale_detail(transaction_id):
         "total_cost_price":    float(sale.total_cost_price),
         "total_revenue_price": float(sale.total_revenue_price),
         "payment_method":      sale.payment_method or "cash",
+        "has_override":        any(d["override_used"] for d in details),  # ← top-level flag
         "cashier": {
             "name": f"{u.first_name} {u.last_name}".strip().title() if u else "—",
             "role": u.role.title() if u else "—",

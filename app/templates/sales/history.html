@@ -158,7 +158,15 @@
                 onmouseout="this.style.backgroundColor='transparent'">
               <td style="padding:10px 12px 12px 20px;vertical-align:middle;font-size:12px;font-variant-numeric:tabular-nums;color:var(--color-txt-muted);">{{ offset + loop.index }}</td>
               <td style="padding:10px;vertical-align:middle;white-space:nowrap;">
-                <span style="font-size:13px;font-family:monospace;font-weight:600;color:var(--color-txt-primary);">#{{ "%05d" | format(sale.transaction_id) }}</span>
+                <div class="flex items-center gap-1.5">
+                  <span style="font-size:13px;font-family:monospace;font-weight:600;color:var(--color-txt-primary);">#{{ "%05d" | format(sale.transaction_id) }}</span>
+                  {% if sale.has_override %}
+                  <span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;
+                               background:color-mix(in srgb,#d97706 15%,transparent);
+                               color:#d97706;border:1px solid color-mix(in srgb,#d97706 30%,transparent);
+                               white-space:nowrap;">⚠ Override</span>
+                  {% endif %}
+                </div>
               </td>
               <td style="padding:10px;vertical-align:middle;white-space:nowrap;">
                 <span style="font-size:13px;color:var(--color-txt-primary);">{{ sale.sale_datetime | pht('%b %d, %Y') }}</span>
@@ -215,7 +223,15 @@
               onmouseout="this.style.backgroundColor='var(--color-surface)'">
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-mono font-bold" style="color:var(--color-txt-primary);">#{{ "%05d" | format(sale.transaction_id) }}</p>
+            <div class="flex items-center gap-1.5">
+              <p class="text-sm font-mono font-bold" style="color:var(--color-txt-primary);">#{{ "%05d" | format(sale.transaction_id) }}</p>
+              {% if sale.has_override %}
+              <span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;
+                           background:color-mix(in srgb,#d97706 15%,transparent);
+                           color:#d97706;border:1px solid color-mix(in srgb,#d97706 30%,transparent);
+                           white-space:nowrap;">⚠ Override</span>
+              {% endif %}
+            </div>
             <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);">
               {{ sale.sale_datetime | pht('%b %d, %Y') }} · {{ sale.sale_datetime | pht('%I:%M %p') }}
             </p>
@@ -655,13 +671,15 @@ function salesHistory() {
         transaction_id: this.detail.transaction_id,
         datetime:       this.detail.sale_datetime,
         cashier:        this.detail.cashier.name,
-        total_price:    this.detail.total_amount,
+        total:          this.detail.total_amount,
         tendered:       this.detail.total_amount,
         change:         0,
-        items: this.detail.items.map(item => ({
+        payment_method: this.detail.payment_method ?? 'cash',
+        warnings:       [],
+       items: this.detail.items.map(item => ({
           product_name:  item.product_name,
-          qty:           item.quantity,
-          price:         item.price,
+          qty:           item.quantity,       // detail API → agent key
+          total_price:   item.price,          // detail API → agent key
           subtotal:      item.subtotal,
           override_used: item.override_used ?? false,
         })),
