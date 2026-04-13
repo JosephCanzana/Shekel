@@ -1534,6 +1534,9 @@ def sales_history():
 
     sales = qry.paginate(page=page, per_page=PER_PAGE, error_out=False)
 
+    for sale in sales.items:
+        sale.has_override = any(d.override_used for d in sale.sale_details)
+
     # ── Period stats (no user filter — whole store) ───────────────────────
     today_dt    = datetime.combine(_date.today(), datetime.min.time())
     week_dt     = today_dt - timedelta(days=today_dt.weekday())
@@ -1602,7 +1605,7 @@ def sale_detail(transaction_id):
         "quantity":     d.quantity,
         "price":        float(d.price_at_sale),
         "subtotal":     float(d.subtotal_amount),
-        "override_used": d.override_used,   # ← add this
+        "override_used": d.override_used,  
     }
     for d in sale.sale_details
 ]

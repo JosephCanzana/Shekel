@@ -153,9 +153,14 @@
           {% set offset = (sales.page - 1) * 50 %}
           {% if sales.items %}
             {% for sale in sales.items %}
-            <tr style="border-top:1px solid var(--color-border);"
-                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-                onmouseout="this.style.backgroundColor='transparent'">
+            <tr style="border-top:1px solid var(--color-border);
+           {% if sale.has_override %}
+           box-shadow:inset 3px 0 0 #d97706;
+           background:color-mix(in srgb,#d97706 6%,transparent);
+           {% endif %}"
+    onmouseover="this.style.backgroundColor='{% if sale.has_override %}color-mix(in srgb,#d97706 12%,transparent){% else %}var(--color-surface-alt){% endif %}'"
+    onmouseout="this.style.backgroundColor='{% if sale.has_override %}color-mix(in srgb,#d97706 6%,transparent){% else %}transparent{% endif %}'">
+
               <td style="padding:10px 12px 12px 20px;vertical-align:middle;font-size:12px;font-variant-numeric:tabular-nums;color:var(--color-txt-muted);">{{ offset + loop.index }}</td>
               <td style="padding:10px;vertical-align:middle;white-space:nowrap;">
                 <div class="flex items-center gap-1.5">
@@ -217,10 +222,12 @@
     {% if sales.items %}
       {% for sale in sales.items %}
       <button type="button" @click="openDetail({{ sale.transaction_id }})"
-              class="w-full text-left rounded-xl px-4 py-3 transition"
-              style="border:1px solid var(--color-border);background-color:var(--color-surface);"
-              onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
-              onmouseout="this.style.backgroundColor='var(--color-surface)'">
+        class="w-full text-left rounded-xl px-4 py-3 transition"
+        style="border:1px solid {% if sale.has_override %}#d97706{% else %}var(--color-border){% endif %};
+               background-color:{% if sale.has_override %}color-mix(in srgb,#d97706 6%,transparent){% else %}var(--color-surface){% endif %};
+               {% if sale.has_override %}box-shadow:inset 4px 0 0 #d97706;{% endif %}"
+        onmouseover="this.style.backgroundColor='{% if sale.has_override %}color-mix(in srgb,#d97706 12%,transparent){% else %}var(--color-surface-alt){% endif %}'"
+        onmouseout="this.style.backgroundColor='{% if sale.has_override %}color-mix(in srgb,#d97706 6%,transparent){% else %}var(--color-surface){% endif %}'">
         <div class="flex items-start justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5">
@@ -484,6 +491,20 @@
 
       {# Content #}
       <div x-show="detailState === 'done'" class="px-6 py-5 flex flex-col gap-4 overflow-y-auto flex-1">
+
+        <template x-if="detail && detail.has_override">
+  <div class="flex items-center gap-2.5 px-4 py-2.5 rounded-xl"
+       style="background:color-mix(in srgb,#d97706 12%,transparent);
+              border:1px solid color-mix(in srgb,#d97706 35%,transparent);">
+    <span class="material-symbols-outlined text-[18px] shrink-0" style="color:#d97706;">warning</span>
+    <div>
+      <p class="text-xs font-bold" style="color:#d97706;">Stock Override Used</p>
+      <p class="text-[11px]" style="color:color-mix(in srgb,#d97706 80%,var(--color-txt-primary));">
+        One or more items in this transaction bypassed available stock limits.
+      </p>
+    </div>
+  </div>
+</template>
 
         <div class="flex items-center justify-between">
           <span class="text-xs font-mono font-bold" style="color:var(--color-txt-muted);"

@@ -156,6 +156,9 @@ def charge():
             warnings.append(
                 f'"{product.product_name.capitalize()}": only {stock} in stock, selling {qty}.'
             )
+            item["override_used"] = True   
+        else:
+            item["override_used"] = False
 
     # ── Step 2: compute totals ─────────────────────────────────────────────
     total_unit    = sum(float(i["cost_price"])    * int(i["qty"]) for i in items)
@@ -195,6 +198,7 @@ def charge():
             subtotal_unit         = round(cost_price    * qty, 2),
             subtotal_revenue      = round(revenue_price * qty, 2),
             subtotal_amount       = round(price         * qty, 2),
+            override_used         = item.get("override_used", False),
         ))
 
         product = Product.query.get(item["product_id"])
