@@ -1,21 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — Stocking{% endblock %}
+{% block title %}Dashboard — Shekel{% endblock %}
 {% block nav_title %}Dashboard{% endblock %}
 
 {% block head %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   [x-cloak] { display: none !important; }
   .pill-active { background: color-mix(in srgb, currentColor 8%, transparent); }
 </style>
 {% endblock %}
-
 {% block body %}
 {% set is_single_day = (date_from == date_to) %}
 
 <div class="space-y-4"
      x-data="{
        showFilter:    false,
+       showSalesTbl:  true,
        showInvTbl:    true,
        showStockTbl:  true,
        showDefectTbl: true,
@@ -102,6 +101,16 @@
 
       <span class="w-px h-4 bg-border mx-0.5"></span>
 
+      <a href="{{ url_for('admin.export_report_pdf', tab=active_tab, date_from=date_from, date_to=date_to) }}"
+         class="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-full border border-border
+                text-txt-muted hover:text-txt-primary transition-all">
+        <span class="material-symbols-outlined text-[12px]">picture_as_pdf</span> PDF
+      </a>
+      <a href="{{ url_for('admin.export_report', tab=active_tab, date_from=date_from, date_to=date_to) }}"
+         class="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-full bg-txt-primary text-bg
+                font-medium hover:opacity-90 transition-all">
+        <span class="material-symbols-outlined text-[12px]">download</span> Excel
+      </a>
     </div>
   </div>
 
@@ -122,34 +131,55 @@
     {% endfor %}
   </div>
 
-
   {# ╔═══════════════════════════════════════════════════════════════════╗
      ║  INVENTORY TAB                                                    ║
      ╚═══════════════════════════════════════════════════════════════════╝ #}
   {% if active_tab == 'inventory' %}
 
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    {% set inv_cards = [
-      ('Total Products',  data.inventory.total_products|string, 'category',       'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20',   ''),
-      ('Total Units',     data.inventory.total_units|string,    'inventory_2',    'text-emerald-500','bg-emerald-50 dark:bg-emerald-900/20',''),
-      ('Low Stock',       data.inventory.low_stock|string,      'warning',        'text-amber-500',  'bg-amber-50 dark:bg-amber-900/20',  'text-amber-500'),
-      ('Out of Stock',    data.inventory.out_of_stock|string,   'do_not_disturb', 'text-red-500',    'bg-red-50 dark:bg-red-900/20',      'text-red-500'),
-    ] %}
-    {% for label, value, icon, icolor, ibg, vcolor in inv_cards %}
-    <div class="bg-surface border border-border rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
-        </span>
-        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+{# ── Inventory summary cards ── #}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  {% set inv_cards = [
+    ('Total Products',  data.inventory.total_products|string, 'category',       'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20',   ''),
+    ('Total Units',     data.inventory.total_units|string,    'inventory_2',    'text-emerald-500','bg-emerald-50 dark:bg-emerald-900/20',''),
+    ('Low Stock',       data.inventory.low_stock|string,      'warning',        'text-amber-500',  'bg-amber-50 dark:bg-amber-900/20',  'text-amber-500'),
+    ('Out of Stock',    data.inventory.out_of_stock|string,   'do_not_disturb', 'text-red-500',    'bg-red-50 dark:bg-red-900/20',      'text-red-500'),
+  ] %}
+  {% for label, value, icon, icolor, ibg, vcolor in inv_cards %}
+
+    {% if label == 'Total Products' %}
+      {# TODO ▶ Replace '#' with your products page URL, e.g. url_for('admin.products') #}
+      <a href="{{ url_for('inventory.index') }}"
+         class="bg-surface border border-border rounded-xl p-4 hover:border-border-strong transition-colors group block">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+          </span>
+          <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+        </div>
+        <p class="text-2xl font-semibold {{ vcolor if vcolor else 'text-txt-primary' }}">{{ value }}</p>
+        <p class="text-[10px] text-txt-muted mt-1 flex items-center gap-0.5 group-hover:text-blue-500 transition-colors">
+          View all <span class="material-symbols-outlined text-[11px]">arrow_forward</span>
+        </p>
+      </a>
+
+    {% else %}
+      <div class="bg-surface border border-border rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+          </span>
+          <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+        </div>
+        <p class="text-2xl font-semibold {{ vcolor if vcolor else 'text-txt-primary' }}">{{ value }}</p>
       </div>
-      <p class="text-2xl font-semibold {{ vcolor if vcolor else 'text-txt-primary' }}">{{ value }}</p>
-    </div>
-    {% endfor %}
-  </div>
+    {% endif %}
+
+  {% endfor %}
+</div>
 
   {# Inventory charts row #}
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    {# Stock levels bar #}
     <div class="lg:col-span-2 bg-surface border border-border rounded-xl p-4">
       <div class="flex items-center justify-between mb-3">
         <p class="text-sm font-semibold text-txt-primary">Stock Levels — Top 12</p>
@@ -157,13 +187,13 @@
           <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-emerald-500 inline-block"></span>OK</span>
           <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-amber-500 inline-block"></span>Low</span>
           <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-red-500 inline-block"></span>Out</span>
-          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-sm bg-rose-400 inline-block"></span>Defective</span>
         </div>
       </div>
       <div style="position:relative;height:220px">
         <canvas id="chart-inventory"></canvas>
       </div>
     </div>
+    {# Status breakdown doughnut #}
     <div class="bg-surface border border-border rounded-xl p-4">
       <p class="text-sm font-semibold text-txt-primary mb-3">Stock Status</p>
       <div style="position:relative;height:220px">
@@ -172,6 +202,7 @@
     </div>
   </div>
 
+  {# Category breakdown if available #}
   <div class="bg-surface border border-border rounded-xl p-4">
     <p class="text-sm font-semibold text-txt-primary mb-3">Units by Category</p>
     <div style="position:relative;height:180px">
@@ -244,6 +275,14 @@
      ║  STOCK-IN TAB                                                     ║
      ╚═══════════════════════════════════════════════════════════════════╝ #}
   {% if active_tab == 'stock' %}
+
+  {#
+    Note: total_units = sum of quantity_received (items received, not entry count).
+    total_entries = number of StockIn records.
+    To show "item entries" properly, ensure backend sets:
+      stock_data["total_units"] = sum(s.quantity_received for s,_,_ in stock_rows)
+      stock_data["total_entries"] = len(stock_rows)   ← this is entry count, not items
+  #}
 
   <div class="grid grid-cols-2 gap-3">
     <a href="{{ url_for('stocking.stock_in') }}"
@@ -345,51 +384,133 @@
      ╚═══════════════════════════════════════════════════════════════════╝ #}
   {% if active_tab == 'defects' %}
 
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-    {% for label, value, icon, icolor, ibg in [
-      ('Total Records',   data.defects.total|string,           'report_problem',            'text-rose-500',   'bg-rose-50 dark:bg-rose-900/20'),
-      ('Total Units',     data.defects.total_units|string,     'production_quantity_limits', 'text-orange-500', 'bg-orange-50 dark:bg-orange-900/20'),
-      ('Customer Origin', data.defects.customer_origin|string, 'person',                    'text-violet-500', 'bg-violet-50 dark:bg-violet-900/20'),
-      ('In-Store Origin', data.defects.store_origin|string,    'store',                     'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20'),
-    ] %}
-    <div class="bg-surface border border-border rounded-xl p-4">
-      <div class="flex items-center gap-2 mb-3">
-        <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
-        </span>
-        <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+{# ── Defects summary cards ── #}
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  {% for label, value, icon, icolor, ibg in [
+    ('Total Records',   data.defects.total|string,           'report_problem',            'text-rose-500',   'bg-rose-50 dark:bg-rose-900/20'),
+    ('Total Units',     data.defects.total_units|string,     'production_quantity_limits', 'text-orange-500', 'bg-orange-50 dark:bg-orange-900/20'),
+    ('Customer Origin', data.defects.customer_origin|string, 'person',                    'text-violet-500', 'bg-violet-50 dark:bg-violet-900/20'),
+    ('In-Store Origin', data.defects.store_origin|string,    'store',                     'text-blue-500',   'bg-blue-50 dark:bg-blue-900/20'),
+  ] %}
+
+    {% if label == 'Total Records' %}
+      {# TODO ▶ Replace '#' with your defects page URL, e.g. url_for('admin.defects') #}
+      <a href="{{ url_for('defects.index') }}"
+         class="bg-surface border border-border rounded-xl p-4 hover:border-border-strong transition-colors group block">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+          </span>
+          <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+        </div>
+        <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
+        <p class="text-[10px] text-txt-muted mt-1 flex items-center gap-0.5 group-hover:text-rose-500 transition-colors">
+          View all <span class="material-symbols-outlined text-[11px]">arrow_forward</span>
+        </p>
+      </a>
+
+    {% else %}
+      <div class="bg-surface border border-border rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-8 h-8 rounded-lg {{ ibg }} flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[18px] {{ icolor }}">{{ icon }}</span>
+          </span>
+          <p class="text-xs text-txt-muted font-medium uppercase tracking-wide leading-tight">{{ label }}</p>
+        </div>
+        <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
       </div>
-      <p class="text-2xl font-semibold text-txt-primary">{{ value }}</p>
+    {% endif %}
+
+  {% endfor %}
+</div>
+
+  {# Loss breakdown — financial impact (active defects only) #}
+<div class="bg-surface border border-border rounded-xl p-4">
+  <p class="text-xs font-semibold text-txt-muted uppercase tracking-wide mb-3 flex items-center gap-1.5">
+    <span class="material-symbols-outlined text-[15px] text-red-500">money_off</span>
+    Financial Loss Breakdown <span class="text-txt-muted/60 normal-case font-normal">(active defects only)</span>
+  </p>
+
+  {# Row 1: Sales / Cost / Profit losses #}
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <div>
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Sales Loss</p>
+      <p class="text-lg font-semibold text-red-500">
+        ₱{{ "%.2f"|format(data.defects.total_sales_loss | default(0)) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">customer refunds</p>
     </div>
-    {% endfor %}
+    <div>
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Profit Loss</p>
+      <p class="text-lg font-semibold text-amber-500">
+        ₱{{ "%.2f"|format(data.defects.total_profit_loss | default(0)) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">customer refunds</p>
+    </div>
+    <div>
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Cost Loss</p>
+      <p class="text-lg font-semibold text-orange-500">
+        ₱{{ "%.2f"|format(data.defects.total_cost_loss | default(0)) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">all origins</p>
+    </div>
   </div>
 
-  {# Loss breakdown #}
-  <div class="bg-surface border border-border rounded-xl p-4">
-    <p class="text-xs font-semibold text-txt-muted uppercase tracking-wide mb-3 flex items-center gap-1.5">
-      <span class="material-symbols-outlined text-[15px] text-red-500">money_off</span>
-      Financial Loss Breakdown (Active Defects)
-    </p>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <div>
-        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Sales Loss</p>
-        <p class="text-lg font-semibold text-red-500">₱{{ "%.2f"|format(data.defects.total_sales_loss | default(0)) }}</p>
-      </div>
-      <div>
-        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Cost Loss</p>
-        <p class="text-lg font-semibold text-orange-500">₱{{ "%.2f"|format(data.defects.total_cost_loss | default(0)) }}</p>
-      </div>
-      <div>
-        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Profit Loss</p>
-        <p class="text-lg font-semibold text-amber-500">₱{{ "%.2f"|format(data.defects.total_profit_loss | default(0)) }}</p>
-      </div>
-      <div>
-        <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Supplier Unrecovered</p>
-        <p class="text-lg font-semibold text-rose-600">₱{{ "%.2f"|format(data.defects.supplier_loss | default(0)) }}</p>
-        <p class="text-[10px] text-txt-muted">marked as loss</p>
-      </div>
+  <div class="border-t border-border mb-4"></div>
+
+  {# Row 2: Supplier recovery — cost basis #}
+  <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-3">
+    Supplier Recovery <span class="normal-case font-normal">(cost basis)</span>
+  </p>
+  <div class="grid grid-cols-3 gap-3">
+
+    {# Recovered #}
+    <div class="bg-emerald-50 dark:bg-emerald-900/10 rounded-lg p-3">
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Recovered</p>
+      {% set recovered = data.defects.supplier_recovered | default(0) %}
+      <p class="text-lg font-semibold {{ 'text-emerald-500' if recovered > 0 else 'text-txt-muted' }}">
+        ₱{{ "%.2f"|format(recovered) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">money / item returned</p>
     </div>
+
+    {# Absorbed loss #}
+    <div class="bg-red-50 dark:bg-red-900/10 rounded-lg p-3">
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Absorbed</p>
+      {% set absorbed = data.defects.supplier_loss | default(0) %}
+      <p class="text-lg font-semibold {{ 'text-rose-600' if absorbed > 0 else 'text-txt-muted' }}">
+        ₱{{ "%.2f"|format(absorbed) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">supplier won't cover</p>
+    </div>
+
+    {# Pending #}
+    <div class="bg-amber-50 dark:bg-amber-900/10 rounded-lg p-3">
+      <p class="text-[10px] text-txt-muted uppercase tracking-wide mb-1">Pending</p>
+      {% set pending = data.defects.supplier_pending | default(0) %}
+      <p class="text-lg font-semibold {{ 'text-amber-400' if pending > 0 else 'text-txt-muted' }}">
+        ₱{{ "%.2f"|format(pending) }}
+      </p>
+      <p class="text-[10px] text-txt-muted mt-0.5">unresolved</p>
+    </div>
+
   </div>
+
+  {# Sanity check: recovered + absorbed + pending should ≈ total_cost_loss #}
+  {% set accounted = (data.defects.supplier_recovered | default(0))
+                   + (data.defects.supplier_loss      | default(0))
+                   + (data.defects.supplier_pending   | default(0)) %}
+  {% set cost_loss = data.defects.total_cost_loss | default(0) %}
+  {% if (accounted - cost_loss) | abs > 0.01 %}
+  <p class="text-[10px] text-txt-muted/50 mt-3 text-right">
+    ⚠ Unclassified: ₱{{ "%.2f"|format(cost_loss - accounted) }}
+    (supplier compensation not set on some records)
+  </p>
+  {% endif %}
+
+</div>
+ 
+ 
 
   {# Defect charts #}
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -551,6 +672,7 @@
 (function () {
   const D   = {{ chart_json | safe }};
   const TAB = '{{ active_tab }}';
+  const IS_SINGLE_DAY = {{ 'true' if is_single_day else 'false' }};
 
   const dark    = document.documentElement.classList.contains('dark');
   const gridCol = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
@@ -578,9 +700,79 @@
   };
 
   const el = id => document.getElementById(id);
+  let salesChart = null;
+
+  /* ── SALES ──────────────────────────────────────────────────────────────── */
+  if (TAB === 'sales') {
+    const labels   = IS_SINGLE_DAY && D.sales.hourly_labels  ? D.sales.hourly_labels  : D.sales.labels;
+    const revenue  = IS_SINGLE_DAY && D.sales.hourly_revenue ? D.sales.hourly_revenue : D.sales.revenue;
+    const profit   = IS_SINGLE_DAY && D.sales.hourly_profit  ? D.sales.hourly_profit  : (D.sales.profit || []);
+    const txn      = IS_SINGLE_DAY && D.sales.hourly_txn     ? D.sales.hourly_txn     : D.sales.transactions;
+
+    const revEl = el('chart-sales-revenue');
+    if (revEl && labels.length) {
+      salesChart = new Chart(revEl, {
+        data: {
+          labels,
+          datasets: [
+            { type: 'bar',  label: IS_SINGLE_DAY ? 'Revenue/hr (₱)' : 'Revenue (₱)',
+              data: revenue, backgroundColor: P.blue, borderRadius: 4, yAxisID: 'y', order: 2 },
+            { type: 'line', label: IS_SINGLE_DAY ? 'Transactions/hr' : 'Transactions',
+              data: txn, borderColor: 'rgb(245,158,11)', backgroundColor: 'transparent',
+              pointBackgroundColor: 'rgb(245,158,11)', pointRadius: 3,
+              tension: 0.35, yAxisID: 'y2', order: 1 },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { display: false } },
+          scales: {
+            x:  { ...scales.x },
+            y:  { ...scales.y, ticks: { ...scales.y.ticks,
+                    callback: v => '₱' + Number(v).toLocaleString() } },
+            y2: { position: 'right', grid: { display: false },
+                  beginAtZero: true, ticks: { color: txtCol } },
+          },
+        },
+      });
+    }
+
+    const tpEl = el('chart-top-products');
+    if (tpEl && D.top_products.labels.length) {
+      new Chart(tpEl, {
+        type: 'bar',
+        data: {
+          labels: D.top_products.labels,
+          datasets: [{ label: 'Units Sold', data: D.top_products.units,
+            backgroundColor: P.green, borderRadius: 4, borderSkipped: false }],
+        },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ...scales.x, beginAtZero: true },
+            y: { grid: { display: false }, ticks: { color: txtCol } },
+          },
+        },
+      });
+    }
+  }
+
+  /* Toggle revenue ↔ profit on sales chart */
+  window.updateSalesChart = function(mode) {
+    if (!salesChart) return;
+    const revenue = IS_SINGLE_DAY && D.sales.hourly_revenue ? D.sales.hourly_revenue : D.sales.revenue;
+    const profit  = IS_SINGLE_DAY && D.sales.hourly_profit  ? D.sales.hourly_profit  : (D.sales.profit || revenue);
+    salesChart.data.datasets[0].data            = mode === 'profit' ? profit : revenue;
+    salesChart.data.datasets[0].label           = mode === 'profit' ? 'Profit (₱)' : 'Revenue (₱)';
+    salesChart.data.datasets[0].backgroundColor = mode === 'profit' ? P.violet : P.blue;
+    salesChart.update();
+  };
 
   /* ── INVENTORY ──────────────────────────────────────────────────────────── */
   if (TAB === 'inventory') {
+    /* Stock levels bar */
     const invEl = el('chart-inventory');
     if (invEl && D.inventory.labels.length) {
       new Chart(invEl, {
@@ -605,6 +797,7 @@
       });
     }
 
+    /* Status doughnut: OK / Low / Out */
     const statusEl = el('chart-inv-status');
     if (statusEl) {
       const ok  = (D.inventory.status_ok  !== undefined) ? D.inventory.status_ok  :
@@ -629,6 +822,7 @@
       });
     }
 
+    /* Category bar */
     const catEl = el('chart-inv-category');
     if (catEl) {
       const catLabels = D.inventory.category_labels || D.inventory.labels;
@@ -669,6 +863,7 @@
       });
     }
 
+    /* Top products restocked */
     const spEl = el('chart-stock-products');
     if (spEl) {
       const spLabels = D.stock.product_labels || D.inventory.labels.slice(0,8);
@@ -731,6 +926,7 @@
       });
     }
 
+    /* Supplier compensation doughnut */
     const supEl = el('chart-defects-supplier');
     if (supEl) {
       const supLabels = D.defects.supplier_labels || ['Loss','Same Item','Diff Item','Money','None','Pending'];
