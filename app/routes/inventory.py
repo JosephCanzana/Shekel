@@ -76,6 +76,13 @@ def add():
             if not ok:
                 flash(err, "danger")
                 return redirect(url_for("inventory.add"))
+            
+            existing = Product.query.filter(
+                Product.product_name.ilike(product_name)
+            ).first()
+            if existing:
+                flash(f'A product named "{product_name}" already exists.', "danger")
+                return redirect(url_for("inventory.add"))
 
             ok, err = validate_price(cost_price, "Unit price")
             if not ok:
