@@ -1402,16 +1402,15 @@ function requestsData() {
                             class="flex-1 py-3 rounded-xl text-sm font-medium"
                             style="border:1px solid var(--color-border);color:var(--color-txt-secondary);">Cancel</button>
                     <button @click="
-                        if (!rejectNote.trim()) { rejectError = 'Rejection note is required.'; return; }
-                        $dispatch('confirm', {
-                            title:   'Confirm Rejection',
-                            message: 'This will reject the submission and log your note.',
-                            action:  rejectRejectUrl,
-                            fields:  [{ name: 'rejection_note', value: rejectNote.trim() }]
-                        });
-                        closeReject();"
-                            class="flex-1 py-3 rounded-xl text-sm font-semibold"
-                            style="background:var(--color-error);color:#fff;">Reject</button>
+    $dispatch('confirm', {
+        title:   'Confirm Rejection',
+        message: 'This will reject the submission and log your note.',
+        action:  rejectRejectUrl,
+        fields:  [{ name: 'rejection_note', value: rejectNote.trim() }]
+    });
+    closeReject();"
+    class="flex-1 py-3 rounded-xl text-sm font-semibold"
+    style="background:var(--color-error);color:#fff;">Reject</button>
                 </div>
             </div>
         </div>

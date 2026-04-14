@@ -940,8 +940,7 @@ function myRequestsData() {
             <div class="rounded-2xl overflow-hidden" x-show="filteredHistoryDefect.length > 0"
                  style="background:var(--color-surface); border:1px solid var(--color-border);">
                 {# FIX: added :key and closing > to x-for #}
-                <template x-for="item in filteredHistoryDefect" :key="item.defect_id">
-                    <div class="flex items-center gap-4 px-5 py-3.5 transition"
+                <template x-for="item in filteredHistoryDefect" :key="item.detail_id">                    <div class="flex items-center gap-4 px-5 py-3.5 transition"
                          style="border-bottom:1px solid var(--color-border);"
                          onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                          onmouseout="this.style.backgroundColor='transparent'">

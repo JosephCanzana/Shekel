@@ -244,6 +244,7 @@ def index():
     page          = request.args.get("page", 1, type=int)
     search        = request.args.get("search", "").strip()
     filter_reason = request.args.get("reason", "")
+    filter_status = request.args.get("status", "")
     per_page      = 15
     date_from = request.args.get("date_from", "").strip()
     date_to   = request.args.get("date_to",   "").strip()
@@ -334,9 +335,21 @@ def index():
         .join(User,    User.user_id       == Defect.user_id)
         .filter(DefectDetail.status               == "active")
         .filter(DefectDetail.supplier_compensation == "pending")
-        .filter(DefectDetail.is_archived           == False)
-        .filter(Defect.is_archived                 == False)
     )
+
+    # ── archive filter ───────────────────────────────────────────────────────
+    if filter_status == "archived":
+        watch_q = watch_q.filter(
+            db.or_(DefectDetail.is_archived == True, Defect.is_archived == True)
+        )
+    elif filter_status == "all":
+        pass  # no archive filter at all
+    else:
+        # default: active only
+        watch_q = watch_q.filter(
+            DefectDetail.is_archived == False,
+            Defect.is_archived       == False,
+        )
 
     if search:
         watch_q = watch_q.filter(db.or_(
@@ -357,6 +370,7 @@ def index():
         pending=pending,
         page=page, pages=pages, total=total,
         search=search, filter_reason=filter_reason,
+        filter_status=filter_status,
         date_from=date_from,
         date_to=date_to,
         can_approve=can_approve(),
@@ -574,9 +588,6 @@ def reject(detail_id):
         return redirect(url_for("defects.index"))
 
     rejection_note = request.form.get("rejection_note", "").strip()
-    if not rejection_note:
-        flash("A rejection note is required.", "danger")
-        return redirect(request.referrer or url_for("defects.index"))
 
     detail.status         = "rejected"
     detail.rejection_note = rejection_note
@@ -760,6 +771,23 @@ def archive_detail(detail_id):
     reviewer = f"{current_user.first_name} {current_user.last_name}".strip().title()
     flash(f'"{name}" record deleted by {reviewer}. Inventory reversed.', "success")
     return redirect(request.referrer or url_for("defects.index"))
+
+@defects_bp.route("/detail/<int:detail_id>/delete", methods=["POST"])
+@login_required
+@role_required("superadmin", "admin")
+def delete_detail(detail_id):
+    detail = DefectDetail.query.get_or_404(detail_id)
+
+    if not detail.is_archived:
+        flash("Only archived records can be permanently deleted.", "danger")
+        return redirect(request.referrer or url_for("defects.index"))
+
+    db.session.delete(detail)
+    db.session.commit()
+    flash("Record permanently deleted.", "success")
+    return redirect(request.referrer or url_for("defects.index"))
+
+
 
 
 @defects_bp.route("/detail/<int:detail_id>/unarchive", methods=["POST"])

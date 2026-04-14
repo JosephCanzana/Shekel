@@ -145,6 +145,7 @@
         <div class="relative flex-1">
             <form method="GET" action="{{ url_for('defects.index') }}" id="watchSearchForm">
                 <input type="hidden" name="reason"    value="{{ filter_reason }}">
+                <input type="hidden" name="status"    value="{{ filter_status }}">
                 <input type="hidden" name="date_from" value="{{ date_from }}">
                 <input type="hidden" name="date_to"   value="{{ date_to }}">
                 <span class="material-symbols-outlined text-[15px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
@@ -163,8 +164,7 @@
                 onmouseout="this.style.backgroundColor='transparent'">
             <span class="material-symbols-outlined text-[16px]">tune</span>
             Filters
-            {% set active = [filter_reason, date_from, date_to] | select | list | length %}
-            {% if active > 0 %}
+            {% set active = [filter_reason, filter_status, date_from, date_to] | select | list | length %}            {% if active > 0 %}
             <span class="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center"
                 style="background:var(--color-primary); color:var(--color-bg);">{{ active }}</span>
             {% endif %}
@@ -211,6 +211,16 @@
                         {% for r in REASONS %}
                         <option value="{{ r }}" {% if filter_reason == r %}selected{% endif %}>{{ REASON_LABELS[r] }}</option>
                         {% endfor %}
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Status</label>
+                    <select name="status"
+                            class="w-full px-3 py-2.5 rounded-xl text-sm focus:outline-none"
+                            style="border:1px solid var(--color-border); background:var(--color-surface-alt); color:var(--color-txt-primary);">
+                        <option value="">Active Only</option>
+                        <option value="archived" {% if filter_status == 'archived' %}selected{% endif %}>Archived</option>
+                        <option value="all" {% if filter_status == 'all' %}selected{% endif %}>All</option>
                     </select>
                 </div>
 
@@ -370,7 +380,7 @@
             </div>
 
             <div class="flex justify-center">
-            {% if can_review %}
+            {% if can_review and not detail.is_archived %}
                 <button @click="openResolve({
                                     product_name:   '{{ product.product_name.capitalize() | replace("'","\'") }}',
                                     qty:            {{ detail.quantity }},
@@ -378,20 +388,20 @@
                                     review_url:     '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}'
                                 })"
                         class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-                        style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);"
+                        style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);border:1px solid color-mix(in srgb,var(--color-warning) 30%,transparent);"
                         onmouseover="this.style.background='color-mix(in srgb,var(--color-warning) 22%,transparent)'"
                         onmouseout="this.style.background='color-mix(in srgb,var(--color-warning) 12%,transparent)'">
                     <span class="material-symbols-outlined text-[13px]">task_alt</span>
                     Resolve
                 </button>
-                {% elif can_propose %}
+                {% elif can_propose and not detail.is_archived %}
                 <button @click="openResolve({
                         product_name: '{{ product.product_name.capitalize() | replace("'","\'") }}',
                         qty:          {{ detail.quantity }},
                         review_url:   '{{ url_for("defects.propose", detail_id=detail.defect_detail_id) }}'
                     })"
                     class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-                    style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);"
+                    style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);border:1px solid color-mix(in srgb,var(--color-info) 30%,transparent);"
                     onmouseover="this.style.background='color-mix(in srgb,var(--color-info) 22%,transparent)'"
                     onmouseout="this.style.background='color-mix(in srgb,var(--color-info) 12%,transparent)'">
                 <span class="material-symbols-outlined text-[13px]">send</span>
@@ -401,21 +411,54 @@
             </div>
 
             {% if can_delete %}
-            <div class="flex justify-center">
-                <button @click="$dispatch('confirm', {
-                                    title:   'Archive Record',
-                                    message: 'Archive {{ product.product_name.capitalize() | replace("'","\'") }}? Inventory will be reversed and can be restored.',
-                                    action:  '{{ url_for("defects.archive_detail", detail_id=detail.defect_detail_id) }}',
-                                    fields:  []
-                                })"
-                        class="w-7 h-7 rounded-lg flex items-center justify-center transition"
-                        style="color:var(--color-txt-muted);"
-                        onmouseover="this.style.color='var(--color-warning)'"
-                        onmouseout="this.style.color='var(--color-txt-muted)'">
-                    <span class="material-symbols-outlined text-[15px]">archive</span>
-                </button>
-            </div>
+        <div class="flex justify-center gap-1">
+            {% if detail.is_archived %}
+            {# Unarchive #}
+            <button @click="$dispatch('confirm', {
+                                title:   'Restore Record',
+                                message: 'Restore {{ product.product_name.capitalize() | replace("\'","\\\'") }}? It will return to the active watch list.',
+                                action:  '{{ url_for("defects.unarchive_detail", detail_id=detail.defect_detail_id) }}',
+                                fields:  []
+                            })"
+                    class="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                    style="border:1px solid color-mix(in srgb,var(--color-success) 30%,transparent);background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success);"
+                    onmouseover="this.style.background='color-mix(in srgb,var(--color-success) 22%,transparent)'"
+                    onmouseout="this.style.background='color-mix(in srgb,var(--color-success) 10%,transparent)'"
+                    title="Restore">
+                <span class="material-symbols-outlined text-[15px]">unarchive</span>
+            </button>
+            {# Delete permanently #}
+            <button @click="$dispatch('confirm', {
+                                title:   'Delete Permanently',
+                                message: 'This cannot be undone. The record will be gone forever.',
+                                action:  '{{ url_for("defects.delete_detail", detail_id=detail.defect_detail_id) }}',
+                                fields:  []
+                            })"
+                            class="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                    style="border:1px solid color-mix(in srgb,var(--color-error) 30%,transparent);background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error);"
+                    onmouseover="this.style.background='color-mix(in srgb,var(--color-error) 22%,transparent)'"
+                    onmouseout="this.style.background='color-mix(in srgb,var(--color-error) 10%,transparent)'"
+                    title="Delete forever">
+                <span class="material-symbols-outlined text-[15px]">delete_forever</span>
+            </button>
+            {% else %}
+            {# Archive #}
+            <button @click="$dispatch('confirm', {
+                                title:   'Archive Record',
+                                message: 'Archive {{ product.product_name.capitalize() | replace("\'","\\\'") }}? Inventory will be reversed and can be restored.',
+                                action:  '{{ url_for("defects.archive_detail", detail_id=detail.defect_detail_id) }}',
+                                fields:  []
+                            })"
+                    class="w-7 h-7 rounded-lg flex items-center justify-center transition"
+                    style="border:1px solid color-mix(in srgb,var(--color-warning) 30%,transparent);background:color-mix(in srgb,var(--color-warning) 10%,transparent);color:var(--color-warning);"
+                    onmouseover="this.style.background='color-mix(in srgb,var(--color-warning) 22%,transparent)'"
+                    onmouseout="this.style.background='color-mix(in srgb,var(--color-warning) 10%,transparent)'"
+                    title="Archive">
+                <span class="material-symbols-outlined text-[15px]">archive</span>
+            </button>
             {% endif %}
+        </div>
+        {% endif %}
         </div>
 
         {# Mobile card #}
@@ -433,7 +476,13 @@
                     detail_id:      {{ detail.defect_detail_id }},
                     original_price: {{ detail.price_at_defect }},
                     review_url:     '{{ url_for("defects.review", detail_id=detail.defect_detail_id) }}',
+                    propose_url:    '{{ url_for("defects.propose", detail_id=detail.defect_detail_id) }}',
+                    can_review:     {{ 'true' if can_review else 'false' }},
+                    can_propose:    {{ 'true' if can_propose else 'false' }},
+                    is_archived:    {{ 'true' if detail.is_archived else 'false' }},
+                    unarchive_url:  '{{ url_for("defects.unarchive_detail", detail_id=detail.defect_detail_id) }}',
                     delete_url:     '{{ url_for("defects.archive_detail", detail_id=detail.defect_detail_id) }}'
+
                 })"
                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
                 onmouseout="this.style.backgroundColor='transparent'">
@@ -480,21 +529,21 @@
         </p>
         <div class="flex items-center gap-1">
             {% if page > 1 %}
-            <a href="{{ url_for('defects.index', page=page-1, search=search, reason=filter_reason) }}"
+            <a href="{{ url_for('defects.index', page=page-1, search=search, reason=filter_reason, status=filter_status) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center"
                style="border:1px solid var(--color-border); color:var(--color-txt-muted);">
                 <span class="material-symbols-outlined text-[16px]">chevron_left</span>
             </a>
             {% endif %}
             {% for p in range(1, pages+1) %}
-            <a href="{{ url_for('defects.index', page=p, search=search, reason=filter_reason, date_from=date_from, date_to=date_to) }}"
+            <a href="{{ url_for('defects.index', page=p, search=search, reason=filter_reason, status=filter_status, date_from=date_from, date_to=date_to) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold"
                style="{% if p == page %}background:var(--color-primary);color:var(--color-bg){% else %}border:1px solid var(--color-border);color:var(--color-txt-muted){% endif %}">
                 {{ p }}
             </a>
             {% endfor %}
             {% if page < pages %}
-            <a href="{{ url_for('defects.index', page=page+1, search=search, reason=filter_reason) }}"
+            <a href="{{ url_for('defects.index', page=page+1, search=search, reason=filter_reason, status=filter_status) }}"
                class="w-8 h-8 rounded-lg flex items-center justify-center"
                style="border:1px solid var(--color-border); color:var(--color-txt-muted);">
                 <span class="material-symbols-outlined text-[16px]">chevron_right</span>
@@ -709,93 +758,134 @@
         </div>
     </template>
 
+{# ── MOBILE BOTTOM SHEET ── #}
+<div x-show="mobileDetailOpen"
+     x-transition:enter="transition-opacity duration-200"
+     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+     x-transition:leave="transition-opacity duration-200"
+     x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+     @click="closeDetail()"
+     class="fixed inset-0 z-50 sm:hidden"
+     style="background:rgba(0,0,0,0.45); backdrop-filter:blur(2px);"></div>
 
-    {# ── MOBILE BOTTOM SHEET ── #}
-    <div x-show="mobileDetailOpen"
-         x-transition:enter="transition-opacity duration-200"
-         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity duration-200"
-         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-         @click="closeDetail()"
-         class="fixed inset-0 z-50 sm:hidden"
-         style="background:rgba(0,0,0,0.45); backdrop-filter:blur(2px);"></div>
+<div x-show="mobileDetailOpen"
+     x-transition:enter="transition-transform duration-300 ease-out"
+     x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+     x-transition:leave="transition-transform duration-250 ease-in"
+     x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
+     class="fixed bottom-0 left-0 right-0 z-50 sm:hidden rounded-t-2xl"
+     style="background:var(--color-surface); border-top:1px solid var(--color-border);">
 
-    <div x-show="mobileDetailOpen"
-         x-transition:enter="transition-transform duration-300 ease-out"
-         x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-         x-transition:leave="transition-transform duration-250 ease-in"
-         x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full"
-         class="fixed bottom-0 left-0 right-0 z-50 sm:hidden rounded-t-2xl"
-         style="background:var(--color-surface); border-top:1px solid var(--color-border);">
+    <template x-if="selectedRow">
+        <div>
 
-        <template x-if="selectedRow">
-            <div>
-                <div class="flex justify-center pt-3 pb-1">
-                    <div class="w-10 h-1 rounded-full" style="background:var(--color-border-strong);"></div>
-                </div>
+            {# Drag handle #}
+            <div class="flex justify-center pt-3 pb-1">
+                <div class="w-10 h-1 rounded-full" style="background:var(--color-border-strong);"></div>
+            </div>
 
-                <div class="flex items-start justify-between gap-3 px-5 py-4"
-                     style="border-bottom:1px solid var(--color-border);">
-                    <div>
-                        <p class="font-semibold text-base" style="color:var(--color-txt-primary);" x-text="selectedRow.product_name"></p>
-                        <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="selectedRow.product_id"></p>
-                        <div class="flex gap-2 mt-2">
-                            <span class="text-xs px-2.5 py-1 rounded-full font-medium"
-                                  style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning);"
-                                  x-text="'×' + selectedRow.qty"></span>
-                            <span class="text-xs px-2.5 py-1 rounded-full font-medium"
-                                  style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
-                                  x-text="selectedRow.reason_label"></span>
-                        </div>
-                        <p class="text-xs mt-2" style="color:var(--color-txt-muted);"
-                           x-text="selectedRow.date + ' ' + selectedRow.time + ' · ' + selectedRow.logged_by"></p>
+            {# Header #}
+            <div class="flex items-start justify-between gap-3 px-5 py-4"
+                 style="border-bottom:1px solid var(--color-border);">
+                <div>
+                    <p class="font-semibold text-base" style="color:var(--color-txt-primary);" x-text="selectedRow.product_name"></p>
+                    <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="selectedRow.product_id"></p>
+                    <div class="flex gap-2 mt-2">
+                        <span class="text-xs px-2.5 py-1 rounded-full font-medium"
+                              style="background:color-mix(in srgb,var(--color-warning) 15%,transparent);color:var(--color-warning);"
+                              x-text="'×' + selectedRow.qty"></span>
+                        <span class="text-xs px-2.5 py-1 rounded-full font-medium"
+                              style="background:color-mix(in srgb,var(--color-error) 12%,transparent);color:var(--color-error);"
+                              x-text="selectedRow.reason_label"></span>
                     </div>
-                    <button @click="closeDetail()"
-                            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                            style="color:var(--color-txt-muted);">
-                        <span class="material-symbols-outlined text-[20px]">close</span>
-                    </button>
+                    <p class="text-xs mt-2" style="color:var(--color-txt-muted);"
+                       x-text="selectedRow.date + ' ' + selectedRow.time + ' · ' + selectedRow.logged_by"></p>
                 </div>
+                <button @click="closeDetail()"
+                        class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style="color:var(--color-txt-muted);">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
 
-                <div class="px-4 py-3 space-y-2 pb-6">
-                {% if can_review %}
-                <button @click="closeDetail(); openResolve(selectedRow)"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+            {# Action buttons #}
+            <div class="flex flex-col gap-2 px-4 py-4" style="padding-bottom: calc(1rem + env(safe-area-inset-bottom));">
+
+                {# Resolve — hidden when archived #}
+                <button x-show="selectedRow.can_review && !selectedRow.is_archived"
+                        @click="closeDetail(); openResolve(selectedRow)"
+                        class="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity"
                         style="background:color-mix(in srgb,var(--color-warning) 12%,transparent);color:var(--color-warning);border:1px solid color-mix(in srgb,var(--color-warning) 25%,transparent);">
-                    <span class="material-symbols-outlined text-[18px]">task_alt</span>
+                    <span class="material-symbols-outlined text-[18px] shrink-0">task_alt</span>
                     Resolve Supplier Comp
                 </button>
-                {% elif can_propose %}
-                <button @click="closeDetail(); openResolve({
+
+                {# Report — hidden when archived #}
+                <button x-show="selectedRow.can_propose && !selectedRow.is_archived"
+                        @click="closeDetail(); openResolve({
                             product_name: selectedRow.product_name,
                             qty:          selectedRow.qty,
-                            review_url:   selectedRow.review_url.replace('/review', '/propose'),
+                            review_url:   selectedRow.propose_url,
                             is_proposal:  true
                         })"
-                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+                        class="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity"
                         style="background:color-mix(in srgb,var(--color-info) 12%,transparent);color:var(--color-info);border:1px solid color-mix(in srgb,var(--color-info) 25%,transparent);">
-                    <span class="material-symbols-outlined text-[18px]">send</span>
+                    <span class="material-symbols-outlined text-[18px] shrink-0">send</span>
                     Report
                 </button>
+
+                {% if can_delete %}
+
+                {# Divider before destructive actions #}
+                <div class="border-t my-0.5" style="border-color:var(--color-border);"></div>
+
+                {# Archive — shown when NOT archived #}
+                <button x-show="!selectedRow.is_archived"
+                        @click="closeDetail(); $dispatch('confirm', {
+                                    title:   'Archive Record',
+                                    message: 'Archive this record? Inventory will be reversed and can be restored.',
+                                    action:  selectedRow.delete_url,
+                                    fields:  []
+                                })"
+                        class="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity"
+                        style="background:color-mix(in srgb,var(--color-warning) 10%,transparent);color:var(--color-warning);border:1px solid color-mix(in srgb,var(--color-warning) 30%,transparent);">
+                    <span class="material-symbols-outlined text-[18px] shrink-0">archive</span>
+                    Archive Record
+                </button>
+
+                {# Unarchive — shown when archived #}
+                <button x-show="selectedRow.is_archived"
+                        @click="closeDetail(); $dispatch('confirm', {
+                                    title:   'Restore Record',
+                                    message: 'Restore this record? It will return to the active watch list.',
+                                    action:  selectedRow.unarchive_url,
+                                    fields:  []
+                                })"
+                        class="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity"
+                        style="background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success);border:1px solid color-mix(in srgb,var(--color-success) 30%,transparent);">
+                    <span class="material-symbols-outlined text-[18px] shrink-0">unarchive</span>
+                    Restore Record
+                </button>
+
+                {# Delete forever — shown when archived #}
+                <button x-show="selectedRow.is_archived"
+                        @click="closeDetail(); $dispatch('confirm', {
+                                    title:   'Delete Permanently',
+                                    message: 'This cannot be undone. The record will be gone forever.',
+                                    action:  selectedRow.delete_url,
+                                    fields:  []
+                                })"
+                        class="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity"
+                        style="background:color-mix(in srgb,var(--color-error) 10%,transparent);color:var(--color-error);border:1px solid color-mix(in srgb,var(--color-error) 30%,transparent);">
+                    <span class="material-symbols-outlined text-[18px] shrink-0">delete_forever</span>
+                    Delete Permanently
+                </button>
+
                 {% endif %}
 
-                    {% if can_delete %}
-                    <button @click="closeDetail(); $dispatch('confirm', {
-                                        title:   'Archive Record',
-                                        message: 'Archive this record? Inventory will be reversed and can be restored.',
-                                        action:  selectedRow.delete_url,
-                                        fields:  []
-                                    })"
-                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
-                            style="border:1px solid var(--color-border);color:var(--color-warning);background:color-mix(in srgb,var(--color-warning) 5%,transparent);">
-                        <span class="material-symbols-outlined text-[18px]">archive</span>
-                        Archive Record
-                    </button>
-                    {% endif %}
-                </div>
             </div>
-        </template>
-    </div>
-
+        </div>
+    </template>
+</div>
 </div>
 {% endblock %}
