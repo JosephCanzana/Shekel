@@ -810,50 +810,50 @@
                         <template x-for="col in columnDefs.filter(c=>isVisible(c.key))" :key="col.key">
                             <td class="px-4 py-3 tabular-nums" :style="colStyle(p,col.key)" x-text="colValue(p,col.key)"></td>
                         </template>
- <td class="px-4 py-3">
-    <div class="flex items-center justify-end gap-1">
-        <template x-if="p.status !== 'archived'">
-            <div class="flex items-center gap-1">
-                <a :href="`/inventory/${p.product_id}/edit`" title="Edit"
-                   class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-                   style="color:var(--color-txt-muted);"
-                   onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-accent)'"
-                   onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
-                    <span class="material-symbols-outlined text-[18px]">{{ 'tune' if current_user.role == 'stocking' else 'edit' }}</span>
-                </a>
-                {% if can_manage %}
-                <button @click="confirmArchive(p)" title="Archive"
-                        class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-                        style="color:var(--color-txt-muted);"
-                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-error)'"
-                        onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
-                    <span class="material-symbols-outlined text-[18px]">archive</span>
-                </button>
-                {% endif %}
-            </div>
-        </template>
-        {% if can_manage %}
-        <template x-if="p.status === 'archived'">
-            <div class="flex items-center gap-1">
-                <button @click="confirmRestore(p)" title="Restore"
-                        class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-                        style="color:var(--color-txt-muted);"
-                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-success)'"
-                        onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
-                    <span class="material-symbols-outlined text-[18px]">unarchive</span>
-                </button>
-                <button @click="confirmDelete(p)" title="Delete permanently"
-                        class="w-8 h-8 rounded-lg flex items-center justify-center transition"
-                        style="color:var(--color-txt-muted);"
-                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-error)'"
-                        onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
-                    <span class="material-symbols-outlined text-[18px]">delete_forever</span>
-                </button>
-            </div>
-        </template>
-        {% endif %}
-    </div>
-</td>
+                        <td class="px-4 py-3">
+                            <div class="flex items-center justify-end gap-1">
+                                <template x-if="p.status !== 'archived'">
+                                    <div class="flex items-center gap-1">
+                                        <a :href="`/inventory/${p.product_id}/edit`" title="Edit"
+                                        class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                                        style="color:var(--color-txt-muted);"
+                                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-accent)'"
+                                        onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">{{ 'tune' if current_user.role == 'stocking' else 'edit' }}</span>
+                                        </a>
+                                        {% if can_manage %}
+                                        <button @click="confirmArchive(p)" title="Archive"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                                                style="color:var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-error)'"
+                                                onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">archive</span>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </template>
+                                {% if can_manage %}
+                                <template x-if="p.status === 'archived'">
+                                    <div class="flex items-center gap-1">
+                                        <button @click="confirmRestore(p)" title="Restore"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                                                style="color:var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-success)'"
+                                                onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">unarchive</span>
+                                        </button>
+                                        <button @click="confirmDelete(p)" title="Delete permanently"
+                                                class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                                                style="color:var(--color-txt-muted);"
+                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-error)'"
+                                                onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
+                                            <span class="material-symbols-outlined text-[18px]">delete_forever</span>
+                                        </button>
+                                    </div>
+                                </template>
+                                {% endif %}
+                            </div>
+                        </td>
                     </tr>
                 </template>
             </tbody>
@@ -937,16 +937,19 @@
          x-transition:enter="transition-opacity duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition-opacity duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
     <div x-show="mobileDetailOpen"
-         class="fixed bottom-0 left-0 right-0 z-50 sm:hidden rounded-t-2xl shadow-2xl overflow-hidden"
-         style="background:var(--color-surface);border-top:1px solid var(--color-border);"
-         x-transition:enter="transition-transform duration-300 ease-out" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
-         x-transition:leave="transition-transform duration-250 ease-in" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+     class="fixed bottom-0 left-0 right-0 z-50 sm:hidden rounded-t-2xl shadow-2xl"
+     style="background:var(--color-surface);border-top:1px solid var(--color-border);max-height:90dvh;"
+     x-transition:enter="transition-transform duration-300 ease-out" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+     x-transition:leave="transition-transform duration-250 ease-in" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
         <template x-if="selectedProduct">
-            <div>
-                <div class="flex justify-center pt-3 pb-1">
-                    <div class="w-10 h-1 rounded-full" style="background:var(--color-border-strong);"></div>
-                </div>
-                <div class="flex items-start gap-3 px-5 py-4" style="border-bottom:1px solid var(--color-border);">
+            <div class="flex flex-col overflow-hidden rounded-t-2xl" style="max-height:90dvh;">
+
+            {# Drag handle — fixed, never scrolls #}
+            <div class="flex justify-center pt-3 pb-1 shrink-0">
+                <div class="w-10 h-1 rounded-full" style="background:var(--color-border-strong);"></div>
+            </div>
+
+                <div class="flex items-start gap-3 px-5 py-4 shrink-0" style="border-bottom:1px solid var(--color-border);">
                     <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:var(--color-surface-alt);border:1px solid var(--color-border);">
                         <span class="material-symbols-outlined text-[22px]" style="color:var(--color-txt-muted);">inventory_2</span>
                     </div>
@@ -998,13 +1001,8 @@
                                style="border:1px solid var(--color-border);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 8%,transparent);">
                                 <span class="material-symbols-outlined text-[20px]">edit</span> Edit Product
                             </a>
-                            <button @click="closeDetail();$dispatch('confirm',{
-                                        title:'Archive Product',
-                                        message:`Archive \"${titleCase(selectedProduct.product_name)}\"? It will be hidden from the POS.`,
-                                        action:`/inventory/${selectedProduct.product_id}/status_update`,
-                                        fields:[{name:'status',value:'archived'}]
-                                    })"
-                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                            <button @click="closeDetail(); confirmArchive(selectedProduct)"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
                                     style="border:1px solid var(--color-border);color:var(--color-error);background:color-mix(in srgb,var(--color-error) 8%,transparent);">
                                 <span class="material-symbols-outlined text-[20px]">archive</span> Archive Product
                             </button>
@@ -1012,23 +1010,15 @@
                     </template>
                     <template x-if="canManage&&selectedProduct.status==='archived'">
                         <div class="space-y-2">
-                            <button @click="closeDetail();$dispatch('confirm',{
-                                        title:'Restore Product',
-                                        message:`Restore \"${titleCase(selectedProduct.product_name)}\" to active?`,
-                                        action:`/inventory/${selectedProduct.product_id}/status_update`,
-                                        fields:[{name:'status',value:'active'}]
-                                    })"
-                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                            <button @click="closeDetail(); confirmRestore(selectedProduct)"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                                     
                                     style="border:1px solid var(--color-border);color:var(--color-success);background:color-mix(in srgb,var(--color-success) 8%,transparent);">
                                 <span class="material-symbols-outlined text-[20px]">unarchive</span> Restore Product
                             </button>
-                            <button @click="closeDetail();$dispatch('confirm',{
-                                        title:'Delete Product',
-                                        message:`Permanently delete \"${titleCase(selectedProduct.product_name)}\"? This cannot be undone.`,
-                                        action:`/inventory/${selectedProduct.product_id}/delete`,
-                                        fields:[]
-                                    })"
-                                    class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+                            <button @click="closeDetail(); confirmDelete(selectedProduct)"
+                            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium"
+
                                     style="border:1px solid var(--color-border);color:var(--color-error);background:color-mix(in srgb,var(--color-error) 8%,transparent);">
                                 <span class="material-symbols-outlined text-[20px]">delete_forever</span> Delete Permanently
                             </button>
