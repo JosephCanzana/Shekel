@@ -982,3 +982,161 @@ def adjust_submit():
         return jsonify({"error": "Failed to submit request. Please try again."}), 500
 
     return jsonify({"success": True, "mode": "pending", "request_id": req.request_id})
+
+# ─────────────────────────────────────────────────────────────
+#  Add these two routes to your existing inventory_bp routes.py
+# ─────────────────────────────────────────────────────────────
+
+from sqlalchemy import func
+
+
+@inventory_bp.route("/stock-in/history")
+@login_required
+@role_required("superadmin", "admin", "stocking")
+def stock_in_history():
+    from app.models.stock_in import StockIn
+    from app.models.user import User
+
+    # ── Batched entries (batch_id not null) ───────────────────
+    batch_rows = (
+        db.session.query(
+            StockIn.batch_id,
+            func.min(StockIn.stockin_datetime).label("datetime"),
+            func.count(StockIn.stockin_id).label("product_count"),
+            func.sum(StockIn.quantity_received).label("total_qty"),
+            StockIn.user_id,
+        )
+        .filter(StockIn.batch_id.isnot(None))
+        .group_by(StockIn.batch_id, StockIn.user_id)
+        .order_by(func.min(StockIn.stockin_datetime).desc())
+        .all()
+    )
+
+    # ── Individual entries (no batch_id) ──────────────────────
+    individual_rows = (
+        StockIn.query.filter(StockIn.batch_id.is_(None))
+        .order_by(StockIn.stockin_datetime.desc())
+        .all()
+    )
+
+    # ── Build unified list ────────────────────────────────────
+    history = []
+
+    for row in batch_rows:
+        user = User.query.get(row.user_id)
+        history.append(
+            {
+                "id":            row.batch_id,
+                "id_label":      f"Batch #{row.batch_id}",
+                "type":          "batch",
+                "datetime":      to_pht(row.datetime).strftime("%b %d, %Y %I:%M %p") if row.datetime else "—",
+                "datetime_iso":  row.datetime.isoformat() if row.datetime else "",
+                "product_count": row.product_count,
+                "total_qty":     int(row.total_qty or 0),
+                "user_name":     f"{user.first_name} {user.last_name}" if user else "Unknown",
+                "user_role":     (user.role or "").capitalize() if user else "",
+            }
+        )
+
+    for rec in individual_rows:
+        user = rec.user
+        history.append(
+            {
+                "id":            rec.stockin_id,
+                "id_label":      f"Entry #{rec.stockin_id}",
+                "type":          "single",
+                "datetime":      to_pht(rec.stockin_datetime).strftime("%b %d, %Y %I:%M %p") if rec.stockin_datetime else "—",
+                "datetime_iso":  rec.stockin_datetime.isoformat() if rec.stockin_datetime else "",
+                "product_count": 1,
+                "total_qty":     rec.quantity_received,
+                "user_name":     f"{user.first_name} {user.last_name}" if user else "Unknown",
+                "user_role":     (user.role or "").capitalize() if user else "",
+                "product_name":  rec.product.product_name.capitalize() if rec.product else rec.product_id,
+                "notes":         rec.notes or "",
+            }
+        )
+
+    # Sort all entries by datetime descending
+    history.sort(key=lambda x: x["datetime_iso"], reverse=True)
+
+    return render_template(
+        "inventory/history.html",
+        history=history,
+        can_manage=is_admin_or_coadmin(),
+    )
+
+
+@inventory_bp.route("/stock-in/history/batch/<int:batch_id>")
+@login_required
+@role_required("superadmin", "admin", "stocking")
+def stock_in_batch_detail(batch_id):
+    from app.models.stock_in import StockIn
+
+    records = (
+        StockIn.query.filter_by(batch_id=batch_id)
+        .order_by(StockIn.stockin_datetime)
+        .all()
+    )
+
+    if not records:
+        return jsonify({"error": "Batch not found."}), 404
+
+    first = records[0]
+    user  = first.user
+
+    items = [
+        {
+            "product_id":        r.product_id,
+            "product_name":      r.product.product_name.capitalize() if r.product else r.product_id,
+            "category":          r.product.category.category_name.capitalize()
+                                 if r.product and r.product.category else "—",
+            "quantity_received": r.quantity_received,
+            "notes":             r.notes or "",
+        }
+        for r in records
+    ]
+
+    return jsonify(
+        {
+            "batch_id":      batch_id,
+            "datetime":      to_pht(first.stockin_datetime).strftime("%b %d, %Y %I:%M %p")
+                             if first.stockin_datetime else "—",
+            "user_name":     f"{user.first_name} {user.last_name}" if user else "Unknown",
+            "user_role":     (user.role or "").capitalize() if user else "",
+            "total_qty":     sum(r.quantity_received for r in records),
+            "product_count": len(records),
+            "items":         items,
+        }
+    )
+
+
+@inventory_bp.route("/stock-in/history/single/<int:stockin_id>")
+@login_required
+@role_required("superadmin", "admin", "stocking")
+def stock_in_single_detail(stockin_id):
+    from app.models.stock_in import StockIn
+
+    rec = StockIn.query.get_or_404(stockin_id)
+    user = rec.user
+
+    return jsonify(
+        {
+            "batch_id":      stockin_id,
+            "datetime":      to_pht(rec.stockin_datetime).strftime("%b %d, %Y %I:%M %p")
+                             if rec.stockin_datetime else "—",
+            "user_name":     f"{user.first_name} {user.last_name}" if user else "Unknown",
+            "user_role":     (user.role or "").capitalize() if user else "",
+            "total_qty":     rec.quantity_received,
+            "product_count": 1,
+            "items": [
+                {
+                    "product_id":        rec.product_id,
+                    "product_name":      rec.product.product_name.capitalize() if rec.product else rec.product_id,
+                    "category":          rec.product.category.category_name.capitalize()
+                                         if rec.product and rec.product.category else "—",
+                    "quantity_received": rec.quantity_received,
+                    "notes":             rec.notes or "",
+                }
+            ],
+        }
+    )

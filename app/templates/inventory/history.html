@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+{% block title %}Stock-In History — Shekel{% endblock %}
+{% block nav_title %}Stock-In History{% endblock %}
+
+{% block body %}
+
+<script>
+    const HISTORY_DATA = {{ history | tojson }};
+
+    function historyData() {
+        return {
+            // ── state ─────────────────────────────────────────
+            rows:         HISTORY_DATA,
+            search:       '',
+            page:         1,
+            perPage:      15,
+
+            // ── detail panel ──────────────────────────────────
+            detailOpen:   false,
+            detailLoading: false,
+            detailError:  '',
+            detail:       null,   // { batch_id, datetime, user_name, user_role, total_qty, product_count, items[] }
+
+            // ── computed ──────────────────────────────────────
+            get filtered() {
+                const q = this.search.toLowerCase()
+                if (!q) return this.rows
+                return this.rows.filter(r =>
+                    r.id_label.toLowerCase().includes(q)       ||
+                    r.user_name.toLowerCase().includes(q)      ||
+                    r.datetime.toLowerCase().includes(q)       ||
+                    (r.product_name && r.product_name.toLowerCase().includes(q))
+                )
+            },
+
+            get paginated() {
+                const s = (this.page - 1) * this.perPage
+                return this.filtered.slice(s, s + this.perPage)
+            },
+
+            get totalPages() {
+                return Math.max(1, Math.ceil(this.filtered.length / this.perPage))
+            },
+
+            resetPage() { this.page = 1 },
+
+            // ── open detail ───────────────────────────────────
+            async openDetail(row) {
+                this.detailOpen   = true
+                this.detailLoading = true
+                this.detailError  = ''
+                this.detail       = null
+
+                const url = row.type === 'batch'
+                    ? `/inventory/stock-in/history/batch/${row.id}`
+                    : `/inventory/stock-in/history/single/${row.id}`
+
+                try {
+                    const res  = await fetch(url)
+                    const data = await res.json()
+                    if (!res.ok) { this.detailError = data.error || 'Failed to load.'; return }
+                    this.detail = data
+                } catch(e) {
+                    this.detailError = 'Network error. Please try again.'
+                } finally {
+                    this.detailLoading = false
+                }
+            },
+
+            closeDetail() {
+                this.detailOpen = false
+                setTimeout(() => { this.detail = null; this.detailError = '' }, 300)
+            },
+
+            // ── helpers ───────────────────────────────────────
+            titleCase(str) {
+                return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''
+            },
+
+            roleColor(role) {
+                const r = (role || '').toLowerCase()
+                if (r === 'superadmin') return 'color:var(--color-error);background:color-mix(in srgb,var(--color-error) 10%,transparent)'
+                if (r === 'admin')      return 'color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 10%,transparent)'
+                return 'color:var(--color-txt-muted);background:var(--color-surface-alt)'
+            },
+
+            badgeIcon(type) {
+                return type === 'batch' ? 'inventory_2' : 'move_to_inbox'
+            },
+
+            badgeStyle(type) {
+                return type === 'batch'
+                    ? 'background:color-mix(in srgb,var(--color-primary) 10%,transparent);color:var(--color-primary)'
+                    : 'background:color-mix(in srgb,var(--color-success) 10%,transparent);color:var(--color-success)'
+            },
+        }
+    }
+</script>
+
+<div x-data="historyData()" class="space-y-5">
+
+    {# ── Header ── #}
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold tracking-tight" style="color:var(--color-txt-primary);">Stock-In History</h1>
+            <p class="text-sm mt-0.5" style="color:var(--color-txt-muted);">
+                <span x-text="filtered.length"></span> of {{ history | length }} entries
+            </p>
+        </div>
+        <a href="{{ url_for('stocking.stock_in') }}"
+           class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
+           style="border:1px solid var(--color-primary);color:var(--color-primary);"
+           onmouseover="this.style.backgroundColor='color-mix(in srgb,var(--color-primary) 8%,transparent)'"
+           onmouseout="this.style.backgroundColor='transparent'">
+            <span class="material-symbols-outlined text-[17px]">add</span>
+            <span class="hidden sm:inline">New Stock-In</span>
+        </a>
+    </div>
+
+    {# ── Search ── #}
+    <div class="relative">
+        <span class="material-symbols-outlined text-[18px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              style="color:var(--color-txt-muted);">search</span>
+        <input type="text" x-model="search" @input="resetPage()"
+               placeholder="Search by batch, user, or date…"
+               class="w-full pl-9 pr-4 py-2 rounded-lg text-sm focus:outline-none transition"
+               style="border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-txt-primary);"
+               onfocus="this.style.borderColor='var(--color-accent)';this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+               onblur="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+    </div>
+
+    {# ══════════════════════════════════════════════
+       DESKTOP TABLE
+    ══════════════════════════════════════════════ #}
+    <div class="hidden sm:block rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
+        <table class="w-full text-sm">
+            <thead>
+                <tr style="background:var(--color-surface-alt);border-bottom:1px solid var(--color-border);">
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Batch / Entry</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Date &amp; Time</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Done By</th>
+                    <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Products</th>
+                    <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Total Units</th>
+                    <th class="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Details</th>
+                </tr>
+            </thead>
+            <tbody style="background:var(--color-surface);">
+                <template x-if="filtered.length === 0">
+                    <tr>
+                        <td colspan="6" class="px-4 py-14 text-center" style="color:var(--color-txt-muted);">
+                            <span class="material-symbols-outlined text-[40px] block mb-2" style="color:var(--color-border-strong);">inventory_2</span>
+                            No stock-in records found.
+                        </td>
+                    </tr>
+                </template>
+                <template x-for="row in paginated" :key="row.type + row.id">
+                    <tr style="border-top:1px solid var(--color-border);"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="this.style.backgroundColor='transparent'">
+
+                        {# Batch / Entry label #}
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                     :style="badgeStyle(row.type)">
+                                    <span class="material-symbols-outlined text-[16px]" x-text="badgeIcon(row.type)"></span>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-sm" style="color:var(--color-txt-primary);" x-text="row.id_label"></p>
+                                    <p x-show="row.type === 'single' && row.product_name"
+                                       class="text-xs truncate max-w-[180px]" style="color:var(--color-txt-muted);" x-text="row.product_name"></p>
+                                </div>
+                            </div>
+                        </td>
+
+                        {# Date #}
+                        <td class="px-4 py-3">
+                            <p class="text-sm" style="color:var(--color-txt-secondary);" x-text="row.datetime"></p>
+                        </td>
+
+                        {# User #}
+                        <td class="px-4 py-3">
+                            <div>
+                                <p class="text-sm font-medium" style="color:var(--color-txt-primary);" x-text="row.user_name"></p>
+                                <span class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                                      :style="roleColor(row.user_role)" x-text="row.user_role"></span>
+                            </div>
+                        </td>
+
+                        {# Product count #}
+                        <td class="px-4 py-3 text-right tabular-nums font-medium" style="color:var(--color-txt-secondary);">
+                            <span x-text="row.product_count"></span>
+                            <span class="text-xs" style="color:var(--color-txt-muted);" x-text="row.product_count === 1 ? ' item' : ' items'"></span>
+                        </td>
+
+                        {# Total qty #}
+                        <td class="px-4 py-3 text-right tabular-nums font-bold" style="color:var(--color-txt-primary);">
+                            <span x-text="row.total_qty.toLocaleString()"></span>
+                            <span class="text-xs font-normal" style="color:var(--color-txt-muted);"> units</span>
+                        </td>
+
+                        {# View details #}
+                        <td class="px-4 py-3 text-right">
+                            <button @click="openDetail(row)"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                                    style="border:1px solid var(--color-border);color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 6%,transparent);"
+                                    onmouseover="this.style.background='color-mix(in srgb,var(--color-accent) 14%,transparent)'"
+                                    onmouseout="this.style.background='color-mix(in srgb,var(--color-accent) 6%,transparent)'">
+                                <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+                                View
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    {# ══════════════════════════════════════════════
+       MOBILE CARD LIST
+    ══════════════════════════════════════════════ #}
+    <div class="sm:hidden space-y-2">
+        <template x-if="filtered.length === 0">
+            <div class="rounded-xl py-14 text-center" style="border:1px solid var(--color-border);background:var(--color-surface);">
+                <span class="material-symbols-outlined text-[40px] block mb-2" style="color:var(--color-border-strong);">inventory_2</span>
+                <p class="text-sm" style="color:var(--color-txt-muted);">No stock-in records found.</p>
+            </div>
+        </template>
+        <template x-for="row in paginated" :key="row.type + row.id">
+            <button @click="openDetail(row)"
+                    class="w-full text-left rounded-xl px-4 py-3.5 transition flex items-center gap-3"
+                    style="border:1px solid var(--color-border);background:var(--color-surface);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='var(--color-surface)'">
+
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                     :style="badgeStyle(row.type)">
+                    <span class="material-symbols-outlined text-[18px]" x-text="badgeIcon(row.type)"></span>
+                </div>
+
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="font-semibold text-sm truncate" style="color:var(--color-txt-primary);" x-text="row.id_label"></p>
+                        <p class="text-xs font-bold tabular-nums shrink-0" style="color:var(--color-txt-primary);">
+                            +<span x-text="row.total_qty.toLocaleString()"></span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <p class="text-xs" style="color:var(--color-txt-muted);" x-text="row.datetime"></p>
+                        <span class="text-xs" style="color:var(--color-border-strong);">·</span>
+                        <p class="text-xs" style="color:var(--color-txt-muted);" x-text="row.user_name"></p>
+                    </div>
+                    <p x-show="row.type === 'single' && row.product_name"
+                       class="text-xs mt-0.5 truncate" style="color:var(--color-accent);" x-text="row.product_name"></p>
+                </div>
+
+                <span class="material-symbols-outlined text-[18px] shrink-0" style="color:var(--color-txt-muted);">chevron_right</span>
+            </button>
+        </template>
+    </div>
+
+    {# ── Pagination ── #}
+    <div class="flex items-center justify-between text-sm" x-show="filtered.length > perPage">
+        <p style="color:var(--color-txt-muted);">
+            Showing <span x-text="Math.min((page-1)*perPage+1, filtered.length)"></span>–<span x-text="Math.min(page*perPage, filtered.length)"></span>
+            of <span x-text="filtered.length"></span>
+        </p>
+        <div class="flex items-center gap-1">
+            <button @click="page = Math.max(1, page-1)" :disabled="page === 1"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-40"
+                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+            </button>
+            <template x-for="pg in totalPages" :key="pg">
+                <button @click="page = pg"
+                        class="w-8 h-8 rounded-lg text-sm font-medium transition"
+                        :style="page === pg ? 'background:var(--color-primary);color:var(--color-bg)' : 'color:var(--color-txt-secondary)'"
+                        onmouseover="if(this.style.color!=='var(--color-bg)') this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="if(this.style.color!=='var(--color-bg)') this.style.backgroundColor='transparent'"
+                        x-text="pg"></button>
+            </template>
+            <button @click="page = Math.min(totalPages, page+1)" :disabled="page === totalPages"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-40"
+                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
+        </div>
+    </div>
+
+
+    {# ══════════════════════════════════════════════
+       DETAIL PANEL — BACKDROP
+    ══════════════════════════════════════════════ #}
+    <div x-show="detailOpen" @click="closeDetail()"
+         class="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]"
+         x-transition:enter="transition-opacity duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition-opacity duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         style="display:none;"></div>
+
+    {# ── DESKTOP: right slide-in panel ── #}
+    <div x-show="detailOpen"
+         class="hidden sm:flex fixed top-0 right-0 bottom-0 z-50 w-full max-w-lg flex-col shadow-2xl"
+         style="background:var(--color-surface);border-left:1px solid var(--color-border);"
+         x-transition:enter="transition-transform duration-300 ease-out"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition-transform duration-250 ease-in"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         style="display:none;">
+
+        {# Panel header #}
+        <div class="flex items-center justify-between px-6 py-5 shrink-0"
+             style="border-bottom:1px solid var(--color-border);">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+                     style="background:color-mix(in srgb,var(--color-primary) 10%,transparent);">
+                    <span class="material-symbols-outlined text-[20px]" style="color:var(--color-primary);">inventory_2</span>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold" style="color:var(--color-txt-primary);"
+                        x-text="detail ? (detail.product_count > 1 ? 'Batch #' + detail.batch_id : 'Entry #' + detail.batch_id) : 'Loading…'"></h2>
+                    <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                       x-text="detail ? detail.datetime : ''"></p>
+                </div>
+            </div>
+            <button @click="closeDetail()"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+                    style="color:var(--color-txt-muted);"
+                    onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="this.style.backgroundColor='transparent'">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+
+        {# Loading #}
+        <div x-show="detailLoading" class="flex-1 flex items-center justify-center">
+            <div class="flex flex-col items-center gap-3">
+                <span class="material-symbols-outlined text-[36px] animate-spin" style="color:var(--color-accent);">progress_activity</span>
+                <p class="text-sm" style="color:var(--color-txt-muted);">Loading details…</p>
+            </div>
+        </div>
+
+        {# Error #}
+        <div x-show="detailError && !detailLoading"
+             class="flex-1 flex items-center justify-center px-6">
+            <div class="text-center">
+                <span class="material-symbols-outlined text-[36px] block mb-2" style="color:var(--color-error);">error</span>
+                <p class="text-sm font-medium" style="color:var(--color-error);" x-text="detailError"></p>
+            </div>
+        </div>
+
+        {# Content #}
+        <template x-if="detail && !detailLoading">
+            <div class="flex-1 overflow-y-auto flex flex-col">
+
+                {# Summary strip #}
+                <div class="grid grid-cols-3 shrink-0" style="border-bottom:1px solid var(--color-border);">
+                    <div class="flex flex-col items-center py-4 px-3 gap-1" style="border-right:1px solid var(--color-border);">
+                        <p class="text-xs" style="color:var(--color-txt-muted);">Products</p>
+                        <p class="text-xl font-bold tabular-nums" style="color:var(--color-txt-primary);" x-text="detail.product_count"></p>
+                    </div>
+                    <div class="flex flex-col items-center py-4 px-3 gap-1" style="border-right:1px solid var(--color-border);">
+                        <p class="text-xs" style="color:var(--color-txt-muted);">Total Units</p>
+                        <p class="text-xl font-bold tabular-nums" style="color:var(--color-primary);" x-text="detail.total_qty.toLocaleString()"></p>
+                    </div>
+                    <div class="flex flex-col items-center py-4 px-3 gap-1">
+                        <p class="text-xs" style="color:var(--color-txt-muted);">Done By</p>
+                        <p class="text-sm font-semibold text-center" style="color:var(--color-txt-primary);" x-text="detail.user_name"></p>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-semibold"
+                              :style="roleColor(detail.user_role)" x-text="detail.user_role"></span>
+                    </div>
+                </div>
+
+                {# Items list #}
+                <div class="px-6 pt-5 pb-2">
+                    <p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color:var(--color-txt-muted);">Items in this batch</p>
+                </div>
+
+                <div class="flex-1 px-4 pb-8 space-y-2">
+                    <template x-for="(item, i) in detail.items" :key="item.product_id">
+                        <div class="rounded-xl px-4 py-3.5 flex items-start gap-3"
+                             style="border:1px solid var(--color-border);background:var(--color-surface-alt);">
+
+                            {# Index badge #}
+                            <div class="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
+                                 style="background:color-mix(in srgb,var(--color-primary) 12%,transparent);color:var(--color-primary);"
+                                 x-text="i + 1"></div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-sm leading-tight" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
+                                        <p class="font-mono text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="item.product_id"></p>
+                                        <p x-show="item.category && item.category !== '—'"
+                                           class="text-xs mt-0.5" style="color:var(--color-txt-muted);" x-text="item.category"></p>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <p class="text-base font-bold tabular-nums"
+                                           :style="item.quantity_received > 0 ? 'color:var(--color-success)' : 'color:var(--color-error)'">
+                                            <span x-text="item.quantity_received > 0 ? '+' : ''"></span><span x-text="item.quantity_received.toLocaleString()"></span>
+                                        </p>
+                                        <p class="text-xs" style="color:var(--color-txt-muted);">units</p>
+                                    </div>
+                                </div>
+                                <div x-show="item.notes"
+                                     class="mt-2 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg text-xs"
+                                     style="background:var(--color-surface);border:1px solid var(--color-border);">
+                                    <span class="material-symbols-outlined text-[13px] shrink-0 mt-0.5" style="color:var(--color-txt-muted);">notes</span>
+                                    <span style="color:var(--color-txt-muted);" x-text="item.notes"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    {# ── MOBILE: bottom sheet ── #}
+    <div x-show="detailOpen"
+         class="sm:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl shadow-2xl overflow-hidden flex flex-col"
+         style="background:var(--color-surface);border-top:1px solid var(--color-border);max-height:90vh;"
+         x-transition:enter="transition-transform duration-300 ease-out"
+         x-transition:enter-start="translate-y-full"
+         x-transition:enter-end="translate-y-0"
+         x-transition:leave="transition-transform duration-250 ease-in"
+         x-transition:leave-start="translate-y-0"
+         x-transition:leave-end="translate-y-full"
+         style="display:none;">
+
+        {# Drag handle #}
+        <div class="flex justify-center pt-3 pb-1 shrink-0">
+            <div class="w-10 h-1 rounded-full" style="background:var(--color-border-strong);"></div>
+        </div>
+
+        {# Sheet header #}
+        <div class="flex items-center justify-between px-5 py-3 shrink-0"
+             style="border-bottom:1px solid var(--color-border);">
+            <div>
+                <h2 class="text-base font-bold" style="color:var(--color-txt-primary);"
+                    x-text="detail ? (detail.product_count > 1 ? 'Batch #' + detail.batch_id : 'Entry #' + detail.batch_id) : 'Loading…'"></h2>
+                <p class="text-xs mt-0.5" style="color:var(--color-txt-muted);"
+                   x-text="detail ? detail.datetime : ''"></p>
+            </div>
+            <button @click="closeDetail()"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style="color:var(--color-txt-muted);">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+
+        {# Loading #}
+        <div x-show="detailLoading" class="flex items-center justify-center py-16">
+            <span class="material-symbols-outlined text-[32px] animate-spin" style="color:var(--color-accent);">progress_activity</span>
+        </div>
+
+        {# Error #}
+        <div x-show="detailError && !detailLoading" class="px-5 py-8 text-center">
+            <p class="text-sm" style="color:var(--color-error);" x-text="detailError"></p>
+        </div>
+
+        {# Content #}
+        <template x-if="detail && !detailLoading">
+            <div class="flex-1 overflow-y-auto">
+
+                {# Summary strip #}
+                <div class="grid grid-cols-3" style="border-bottom:1px solid var(--color-border);">
+                    <div class="flex flex-col items-center py-3 px-2 gap-0.5" style="border-right:1px solid var(--color-border);">
+                        <p class="text-[11px]" style="color:var(--color-txt-muted);">Products</p>
+                        <p class="text-lg font-bold" style="color:var(--color-txt-primary);" x-text="detail.product_count"></p>
+                    </div>
+                    <div class="flex flex-col items-center py-3 px-2 gap-0.5" style="border-right:1px solid var(--color-border);">
+                        <p class="text-[11px]" style="color:var(--color-txt-muted);">Units Added</p>
+                        <p class="text-lg font-bold" style="color:var(--color-primary);" x-text="detail.total_qty.toLocaleString()"></p>
+                    </div>
+                    <div class="flex flex-col items-center py-3 px-2 gap-0.5">
+                        <p class="text-[11px]" style="color:var(--color-txt-muted);">Done By</p>
+                        <p class="text-xs font-semibold text-center" style="color:var(--color-txt-primary);" x-text="detail.user_name"></p>
+                    </div>
+                </div>
+
+                {# Items #}
+                <div class="px-4 py-4 pb-10 space-y-2">
+                    <p class="text-xs font-semibold uppercase tracking-wider mb-3" style="color:var(--color-txt-muted);">Items</p>
+                    <template x-for="(item, i) in detail.items" :key="item.product_id">
+                        <div class="rounded-xl px-4 py-3 flex items-start gap-3"
+                             style="border:1px solid var(--color-border);background:var(--color-surface-alt);">
+                            <div class="w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
+                                 style="background:color-mix(in srgb,var(--color-primary) 12%,transparent);color:var(--color-primary);"
+                                 x-text="i + 1"></div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-sm" style="color:var(--color-txt-primary);" x-text="item.product_name"></p>
+                                        <p class="font-mono text-xs" style="color:var(--color-txt-muted);" x-text="item.product_id"></p>
+                                    </div>
+                                    <p class="font-bold tabular-nums shrink-0"
+                                       :style="item.quantity_received > 0 ? 'color:var(--color-success)' : 'color:var(--color-error)'">
+                                        <span x-text="item.quantity_received > 0 ? '+' : ''"></span><span x-text="item.quantity_received.toLocaleString()"></span>
+                                    </p>
+                                </div>
+                                <div x-show="item.notes"
+                                     class="mt-1.5 flex items-start gap-1 text-xs px-2 py-1 rounded"
+                                     style="background:var(--color-surface);color:var(--color-txt-muted);">
+                                    <span class="material-symbols-outlined text-[12px] shrink-0 mt-0.5">notes</span>
+                                    <span x-text="item.notes"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+
+</div>
+{% endblock %}

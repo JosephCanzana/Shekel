@@ -526,3 +526,4 @@ def cancel_request(request_id):
         return jsonify({"error": "Failed to cancel request."}), 500
 
     return jsonify({"ok": True})
+
