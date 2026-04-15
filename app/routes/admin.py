@@ -79,8 +79,12 @@ def dashboard():
         detail = _paginate_list(data["stock"]["rows"], page)
     elif active_tab == "defects":
         detail = _paginate_list(data["defects"]["rows"], page)
-    else:  # sales — paginate daily breakdown for the table
-        detail = _paginate_list(list(data["sales"]["daily"]), page)
+    else:  # sales
+        is_single_day = (date_from_str == date_to_str)
+        if is_single_day and data["sales"]["hourly"]:
+            detail = _paginate_list(data["sales"]["hourly"], page)
+        else:
+            detail = _paginate_list(list(data["sales"]["daily"]), page)
  
     return render_template(
         "admin/reports.html",
@@ -827,9 +831,10 @@ def _build_report_data(date_from, date_to):
 
     # Hourly breakdown (single-day only)
     if is_single_day:
+        _pht_hour = _f.mod(_f.hour(Sale.sale_datetime) + 8, 24)
         hourly_sales = [
             {
-                "hour":         int(r.hour),
+                "hour": int(r.hour) if r.hour is not None else 0,
                 "transactions": int(r.transactions),
                 "total":        float(r.total  or 0),
                 "cost":         float(r.cost   or 0),
@@ -837,15 +842,15 @@ def _build_report_data(date_from, date_to):
             }
             for r in (
                 db.session.query(
-                    _f.hour(Sale.sale_datetime).label("hour"),
+                    _pht_hour.label("hour"),
                     _f.count(Sale.transaction_id).label("transactions"),
                     _f.coalesce(_f.sum(Sale.total_amount),        0).label("total"),
                     _f.coalesce(_f.sum(Sale.total_cost_price),    0).label("cost"),
                     _f.coalesce(_f.sum(Sale.total_revenue_price), 0).label("profit"),
                 )
                 .filter(Sale.sale_datetime.between(date_from, date_to))
-                .group_by(_f.hour(Sale.sale_datetime))
-                .order_by(_f.hour(Sale.sale_datetime))
+                .group_by(_pht_hour)
+                .order_by(_pht_hour)
                 .all()
             )
         ]
