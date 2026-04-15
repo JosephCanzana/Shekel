@@ -51,10 +51,178 @@
     </div>
 
     {# ══════════════════════════════════════════════
+       PRINT AGENT DOWNLOAD
+    ══════════════════════════════════════════════ #}
+    <div class="rounded-2xl overflow-hidden"
+         style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+        <div class="px-5 py-3.5 flex items-center gap-2"
+             style="background-color: var(--color-surface-alt);
+                    border-bottom: 1px solid var(--color-border);">
+            <span class="material-symbols-outlined text-[16px]"
+                  style="color: var(--color-txt-muted);">print</span>
+            <h2 class="text-xs font-bold uppercase tracking-wider"
+                style="color: var(--color-txt-muted);">Print Agent</h2>
+        </div>
+        <div class="px-5 py-4 space-y-4">
+
+            <p class="text-xs leading-relaxed" style="color: var(--color-txt-muted);">
+                To print receipts directly from your device, install the Shekel Print Agent.
+                It runs as a lightweight background service and connects your browser POS system
+                to a local USB thermal printer (POS58 or compatible).
+            </p>
+
+            {# Download buttons #}
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                {# Windows #}
+                <a href="{{ url_for('static', filename='downloads/shekel-agent-windows.zip') }}"
+                download
+                class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
+                style="background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+                        border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);"
+                onmouseover="this.style.background='color-mix(in srgb, var(--color-primary) 15%, transparent)'"
+                onmouseout="this.style.background='color-mix(in srgb, var(--color-primary) 8%, transparent)'">
+                    <span class="material-symbols-outlined text-[22px] shrink-0"
+                        style="color: var(--color-primary);">download</span>
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold" style="color: var(--color-txt-primary);">Windows</p>
+                        <p class="text-[11px]" style="color: var(--color-txt-muted);">Desktop Agent</p>
+                    </div>
+                </a>
+
+                {# Linux #}
+                <a href="{{ url_for('static', filename='downloads/shekel-agent-linux.zip') }}"
+                download
+                class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
+                style="background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+                        border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);"
+                onmouseover="this.style.background='color-mix(in srgb, var(--color-accent) 15%, transparent)'"
+                onmouseout="this.style.background='color-mix(in srgb, var(--color-accent) 8%, transparent)'">
+                    <span class="material-symbols-outlined text-[22px] shrink-0"
+                        style="color: var(--color-accent);">download</span>
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold" style="color: var(--color-txt-primary);">Linux</p>
+                        <p class="text-[11px]" style="color: var(--color-txt-muted);">Server / Desktop</p>
+                    </div>
+                </a>
+
+                {# Android #}
+                <a href="{{ url_for('static', filename='downloads/shekel-agent-android.apk') }}"
+                download
+                class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
+                style="background: color-mix(in srgb, #3ddc84 8%, transparent);
+                        border: 1px solid color-mix(in srgb, #3ddc84 25%, transparent);"
+                onmouseover="this.style.background='color-mix(in srgb, #3ddc84 15%, transparent)'"
+                onmouseout="this.style.background='color-mix(in srgb, #3ddc84 8%, transparent)'">
+                    <span class="material-symbols-outlined text-[22px] shrink-0"
+                        style="color: #3ddc84;">smartphone</span>
+                    <div class="min-w-0">
+                        <p class="text-xs font-bold" style="color: var(--color-txt-primary);">Android</p>
+                        <p class="text-[11px]" style="color: var(--color-txt-muted);">
+                            Android 8.0+
+                        </p>
+                    </div>
+                </a>
+
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x"
+                style="--tw-divide-opacity: 1;">
+
+                {# Windows steps #}
+                <div class="px-4 py-3">
+                    <p class="text-[11px] font-bold mb-2" style="color: var(--color-primary);">Windows</p>
+                    <ol class="space-y-1">
+                        {% for step in [
+                            "Unzip the file",
+                            "Connect USB printer",
+                            "Run setup script",
+                            "Allow permissions",
+                            "Start agent service",
+                            "Done — runs in background"
+                        ] %}
+                        <li class="flex items-start gap-1.5 text-[11px]"
+                            style="color: var(--color-txt-secondary);">
+                            <span class="font-bold shrink-0 mt-0.5"
+                                style="color: var(--color-primary);">{{ loop.index }}.</span>
+                            {{ step }}
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+                {# Linux steps #}
+                <div class="px-4 py-3">
+                    <p class="text-[11px] font-bold mb-2" style="color: var(--color-accent);">Linux</p>
+                    <ol class="space-y-1">
+                        {% for step in [
+                            "Unzip the file",
+                            "Connect USB printer",
+                            "Open terminal",
+                            "Run setup script",
+                            "Enable service",
+                            "Done — runs automatically"
+                        ] %}
+                        <li class="flex items-start gap-1.5 text-[11px]"
+                            style="color: var(--color-txt-secondary);">
+                            <span class="font-bold shrink-0 mt-0.5"
+                                style="color: var(--color-accent);">{{ loop.index }}.</span>
+                            {{ step }}
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+                {# Android steps #}
+                <div class="px-4 py-3">
+                    <p class="text-[11px] font-bold mb-2" style="color: #3ddc84;">Android</p>
+                    <ol class="space-y-1">
+                        {% for step in [
+                            "Install APK",
+                            "Open the app once",
+                            "Connect POS58 via USB OTG",
+                            "Allow USB permission",
+                            "Keep app running",
+                            "Print via browser (localhost:8765)"
+                        ] %}
+                        <li class="flex items-start gap-1.5 text-[11px]"
+                            style="color: var(--color-txt-secondary);">
+                            <span class="font-bold shrink-0 mt-0.5"
+                                style="color: #3ddc84;">{{ loop.index }}.</span>
+                            {{ step }}
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+
+            </div>
+
+            {# Verify note #}
+            <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
+                style="background: color-mix(in srgb, var(--color-info) 8%, transparent);
+                        border: 1px solid color-mix(in srgb, var(--color-info) 15%, transparent);
+                        color: var(--color-txt-muted);">
+
+                <span class="material-symbols-outlined text-[14px] mt-0.5 shrink-0"
+                    style="color: var(--color-info);">info</span>
+
+                <span>
+                    After setup, verify the agent by opening
+                    <strong>http://localhost:8765/health</strong>.
+                    You should see <strong>printer_connected: true</strong> on Android.
+                </span>
+            </div>
+
+        </div>
+        </div>
+
+    {# ══════════════════════════════════════════════
     ROLE GUIDE
     ══════════════════════════════════════════════ #}
     <div class="rounded-2xl overflow-hidden"
         style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
 
         <div class="px-5 py-3.5 flex items-center gap-2"
             style="background-color: var(--color-surface-alt);
@@ -152,136 +320,6 @@
         </div>
     </div>
 
-    {# ══════════════════════════════════════════════
-       PRINT AGENT DOWNLOAD
-    ══════════════════════════════════════════════ #}
-    <div class="rounded-2xl overflow-hidden"
-         style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
-
-        <div class="px-5 py-3.5 flex items-center gap-2"
-             style="background-color: var(--color-surface-alt);
-                    border-bottom: 1px solid var(--color-border);">
-            <span class="material-symbols-outlined text-[16px]"
-                  style="color: var(--color-txt-muted);">print</span>
-            <h2 class="text-xs font-bold uppercase tracking-wider"
-                style="color: var(--color-txt-muted);">Print Agent</h2>
-        </div>
-
-        <div class="px-5 py-4 space-y-4">
-
-            <p class="text-xs leading-relaxed" style="color: var(--color-txt-muted);">
-                To print receipts directly from your device, install the Shekel Print Agent.
-                It runs silently in the background and connects your browser to the POS58 thermal printer
-                plugged into your computer.
-            </p>
-
-            {# Download buttons #}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-
-                {# Windows #}
-                <a href="{{ url_for('static', filename='downloads/shekel-agent-windows.zip') }}"
-                download
-                class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
-                style="background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-                        border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);"
-                onmouseover="this.style.background='color-mix(in srgb, var(--color-primary) 15%, transparent)'"
-                onmouseout="this.style.background='color-mix(in srgb, var(--color-primary) 8%, transparent)'">
-                    <span class="material-symbols-outlined text-[22px] shrink-0"
-                        style="color: var(--color-primary);">download</span>
-                    <div class="min-w-0">
-                        <p class="text-xs font-bold" style="color: var(--color-txt-primary);">Windows</p>
-                        <p class="text-[11px]" style="color: var(--color-txt-muted);">Windows 10 / 11</p>
-                    </div>
-                </a>
-
-                {# Linux #}
-                <a href="{{ url_for('static', filename='downloads/shekel-agent-linux.zip') }}"
-                download
-                class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
-                style="background: color-mix(in srgb, var(--color-accent) 8%, transparent);
-                        border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);"
-                onmouseover="this.style.background='color-mix(in srgb, var(--color-accent) 15%, transparent)'"
-                onmouseout="this.style.background='color-mix(in srgb, var(--color-accent) 8%, transparent)'">
-                    <span class="material-symbols-outlined text-[22px] shrink-0"
-                        style="color: var(--color-accent);">download</span>
-                    <div class="min-w-0">
-                        <p class="text-xs font-bold" style="color: var(--color-txt-primary);">Linux</p>
-                        <p class="text-[11px]" style="color: var(--color-txt-muted);">Ubuntu / Arch / Fedora</p>
-                    </div>
-                </a>
-
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x"
-                style="--tw-divide-opacity: 1;">
-
-                {# Windows steps #}
-                <div class="px-4 py-3"
-                    style="border-color: var(--color-border);">
-                    <p class="text-[11px] font-bold mb-2"
-                    style="color: var(--color-primary);">Windows</p>
-                    <ol class="space-y-1">
-                        {% for step in [
-                            "Unzip the downloaded file",
-                            "Plug in your POS58 printer",
-                            "Right-click setup-windows.bat",
-                            "Select Run as administrator",
-                            "Follow on-screen instructions",
-                            "Done — agent runs in background"
-                        ] %}
-                        <li class="flex items-start gap-1.5 text-[11px]"
-                            style="color: var(--color-txt-secondary);">
-                            <span class="font-bold shrink-0 mt-0.5"
-                                style="color: var(--color-primary);">{{ loop.index }}.</span>
-                            {{ step }}
-                        </li>
-                        {% endfor %}
-                    </ol>
-                </div>
-
-                {# Linux steps #}
-                <div class="px-4 py-3"
-                    style="border-color: var(--color-border);">
-                    <p class="text-[11px] font-bold mb-2"
-                    style="color: var(--color-accent);">Linux</p>
-                    <ol class="space-y-1">
-                        {% for step in [
-                            "Unzip the downloaded file",
-                            "Plug in your POS58 printer",
-                            "Open terminal in that folder",
-                            "Run: bash setup-linux.sh",
-                            "Log out and back in",
-                            "Done — agent runs automatically"
-                        ] %}
-                        <li class="flex items-start gap-1.5 text-[11px]"
-                            style="color: var(--color-txt-secondary);">
-                            <span class="font-bold shrink-0 mt-0.5"
-                                style="color: var(--color-accent);">{{ loop.index }}.</span>
-                            {{ step }}
-                        </li>
-                        {% endfor %}
-                    </ol>
-                </div>
-
-            </div>
-
-            {# Verify note #}
-            <div class="flex items-start gap-2 px-3 py-2.5 rounded-xl text-xs"
-                 style="background: color-mix(in srgb, var(--color-info) 8%, transparent);
-                        border: 1px solid color-mix(in srgb, var(--color-info) 15%, transparent);
-                        color: var(--color-txt-muted);">
-                <span class="material-symbols-outlined text-[14px] mt-0.5 shrink-0"
-                      style="color: var(--color-info);">info</span>
-                <span>
-                    After setup, verify the agent is running by opening
-                    <a href="http://localhost:8765/health" target="_blank"
-                       style="color: var(--color-info);">http://localhost:8765/health</a>
-                    in your browser. You should see <strong>ok: true</strong>.
-                </span>
-            </div>
-
-        </div>
-    </div>
 
     {# ══════════════════════════════════════════════
        ACADEMIC CONTEXT + TEAM
