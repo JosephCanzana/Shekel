@@ -55,6 +55,7 @@ VALID_SUPPLIER_COMPS = {"pending", "loss", "same_item", "different_item", "money
 RESOLVABLE_SUP_COMPS = {"loss", "same_item", "different_item", "money"}
 
 
+
 # ── Role helpers ──────────────────────────────────────────────────────────────
 
 def can_approve():
@@ -251,6 +252,7 @@ def index():
 
     # Submitted queue
     submitted_items = []
+    proposal_items = []
 
     # ── parse dates (admins only use this) ──────────────────────────────────
     parsed_from = None
@@ -302,6 +304,20 @@ def index():
             sub_q = sub_q.filter(DefectDetail.reason == filter_reason)
 
         submitted_items = sub_q.order_by(Defect.defect_datetime.asc()).all()
+        # ── Proposed supplier compensation (ADMIN) ─────────────────────────
+        proposal_q = (
+            db.session.query(DefectDetail)
+            .filter(DefectDetail.proposed_supplier_compensation.isnot(None))
+            .filter(DefectDetail.is_archived == False)
+            .filter(
+                db.or_(
+                    DefectDetail.status == "submitted",
+                    DefectDetail.status == "active",
+                )
+            )
+        )
+
+        proposal_items = proposal_q.all()
 
 
     # ── STOCKING ROLE (only sees their own submitted records) ───────────────
@@ -326,6 +342,16 @@ def index():
             sub_q = sub_q.filter(DefectDetail.reason == filter_reason)
 
         submitted_items = sub_q.order_by(Defect.defect_datetime.asc()).all()
+                # ── Proposed supplier compensation (STOCKING) ──────────────────────
+        proposal_q = (
+            db.session.query(DefectDetail)
+            .join(Defect, Defect.defect_id == DefectDetail.defect_id)
+            .filter(Defect.user_id == current_user.user_id)
+            .filter(DefectDetail.proposed_supplier_compensation.isnot(None))
+            .filter(DefectDetail.is_archived == False)
+        )
+
+        proposal_items = proposal_q.all()
 
     # Watch list — active records with supplier compensation still pending
     watch_q = (
@@ -368,6 +394,7 @@ def index():
         "defects/index.html",
         submitted_items=submitted_items,
         pending=pending,
+        proposal_items=proposal_items,
         page=page, pages=pages, total=total,
         search=search, filter_reason=filter_reason,
         filter_status=filter_status,

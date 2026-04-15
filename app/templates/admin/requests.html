@@ -310,14 +310,22 @@ function requestsData() {
                     :style="tab==='defects'
                         ? 'background:var(--color-surface);color:var(--color-txt-primary);box-shadow:0 1px 3px rgba(0,0,0,.08)'
                         : 'color:var(--color-txt-muted)'">
+
                 <span class="material-symbols-outlined text-[14px]">assignment_return</span>
                 <span class="hidden xs:inline">Defect Approvals</span>
                 <span class="xs:hidden">Defects</span>
-                <span class="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
-                      :style="tab==='defects'
-                          ? 'background:color-mix(in srgb,var(--color-info) 15%,transparent);color:var(--color-info)'
-                          : 'background:var(--color-border);color:var(--color-txt-muted)'"
-                      x-text="defectGroups.reduce((s,g) => s + g.items.length, 0)"></span>
+
+                <!-- 🔵 Combined badge -->
+                <span class="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1"
+                    :style="tab==='defects'
+                        ? 'background:color-mix(in srgb,var(--color-info) 15%,transparent);color:var(--color-info)'
+                        : 'background:var(--color-border);color:var(--color-txt-muted)'">
+
+                    <span x-text="defectGroups.reduce((s,g)=>s+g.items.length,0)"></span>
+                    <span class="opacity-60">|</span>
+                    <span x-text="proposals.length"></span>
+
+                </span>
             </button>
             <button @click="tab='history'"
                     class="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-sm font-semibold transition whitespace-nowrap"

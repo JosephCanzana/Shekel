@@ -279,10 +279,17 @@
     </div>
 
 <a href="/admin/requests"
-   class="px-4 py-2 rounded-xl text-sm font-semibold transition"
-   style="background:var(--color-accent);
-          color:white;">
-    Review Requests ({{ submitted_items|length }}) →
+   class="px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2"
+   style="background:var(--color-accent); color:white;">
+
+    <span>Review Requests</span>
+
+    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold"
+      style="background:rgba(255,255,255,.2);">
+    {{ submitted_items|length + proposal_items|length }}
+</span>
+
+    <span>→</span>
 </a>
 
 </div>
