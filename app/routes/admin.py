@@ -3,6 +3,7 @@ import json
 from collections import Counter, defaultdict
 from datetime import datetime,  timedelta , date as _date
 
+
 from collections import Counter, defaultdict
 
 from flask import (
@@ -28,6 +29,7 @@ from app.models.inventory  import Inventory
 from app.models.stock_in   import StockIn
 from app.models.audit_log  import AuditLog
 from app.extensions import db
+from app.utils.navbar_notifications import get_navbar_notifications
 
 admin_bp = Blueprint("admin", __name__, url_prefix='/admin')
 
@@ -1625,3 +1627,12 @@ def sale_detail(transaction_id):
         },
         "items": details,
     })
+
+@admin_bp.get("/notifications/count")
+@login_required
+def notifications_count():
+    since_ts = request.args.get("since", type=float)
+    entries, count = get_navbar_notifications(
+        current_user.role, since_ts=since_ts
+    )
+    return {"count": count}

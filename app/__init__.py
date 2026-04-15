@@ -91,15 +91,8 @@ def create_app(test_config=None):
     from app.routes.settings import settings_bp
     app.register_blueprint(settings_bp)
 
-    # ─── Context Processor ────────────────────────────────────────────────────────
-    # Injects pending_requests_count into every template for the navbar badge.
-    @app.context_processor
-    def inject_pending_count():
-        if current_user.is_authenticated and current_user.role in ("admin", "superadmin"):
-            from app.models.stock_adjustment_request import StockAdjustmentRequest
-            count = StockAdjustmentRequest.query.filter_by(status="pending").count()
-            return {"pending_requests_count": count}
-        return {"pending_requests_count": 0}   
+    from app.utils.navbar_notifications import register_context_processor
+    register_context_processor(app)
 
     @app.route("/test")
     def test():
