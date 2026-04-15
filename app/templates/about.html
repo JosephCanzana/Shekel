@@ -76,7 +76,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
                 {# Windows #}
-                <a href="{{ url_for('static', filename='downloads/shekel-agent-windows.zip') }}"
+                <a href="https://raw.githubusercontent.com/JosephCanzana/Shekel/main/print-agent/releases/shekel-agent-windows.zip"
                 download
                 class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
                 style="background: color-mix(in srgb, var(--color-primary) 8%, transparent);
@@ -84,7 +84,7 @@
                 onmouseover="this.style.background='color-mix(in srgb, var(--color-primary) 15%, transparent)'"
                 onmouseout="this.style.background='color-mix(in srgb, var(--color-primary) 8%, transparent)'">
                     <span class="material-symbols-outlined text-[22px] shrink-0"
-                        style="color: var(--color-primary);">download</span>
+                        style="color: var(--color-primary);">desktop_windows</span>
                     <div class="min-w-0">
                         <p class="text-xs font-bold" style="color: var(--color-txt-primary);">Windows</p>
                         <p class="text-[11px]" style="color: var(--color-txt-muted);">Desktop Agent</p>
@@ -92,7 +92,7 @@
                 </a>
 
                 {# Linux #}
-                <a href="{{ url_for('static', filename='downloads/shekel-agent-linux.zip') }}"
+                <a href="https://raw.githubusercontent.com/JosephCanzana/Shekel/main/print-agent/releases/shekel-agent-linux.zip"
                 download
                 class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
                 style="background: color-mix(in srgb, var(--color-accent) 8%, transparent);
@@ -100,7 +100,7 @@
                 onmouseover="this.style.background='color-mix(in srgb, var(--color-accent) 15%, transparent)'"
                 onmouseout="this.style.background='color-mix(in srgb, var(--color-accent) 8%, transparent)'">
                     <span class="material-symbols-outlined text-[22px] shrink-0"
-                        style="color: var(--color-accent);">download</span>
+                        style="color: var(--color-accent);">terminal</span>
                     <div class="min-w-0">
                         <p class="text-xs font-bold" style="color: var(--color-txt-primary);">Linux</p>
                         <p class="text-[11px]" style="color: var(--color-txt-muted);">Server / Desktop</p>
@@ -108,7 +108,7 @@
                 </a>
 
                 {# Android #}
-                <a href="{{ url_for('static', filename='downloads/shekel-agent-android.apk') }}"
+                <a href="https://raw.githubusercontent.com/JosephCanzana/Shekel/main/print-agent/releases/shekel-agent-android.apk"
                 download
                 class="flex items-center gap-3 px-4 py-3 rounded-xl transition"
                 style="background: color-mix(in srgb, #3ddc84 8%, transparent);
@@ -140,7 +140,7 @@
                             "Run setup script",
                             "Allow permissions",
                             "Start agent service",
-                            "Done — runs in background"
+                            "Done"
                         ] %}
                         <li class="flex items-start gap-1.5 text-[11px]"
                             style="color: var(--color-txt-secondary);">
@@ -162,7 +162,7 @@
                             "Open terminal",
                             "Run setup script",
                             "Enable service",
-                            "Done — runs automatically"
+                            "Done"
                         ] %}
                         <li class="flex items-start gap-1.5 text-[11px]"
                             style="color: var(--color-txt-secondary);">
@@ -184,7 +184,7 @@
                             "Connect POS58 via USB OTG",
                             "Allow USB permission",
                             "Keep app running",
-                            "Print via browser (localhost:8765)"
+                            "Done"
                         ] %}
                         <li class="flex items-start gap-1.5 text-[11px]"
                             style="color: var(--color-txt-secondary);">
