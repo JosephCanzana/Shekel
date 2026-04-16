@@ -20,11 +20,10 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
-    # TODO: be removed later
     # Production error handler
-    # if not app.debug and not app.testing:
-    #     from app.errors.handlers import register_error_handlers
-    #     register_error_handlers(app)
+    if not app.debug and not app.testing:
+        from app.errors.handlers import register_error_handlers
+        register_error_handlers(app)
 
 
     # # ─── Bind Extensions to App ───────────────────────────────
