@@ -166,6 +166,16 @@
             </div>
         </div>
         {% endif %}
+        {% if current_user.role == "superadmin" %}
+            <a href="{{ url_for('settings.index') }}"
+            aria-label="Profile"
+            class="relative w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200"
+                style="color:var(--color-txt-muted);"
+                onmouseover="this.style.backgroundColor='var(--color-surface-alt)';this.style.color='var(--color-txt-primary)'"
+                onmouseout="this.style.backgroundColor='transparent';this.style.color='var(--color-txt-muted)'">
+                <span class="material-symbols-outlined text-[20px] shrink-0">admin_panel_settings</span>
+            </a>
+        {% endif %}
 
         <a href="{{ url_for('profile.index') }}"
            aria-label="Profile"

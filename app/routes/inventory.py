@@ -61,15 +61,9 @@ def add():
 
             if not bundle_count:
                 bundle_name = ""
-
-            if not low_reorder and category_id:
-                from app.models.category import Category
-                cat = Category.query.get(int(category_id))
-                if cat:
-                    low_reorder = str(cat.default_low_stock_threshold)
     
-            if not all([product_id, product_name, cost_price, revenue_price, low_reorder]):
-                flash("Product ID, name, prices, and low stock threshold are required.", "danger")
+            if not all([product_id, product_name, cost_price, revenue_price]):
+                flash("Product ID, name, and prices", "danger")
                 return redirect(url_for("inventory.add"))
 
             ok, err = validate_product_name(product_name)
@@ -94,6 +88,22 @@ def add():
                 flash(err, "danger")
                 return redirect(url_for("inventory.add"))
 
+            # resolve category first so the fallback can use it
+            from app.models.category import Category
+            category_name_input = request.form.get("category_name", "").strip()
+            category_obj = Category.query.filter(
+                Category.category_name.ilike(category_name_input)
+            ).first() if category_name_input else None
+
+            if category_name_input and not category_obj:
+                flash(f'"{category_name_input}" is not a valid category. Please select from the list.', "danger")
+                return redirect(url_for("inventory.add"))
+
+            category_id = category_obj.category_id if category_obj else None
+
+            if not low_reorder:
+                low_reorder = str(category_obj.default_low_stock_threshold if category_obj else 0)
+
             try:
                 low_reorder = int(low_reorder)
                 if low_reorder < 0:
@@ -114,20 +124,7 @@ def add():
             cost_price    = float(cost_price)
             revenue_price = float(revenue_price)
             total_price = round(cost_price + revenue_price, 2)
-            # resolve category from datalist name input
-            from app.models.category import Category
-            category_name_input = request.form.get("category_name", "").strip()
-            category_obj = Category.query.filter(
-                Category.category_name.ilike(category_name_input)
-            ).first() if category_name_input else None
-
-            # validate — if they typed something but it doesn't match any category
-            if category_name_input and not category_obj:
-                flash(f'"{category_name_input}" is not a valid category. Please select from the list.', "danger")
-                return redirect(url_for("inventory.add"))
-
-            category_id = category_obj.category_id if category_obj else None
-
+            
             has_bundle = any([bundle_id, bundle_name, bundle_count])
             if has_bundle:
                 if not all([bundle_id, bundle_name, bundle_count]):
@@ -186,7 +183,7 @@ def add():
             return redirect(url_for("inventory.add", product_id=product_id))
         
         flash(f'Product "{product_name}" has been created.', "success")
-        return redirect(url_for("inventory.index"))
+        return redirect(url_for("inventory.add"))
 
     return render_template("inventory/form.html",
                              categories=categories,
@@ -293,16 +290,15 @@ def edit(product_id):
                 return redirect(url_for("inventory.edit", product_id=product_id))  # or inventory.add
 
             category_id = category_obj.category_id if category_obj else None
-            
+
+            if not low_reorder:
+                low_reorder = str(category_obj.default_low_stock_threshold if category_obj else 0)
 
             if not bundle_count:
                 bundle_name = ""
-
-            if not low_reorder and category_obj:
-                low_reorder = str(category_obj.default_low_stock_threshold)
     
-            if not all([product_id_new, product_name, cost_price, revenue_price, low_reorder]):
-                flash("Name, prices, and low stock threshold are required.", "danger")
+            if not all([product_id_new, product_name, cost_price, revenue_price]):
+                flash("Name and prices are required.", "danger")
                 return redirect(url_for("inventory.edit", product_id=product_id))
 
             ok, err = validate_product_name(product_name)
