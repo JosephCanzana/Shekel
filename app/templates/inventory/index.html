@@ -306,8 +306,10 @@
                     )
                     return matchSearch && matchStatus && matchCategory && matchStock
                 })
-                if (this.sortOrder === 'asc')  result.sort((a, b) => a.product_name.localeCompare(b.product_name))
-                if (this.sortOrder === 'desc') result.sort((a, b) => b.product_name.localeCompare(a.product_name))
+                if (this.sortOrder === 'asc')        result.sort((a, b) => a.product_name.localeCompare(b.product_name))
+                if (this.sortOrder === 'desc')       result.sort((a, b) => b.product_name.localeCompare(a.product_name))
+                if (this.sortOrder === 'price_asc')  result.sort((a, b) => a.total_price - b.total_price)
+                if (this.sortOrder === 'price_desc') result.sort((a, b) => b.total_price - a.total_price)
                 return result
             },
             get normalStockCount() { return this.rows.filter(r => r.stock > r.low_reorder_threshold && r.status === 'active').length },
@@ -563,6 +565,17 @@
                     </template>
                 </div>
             </div>
+            <div class="space-y-1.5">
+    <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Sort by Price</label>
+    <div class="flex gap-2">
+        <template x-for="opt in [{val:'price_asc',label:'Low → High',icon:'arrow_downward'},{val:'price_desc',label:'High → Low',icon:'arrow_upward'}]" :key="opt.val">
+            <button @click="sortOrder=(sortOrder===opt.val?'':opt.val);resetPage()" class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
+                    :style="sortOrder===opt.val ? 'background:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
+                <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span><span x-text="opt.label"></span>
+            </button>
+        </template>
+    </div>
+</div>
         </div>
         <div class="flex gap-3 px-5 py-4" style="border-top:1px solid var(--color-border);">
             <button @click="resetFilters()" class="flex-1 py-2 rounded-lg text-sm font-medium transition" style="border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt);">Reset all</button>
