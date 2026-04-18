@@ -18,7 +18,9 @@
             filterCategory:  '',
             filterLowStock:  false,
             filterNoStock:   false,
-            sortOrder:       '',
+            sortName:  '',
+            sortPrice: '',
+            sortStock: '', 
             rows:            PRODUCTS_DATA,
             canManage:       CAN_MANAGE,
             page:            1,
@@ -280,14 +282,16 @@
                 if (this.filterLowStock)                                          n++
                 if (this.filterNoStock)                                           n++
                 if (this.filterNormal)                                            n++
-                if (this.sortOrder !== '')                                        n++
+                if (this.sortName  !== '') n++
+                if (this.sortPrice !== '') n++
+                if (this.sortStock !== '') n++
                 return n
             },
 
             resetFilters() {
                 this.filterStatus = 'active'; this.filterCategory = ''
                 this.filterLowStock = false;  this.filterNoStock = false
-                this.filterNormal = false;    this.sortOrder = ''
+               this.filterNormal = false; this.sortName = ''; this.sortPrice = ''; this.sortStock = ''   // ADD sortStock
                 this.resetPage()
             },
 
@@ -306,11 +310,18 @@
                     )
                     return matchSearch && matchStatus && matchCategory && matchStock
                 })
-                if (this.sortOrder === 'asc')        result.sort((a, b) => a.product_name.localeCompare(b.product_name))
-                if (this.sortOrder === 'desc')       result.sort((a, b) => b.product_name.localeCompare(a.product_name))
-                if (this.sortOrder === 'price_asc')  result.sort((a, b) => a.total_price - b.total_price)
-                if (this.sortOrder === 'price_desc') result.sort((a, b) => b.total_price - a.total_price)
-                return result
+                result.sort((a, b) => {
+                    let cmp = 0
+                    if (this.sortStock === 'asc')  cmp = a.stock - b.stock
+                    if (this.sortStock === 'desc') cmp = b.stock - a.stock
+                    if (cmp !== 0) return cmp
+                    if (this.sortPrice === 'asc')  cmp = a.total_price - b.total_price
+                    if (this.sortPrice === 'desc') cmp = b.total_price - a.total_price
+                    if (cmp !== 0) return cmp
+                    if (this.sortName === 'asc')  return a.product_name.localeCompare(b.product_name)
+                    if (this.sortName === 'desc') return b.product_name.localeCompare(a.product_name)
+                    return 0
+                })
             },
             get normalStockCount() { return this.rows.filter(r => r.stock > r.low_reorder_threshold && r.status === 'active').length },
 
@@ -408,14 +419,13 @@
                 <span class="material-symbols-outlined text-[17px]">inventory_2</span>
                 <span class="hidden sm:inline">Stock-In</span>
             </a>
-            <template x-if="canManage">
-                <a href="{{ url_for('inventory.add') }}"
-                   class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
-                   style="background:var(--color-primary);color:var(--color-bg);"
-                   onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-                    <span class="material-symbols-outlined text-[17px]">post_add</span>
-                    <span class="hidden sm:inline">Add Product</span>
-                </a>
+            <!-- CHANGE sortOrder to sortName -->
+            <template x-for="opt in [{val:'asc',label:'A → Z',icon:'arrow_downward'},{val:'desc',label:'Z → A',icon:'arrow_upward'}]" :key="opt.val">
+                <button @click="sortName=(sortName===opt.val?'':opt.val);resetPage()"
+                        class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
+                        :style="sortName===opt.val ? 'background:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
+                    <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span><span x-text="opt.label"></span>
+                </button>
             </template>
         </div>
     </div>
@@ -571,6 +581,18 @@
         <template x-for="opt in [{val:'price_asc',label:'Low → High',icon:'arrow_downward'},{val:'price_desc',label:'High → Low',icon:'arrow_upward'}]" :key="opt.val">
             <button @click="sortOrder=(sortOrder===opt.val?'':opt.val);resetPage()" class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
                     :style="sortOrder===opt.val ? 'background:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
+                <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span><span x-text="opt.label"></span>
+            </button>
+        </template>
+    </div>
+</div>
+<div class="space-y-1.5">
+    <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Sort by Stock</label>
+    <div class="flex gap-2">
+        <template x-for="opt in [{val:'asc',label:'Low → High',icon:'arrow_downward'},{val:'desc',label:'High → Low',icon:'arrow_upward'}]" :key="opt.val">
+            <button @click="sortStock=(sortStock===opt.val?'':opt.val);resetPage()"
+                    class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
+                    :style="sortStock===opt.val ? 'background:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
                 <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span><span x-text="opt.label"></span>
             </button>
         </template>
