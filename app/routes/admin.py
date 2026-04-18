@@ -1643,7 +1643,6 @@ def notifications_count():
     return {"count": count}
 
 
-# ── route ────────────────────────────────────────────────────────────────────
 @admin_bp.route('/products/bulk-import', methods=['GET', 'POST'])
 @login_required
 @role_required("superadmin")
@@ -1656,11 +1655,8 @@ def bulk_import_products():
         flash('Please upload a valid .csv file.', 'danger')
         return redirect(request.url)
 
-    # ── read uploaded CSV ────────────────────────────────────────────────────
-    stream   = io.StringIO(file.stream.read().decode('utf-8-sig'))  # strips BOM
-    reader   = csv.DictReader(stream)
-
-    # normalise header names (strip whitespace, lowercase)
+    stream = io.StringIO(file.stream.read().decode('utf-8-sig'))
+    reader = csv.DictReader(stream)
     reader.fieldnames = [h.strip().lower() for h in reader.fieldnames]
 
     REQUIRED = {'barcode', 'name', 'category', 'cost price', 'markup price'}
@@ -1668,17 +1664,12 @@ def bulk_import_products():
         flash(f'CSV is missing required columns. Expected: {", ".join(REQUIRED)}', 'danger')
         return redirect(request.url)
 
-    # ── build category lookup (name → id, threshold) ────────────────────────
-    categories = {c.category_name.strip().lower(): c for c in Category.query.all()}
+    categories   = {c.category_name.strip().lower(): c for c in Category.query.all()}
+    existing_ids = {p.product_id for p in db.session.query(Product.product_id).all()}
 
-    # ── existing product IDs (for duplicate detection) ───────────────────────
-    existing_ids = {
-        p.product_id for p in
-        db.session.query(Product.product_id).all()
-    }
-
-    rows_ok      = 0
-    error_rows   = []   # list of dicts: original row + 'reason'
+    rows_created = 0
+    rows_updated = 0
+    error_rows   = []
 
     for raw in reader:
         row = {k.strip(): (v.strip() if v else '') for k, v in raw.items()}
@@ -1689,7 +1680,6 @@ def bulk_import_products():
         cost_raw     = row.get('cost price', '').strip()
         markup_raw   = row.get('markup price', '').strip()
 
-        # ── validation ───────────────────────────────────────────────────────
         reason = None
 
         if not barcode:
@@ -1697,7 +1687,6 @@ def bulk_import_products():
         elif not name:
             reason = 'missing name'
         else:
-            # numeric
             try:
                 cost_price   = round(float(cost_raw)   if cost_raw   else 0.0, 2)
                 markup_price = round(float(markup_raw) if markup_raw else 0.0, 2)
@@ -1706,45 +1695,43 @@ def bulk_import_products():
             except ValueError:
                 reason = 'invalid cost or markup price'
 
-            # category
-            cat = categories.get(category_raw.lower())
-            if cat is None and category_raw:
-                new_cat = Category(
-                    category_name               = category_raw,
-                    description                 = None,
-                    status                      = 'active',
-                    default_low_stock_threshold = 5,
-                )
-                db.session.add(new_cat)
-                db.session.flush()  # gets the new category_id without a full commit
-                categories[category_raw.lower()] = new_cat  # cache it for the rest of the file
-                cat = new_cat
-            elif not category_raw:
-                reason = 'missing category'
+            if reason is None:
+                cat = categories.get(category_raw.lower())
+                if cat is None and category_raw:
+                    new_cat = Category(
+                        category_name               = category_raw,
+                        description                 = None,
+                        status                      = 'active',
+                        default_low_stock_threshold = 5,
+                    )
+                    db.session.add(new_cat)
+                    db.session.flush()
+                    categories[category_raw.lower()] = new_cat
+                    cat = new_cat
+                elif not category_raw:
+                    reason = 'missing category'
 
         if reason:
             error_rows.append({
-                'barcode':       barcode,
-                'name':          name,
-                'category':      category_raw,
-                'cost price':    cost_raw,
-                'markup price':  markup_raw,
-                'reason':        reason,
+                'barcode':      barcode,
+                'name':         name,
+                'category':     category_raw,
+                'cost price':   cost_raw,
+                'markup price': markup_raw,
+                'reason':       reason,
             })
             continue
 
-        # ── insert product ───────────────────────────────────────────────────
         total_price = round(cost_price + markup_price, 2)
+
         if barcode in existing_ids:
-            # update prices on existing product
             product = Product.query.get(barcode)
             if product:
                 product.cost_price    = cost_price
                 product.revenue_price = markup_price
                 product.total_price   = total_price
-                rows_ok += 1
+                rows_updated += 1
         else:
-            # new product — insert with inventory
             product = Product(
                 product_id            = barcode,
                 product_name          = name,
@@ -1765,74 +1752,38 @@ def bulk_import_products():
             db.session.add(product)
             db.session.add(inventory)
             existing_ids.add(barcode)
-            rows_ok += 1
+            rows_created += 1
 
-        db.session.commit()
+    # ── commit once after all rows are processed ─────────────────────────────
+    db.session.commit()
 
-        rows_updated = sum(1 for p in db.session.identity_map.values() if isinstance(p, Product))
-        rows_created = rows_ok - rows_updated
-
-        # ── if there were errors, stream back a CSV download ────────────────
-        if error_rows:
-            out = io.StringIO()
-            writer = csv.DictWriter(
-                out,
-                fieldnames=['barcode', 'name', 'category', 'cost price', 'markup price', 'reason']
-            )
-            writer.writeheader()
-            writer.writerows(error_rows)
-
-            flash(
-                f'{rows_created} product(s) created, {rows_updated} updated. '
-                f'{len(error_rows)} row(s) had errors — see downloaded file.',
-                'warning'
-            )
-
-            return Response(
-                out.getvalue(),
-                mimetype='text/csv',
-                headers={
-                    'Content-Disposition': 'attachment; filename="import_errors.csv"',
-                    'X-Import-Success': str(rows_ok),
-                    'X-Import-Errors':  str(len(error_rows)),
-                }
-            )
+    if error_rows:
+        out = io.StringIO()
+        writer = csv.DictWriter(
+            out,
+            fieldnames=['barcode', 'name', 'category', 'cost price', 'markup price', 'reason']
+        )
+        writer.writeheader()
+        writer.writerows(error_rows)
 
         flash(
-            f'{rows_created} product(s) created, {rows_updated} updated successfully.',
-            'success'
+            f'{rows_created} product(s) created, {rows_updated} updated. '
+            f'{len(error_rows)} row(s) had errors — see downloaded file.',
+            'warning'
         )
-        return redirect(url_for('admin.bulk_import_products'))
 
-@admin_bp.route('/products/export', methods=['GET'])
-@login_required
-@role_required("superadmin")
-def export_products():
-    products = (
-        db.session.query(Product, Category)
-        .outerjoin(Category, Product.category_id == Category.category_id)
-        .filter(Product.status == 'active')
-        .order_by(Product.product_name)
-        .all()
+        return Response(
+            out.getvalue(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': 'attachment; filename="import_errors.csv"',
+                'X-Import-Success': str(rows_created + rows_updated),
+                'X-Import-Errors':  str(len(error_rows)),
+            }
+        )
+
+    flash(
+        f'{rows_created} product(s) created, {rows_updated} updated successfully.',
+        'success'
     )
-
-    out = io.StringIO()
-    writer = csv.writer(out)
-    writer.writerow(['barcode', 'name', 'category', 'cost price', 'markup price'])
-
-    for product, category in products:
-        writer.writerow([
-            product.product_id,
-            product.product_name,
-            category.category_name if category else '',
-            product.cost_price,
-            product.revenue_price,   # markup / profit
-        ])
-
-    return Response(
-        out.getvalue(),
-        mimetype='text/csv',
-        headers={
-            'Content-Disposition': 'attachment; filename="products_export.csv"'
-        }
-    )
+    return redirect(url_for('admin.bulk_import_products'))
