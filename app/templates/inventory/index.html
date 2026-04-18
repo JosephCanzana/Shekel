@@ -30,6 +30,7 @@
             bulkActionSheetOpen: false,
             bulkArchiveConfirm:   false,
             bulkUnarchiveConfirm: false,
+            bulkDeleteConfirm:    false,
             filterNoStock:   false,
             filterNormal:    false,
 
@@ -355,6 +356,22 @@
                     fields:  []
                 })
             },
+
+            async deleteSelected() {
+                const res = await fetch('/inventory/bulk/delete', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrf_token]').value },
+                    body:    JSON.stringify({ product_ids: this.selectedIds })
+                })
+                const data = await res.json()
+                if (res.ok) {
+                    const deleted = new Set(data.deleted || this.selectedIds)
+                    this.rows    = this.rows.filter(r => !deleted.has(r.product_id))
+                    this.selectedIds = []
+                    this.selectMode  = false
+                }
+            },
+
         }
     }
 </script>
@@ -1086,6 +1103,15 @@
                 <span class="material-symbols-outlined text-[16px]">unarchive</span> Unarchive
             </button>
         </template>
+        {# Delete bulk — only when all selected are archived #}
+<template x-if="canManage&&anySelectedArchived&&!anySelectedActive">
+    <button @click="bulkDeleteConfirm = true"
+            class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition active:scale-[.97]"
+            style="background:var(--color-error);color:#fff;opacity:.85;"
+            onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.85'">
+        <span class="material-symbols-outlined text-[16px]">delete_forever</span> Delete
+    </button>
+</template>
         <button @click="selectedIds=[]" class="w-8 h-8 rounded-xl flex items-center justify-center transition" style="color:var(--color-txt-muted);"
                 onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'" title="Clear selection">
             <span class="material-symbols-outlined text-[18px]">close</span>
@@ -1191,6 +1217,21 @@
                     <span class="material-symbols-outlined text-[18px] ml-auto" style="color:var(--color-txt-muted);">chevron_right</span>
                 </button>
             </template>
+            {# Delete — only when all selected are archived #}
+<template x-if="canManage&&anySelectedArchived&&!anySelectedActive">
+    <button @click="bulkActionSheetOpen=false; bulkDeleteConfirm=true"
+            class="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition"
+            style="background:color-mix(in srgb,var(--color-error) 8%,transparent);border:1px solid color-mix(in srgb,var(--color-error) 25%,transparent);">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style="background:var(--color-error);color:#fff;">
+            <span class="material-symbols-outlined text-[18px]">delete_forever</span>
+        </div>
+        <div class="text-left">
+            <p class="text-sm font-semibold" style="color:var(--color-txt-primary);">Delete Permanently</p>
+            <p class="text-xs" style="color:var(--color-txt-muted);">Remove archived items forever</p>
+        </div>
+        <span class="material-symbols-outlined text-[18px] ml-auto" style="color:var(--color-txt-muted);">chevron_right</span>
+    </button>
+</template>
         </div>
     </div>
         {# ── Bulk Archive Confirm ── #}
@@ -1246,6 +1287,32 @@
             </div>
         </div>
     </template>
+    {# ── Bulk Delete Confirm ── #}
+<template x-if="bulkDeleteConfirm">
+    <div class="fixed inset-0 z-50 flex items-center justify-center px-4"
+         style="background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);">
+        <div class="w-full max-w-sm rounded-2xl p-7 text-center"
+             style="background:var(--color-surface);border:1px solid var(--color-border);">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+                 style="background:color-mix(in srgb,var(--color-error) 12%,transparent);">
+                <span class="material-symbols-outlined text-[24px]" style="color:var(--color-error);">delete_forever</span>
+            </div>
+            <h2 class="text-lg font-bold mb-2" style="color:var(--color-txt-primary);">Delete Permanently?</h2>
+            <p class="text-sm mb-7" style="color:var(--color-txt-muted);"
+               x-text="`Permanently delete ${selectedIds.length} product(s)? This cannot be undone. Products with sales or defect history will be skipped.`"></p>
+            <div class="flex gap-3">
+                <button @click="bulkDeleteConfirm = false"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-medium transition"
+                        style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                        onmouseover="this.style.backgroundColor='var(--color-surface-alt)'"
+                        onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
+                <button @click="bulkDeleteConfirm = false; deleteSelected()"
+                        class="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                        style="background:var(--color-error);color:#fff;">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+</template>
 
 </div>
 {% endblock %}
