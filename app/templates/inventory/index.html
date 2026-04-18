@@ -308,15 +308,11 @@
                     )
                     return matchSearch && matchStatus && matchCategory && matchStock
                 })
-                result.sort((a, b) => {
-                    let cmp = 0
-                    if (this.sortPrice === 'asc')  cmp = a.total_price - b.total_price
-                    if (this.sortPrice === 'desc') cmp = b.total_price - a.total_price
-                    if (cmp !== 0) return cmp
-                    if (this.sortName === 'asc')  return a.product_name.localeCompare(b.product_name)
-                    if (this.sortName === 'desc') return b.product_name.localeCompare(a.product_name)
-                    return 0
-                })
+                if (this.sortOrder === 'asc')        result.sort((a, b) => a.product_name.localeCompare(b.product_name))
+                if (this.sortOrder === 'desc')       result.sort((a, b) => b.product_name.localeCompare(a.product_name))
+                if (this.sortOrder === 'price_asc')  result.sort((a, b) => a.total_price - b.total_price)
+                if (this.sortOrder === 'price_desc') result.sort((a, b) => b.total_price - a.total_price)
+                return result
             },
             get normalStockCount() { return this.rows.filter(r => r.stock > r.low_reorder_threshold && r.status === 'active').length },
 
@@ -414,13 +410,14 @@
                 <span class="material-symbols-outlined text-[17px]">inventory_2</span>
                 <span class="hidden sm:inline">Stock-In</span>
             </a>
-            <!-- CHANGE sortOrder to sortName -->
-            <template x-for="opt in [{val:'asc',label:'A → Z',icon:'arrow_downward'},{val:'desc',label:'Z → A',icon:'arrow_upward'}]" :key="opt.val">
-                <button @click="sortName=(sortName===opt.val?'':opt.val);resetPage()"
-                        class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
-                        :style="sortName===opt.val ? 'background:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
-                    <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span><span x-text="opt.label"></span>
-                </button>
+            <template x-if="canManage">
+                <a href="{{ url_for('inventory.add') }}"
+                   class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition"
+                   style="background:var(--color-primary);color:var(--color-bg);"
+                   onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                    <span class="material-symbols-outlined text-[17px]">post_add</span>
+                    <span class="hidden sm:inline">Add Product</span>
+                </a>
             </template>
         </div>
     </div>
