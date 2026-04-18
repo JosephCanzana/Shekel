@@ -1666,6 +1666,8 @@ def bulk_import_products():
 
     categories   = {c.category_name.strip().lower(): c for c in Category.query.all()}
     existing_ids = {p.product_id for p in db.session.query(Product.product_id).all()}
+    existing_names = {p.product_name.strip().lower() for p in db.session.query(Product.product_name).all()}
+    seen_names_in_csv = set()
 
     rows_created = 0
     rows_updated = 0
@@ -1686,6 +1688,12 @@ def bulk_import_products():
             reason = 'missing barcode'
         elif not name:
             reason = 'missing name'
+        elif name.lower() in existing_names and barcode not in existing_ids:
+            # existing_ids check: allow updates to existing barcodes even if name matches
+            reason = 'duplicate name (already exists in database)'
+        elif name.lower() in seen_names_in_csv:
+            reason = 'duplicate name (appears more than once in this file)'
+
         else:
             try:
                 cost_price   = round(float(cost_raw)   if cost_raw   else 0.0, 2)
@@ -1752,6 +1760,8 @@ def bulk_import_products():
             db.session.add(product)
             db.session.add(inventory)
             existing_ids.add(barcode)
+            existing_names.add(name.lower())   # ADD THIS
+            seen_names_in_csv.add(name.lower()) # ADD THIS
             rows_created += 1
 
     # ── commit once after all rows are processed ─────────────────────────────
