@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+{% block title %}Bulk Import Products — Shekel{% endblock %}
+{% block nav_title %}Bulk Import Products{% endblock %}
+
+{% block body %}
+<div class="space-y-6" x-data="bulkImport()">
+
+    {# ── Header ── #}
+    <div class="flex items-center gap-3">
+        <a href="{{ url_for('settings.index') }}"
+           class="w-8 h-8 rounded-lg flex items-center justify-center transition"
+           style="border: 1px solid var(--color-border); color: var(--color-txt-muted);"
+           onmouseover="this.style.borderColor='var(--color-accent)'; this.style.color='var(--color-accent)'"
+           onmouseout="this.style.borderColor='var(--color-border)'; this.style.color='var(--color-txt-muted)'">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        </a>
+        <div>
+            <h1 class="text-xl font-bold tracking-tight"
+                style="color: var(--color-txt-primary);">Bulk Import Products</h1>
+            <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
+                Upload a CSV to register multiple products at once
+            </p>
+        </div>
+    </div>
+
+    {# ── Flash messages ── #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="flex items-start gap-3 rounded-xl px-4 py-3 text-sm"
+             style="background-color: color-mix(in srgb,
+                        {% if category == 'success' %}var(--color-success)
+                        {% elif category == 'warning' %}var(--color-warning)
+                        {% else %}var(--color-error){% endif %} 10%, transparent);
+                    border: 1px solid color-mix(in srgb,
+                        {% if category == 'success' %}var(--color-success)
+                        {% elif category == 'warning' %}var(--color-warning)
+                        {% else %}var(--color-error){% endif %} 30%, transparent);
+                    color: {% if category == 'success' %}var(--color-success)
+                           {% elif category == 'warning' %}var(--color-warning)
+                           {% else %}var(--color-error){% endif %};">
+            <span class="material-symbols-outlined text-[18px] shrink-0 mt-0.5">
+                {% if category == 'success' %}check_circle
+                {% elif category == 'warning' %}warning
+                {% else %}error{% endif %}
+            </span>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+
+        {# ── Upload card ── #}
+        <div class="lg:col-span-2 rounded-2xl p-5 space-y-4"
+             style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                     style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
+                    <span class="material-symbols-outlined text-[20px]"
+                          style="color: var(--color-accent);">upload_file</span>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold" style="color: var(--color-txt-primary);">
+                        Upload CSV file
+                    </p>
+                    <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+                        Rows with errors will be returned as a downloadable file
+                    </p>
+                </div>
+            </div>
+
+            {# ── CSRF is inside the form ── #}
+            <form method="POST"
+                  enctype="multipart/form-data"
+                  action="{{ url_for('admin.bulk_import_products') }}"
+                  @submit="handleSubmit"
+                  class="space-y-4">
+
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                {# ── Drop zone ── #}
+                <div class="rounded-xl p-8 flex flex-col items-center justify-center gap-2
+                            text-center transition cursor-pointer select-none"
+                     style="border: 1.5px dashed var(--color-border);
+                            background-color: var(--color-surface-alt);"
+                     :style="dragging
+                        ? 'border-color: var(--color-accent); background-color: color-mix(in srgb, var(--color-accent) 6%, transparent);'
+                        : ''"
+                     @dragover.prevent="dragging = true"
+                     @dragleave.prevent="dragging = false"
+                     @drop.prevent="onDrop"
+                     @click="$refs.fileInput.click()">
+
+                    <input type="file"
+                           name="csv_file"
+                           accept=".csv"
+                           x-ref="fileInput"
+                           class="hidden"
+                           @change="onFileChange">
+
+                    <template x-if="!fileName">
+                        <div class="space-y-1.5 pointer-events-none">
+                            <span class="material-symbols-outlined text-[36px]"
+                                  style="color: var(--color-txt-muted);">csv</span>
+                            <p class="text-sm font-medium" style="color: var(--color-txt-primary);">
+                                Drop your CSV here
+                            </p>
+                            <p class="text-xs" style="color: var(--color-txt-muted);">
+                                or <span style="color: var(--color-accent);">click to browse</span>
+                            </p>
+                        </div>
+                    </template>
+
+                    <template x-if="fileName">
+                        <div class="space-y-1 pointer-events-none">
+                            <span class="material-symbols-outlined text-[32px]"
+                                  style="color: var(--color-accent);">task</span>
+                            <p class="text-sm font-semibold"
+                               style="color: var(--color-txt-primary);"
+                               x-text="fileName"></p>
+                            <p class="text-xs"
+                               style="color: var(--color-txt-muted);"
+                               x-text="rowHint"></p>
+                        </div>
+                    </template>
+                </div>
+
+                {# ── Preview table ── #}
+                <template x-if="preview.length">
+                    <div class="space-y-1.5">
+                        <p class="text-xs font-medium px-0.5"
+                           style="color: var(--color-txt-muted);">
+                            Preview — first 5 rows
+                        </p>
+                        <div class="rounded-xl overflow-x-auto"
+                             style="border: 1px solid var(--color-border);">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr style="background-color: var(--color-surface-alt);
+                                               border-bottom: 1px solid var(--color-border);">
+                                        <template x-for="h in headers" :key="h">
+                                            <th class="px-3 py-2 text-left font-semibold whitespace-nowrap"
+                                                style="color: var(--color-txt-muted);"
+                                                x-text="h"></th>
+                                        </template>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(row, i) in preview" :key="i">
+                                        <tr style="border-top: 1px solid var(--color-border);">
+                                            <template x-for="h in headers" :key="h">
+                                                <td class="px-3 py-2 whitespace-nowrap"
+                                                    style="color: var(--color-txt-primary);"
+                                                    x-text="row[h] ?? '—'"></td>
+                                            </template>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
+
+                {# ── Actions ── #}
+                <div class="flex items-center gap-2 pt-1">
+                    <button type="submit"
+                            :disabled="!fileName || loading"
+                            class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm
+                                   font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                            style="background-color: var(--color-primary); color: var(--color-bg);"
+                            onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-primary-hover)'"
+                            onmouseout="this.style.backgroundColor='var(--color-primary)'">
+                        <span class="material-symbols-outlined text-[16px]"
+                              :class="loading ? 'animate-spin' : ''"
+                              x-text="loading ? 'progress_activity' : 'upload'"></span>
+                        <span x-text="loading ? 'Importing…' : 'Import products'"></span>
+                    </button>
+
+                    <button type="button"
+                            x-show="fileName"
+                            x-cloak
+                            @click="reset"
+                            class="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm
+                                   font-semibold transition"
+                            style="border: 1px solid var(--color-border); color: var(--color-txt-muted);"
+                            onmouseover="this.style.borderColor='var(--color-error)'; this.style.color='var(--color-error)'"
+                            onmouseout="this.style.borderColor='var(--color-border)'; this.style.color='var(--color-txt-muted)'">
+                        <span class="material-symbols-outlined text-[16px]">close</span>
+                        <span>Clear</span>
+                    </button>
+                </div>
+
+            </form>
+        </div>
+
+        {# ── Side panel ── #}
+        <div class="space-y-4">
+
+            {# ── Format guide ── #}
+            <div class="rounded-2xl p-5 space-y-3"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]"
+                          style="color: var(--color-accent);">info</span>
+                    <p class="text-sm font-semibold" style="color: var(--color-txt-primary);">
+                        Required columns
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    {% for col, note in [
+                        ('barcode',      'Unique product ID / SKU'),
+                        ('name',         'Product display name'),
+                        ('category',     'Must match an existing category'),
+                        ('cost price',   'Purchase cost'),
+                        ('markup price', 'Profit margin added on top'),
+                    ] %}
+                    <div class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-[13px] mt-0.5 shrink-0"
+                              style="color: var(--color-accent);">subdirectory_arrow_right</span>
+                        <div>
+                            <span class="text-xs font-mono font-semibold"
+                                  style="color: var(--color-txt-primary);">{{ col }}</span>
+                            <span class="text-xs"
+                                  style="color: var(--color-txt-muted);"> — {{ note }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="rounded-lg px-3 py-2.5 text-xs space-y-1"
+                     style="background-color: var(--color-surface-alt);
+                            border: 1px solid var(--color-border);">
+                    <p class="font-semibold" style="color: var(--color-txt-secondary);">Note</p>
+                    <p style="color: var(--color-txt-muted);">
+                        Selling price is computed as
+                        <span class="font-mono" style="color: var(--color-txt-primary);">cost + markup</span>.
+                        Reorder threshold is inherited from the category.
+                    </p>
+                </div>
+            </div>
+
+            {# ── Template download ── #}
+            <div class="rounded-2xl p-5 space-y-3"
+                 style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]"
+                          style="color: var(--color-accent);">download</span>
+                    <p class="text-sm font-semibold" style="color: var(--color-txt-primary);">
+                        Sample template
+                    </p>
+                </div>
+
+                <p class="text-xs" style="color: var(--color-txt-muted);">
+                    Download a pre-formatted CSV with example rows to get started quickly.
+                </p>
+
+                <button @click="downloadTemplate"
+                        type="button"
+                        class="w-full flex items-center justify-center gap-1.5 px-3 py-2
+                               rounded-lg text-xs font-semibold transition"
+                        style="border: 1px solid var(--color-border);
+                               color: var(--color-txt-secondary);"
+                        onmouseover="this.style.borderColor='var(--color-accent)'; this.style.color='var(--color-accent)'"
+                        onmouseout="this.style.borderColor='var(--color-border)'; this.style.color='var(--color-txt-secondary)'">
+                    <span class="material-symbols-outlined text-[15px]">sim_card_download</span>
+                    Download template.csv
+                </button>
+            </div>
+            {# ── Export current products ── #}
+            <div class="rounded-2xl p-5 space-y-3"
+                style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]"
+                          style="color: var(--color-accent);">table_view</span>
+                    <p class="text-sm font-semibold" style="color: var(--color-txt-primary);">
+                        Export current products
+                    </p>
+                </div>
+
+                <p class="text-xs" style="color: var(--color-txt-muted);">
+                    Download all active products as a CSV — useful as a reference or to bulk-edit and re-import.
+                </p>
+
+                <a href="{{ url_for('admin.export_products') }}"
+                  class="w-full flex items-center justify-center gap-1.5 px-3 py-2
+                          rounded-lg text-xs font-semibold transition"
+                  style="border: 1px solid var(--color-border); color: var(--color-txt-secondary);"
+                  onmouseover="this.style.borderColor='var(--color-accent)'; this.style.color='var(--color-accent)'"
+                  onmouseout="this.style.borderColor='var(--color-border)'; this.style.color='var(--color-txt-secondary)'">
+                    <span class="material-symbols-outlined text-[15px]">download</span>
+                    Export products.csv
+                </a>
+            </div>            
+
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+function bulkImport() {
+    return {
+        fileName: '',
+        rowHint:  '',
+        dragging: false,
+        loading:  false,
+        headers:  [],
+        preview:  [],
+
+        onFileChange(e) {
+            const file = e.target.files[0]
+            if (file) this.loadFile(file)
+        },
+        onDrop(e) {
+            this.dragging = false
+            const file = e.dataTransfer.files[0]
+            if (file && file.name.endsWith('.csv')) {
+                this.$refs.fileInput.files = e.dataTransfer.files
+                this.loadFile(file)
+            }
+        },
+        loadFile(file) {
+            this.fileName = file.name
+            const reader  = new FileReader()
+            reader.onload = (e) => {
+                const lines = e.target.result.split('\n').filter(l => l.trim())
+                this.rowHint = `${lines.length - 1} data row(s) detected`
+                const rawHeaders = lines[0].split(',').map(h => h.trim().toLowerCase())
+                this.headers = rawHeaders
+                this.preview = lines.slice(1, 6).map(line => {
+                    const vals = line.split(',')
+                    return Object.fromEntries(
+                        rawHeaders.map((h, i) => [h, (vals[i] || '').trim()])
+                    )
+                })
+            }
+            reader.readAsText(file)
+        },
+        handleSubmit() {
+            this.loading = true
+        },
+        reset() {
+            this.fileName = ''
+            this.rowHint  = ''
+            this.headers  = []
+            this.preview  = []
+            this.loading  = false
+            this.$refs.fileInput.value = ''
+        },
+        downloadTemplate() {
+            const content = 'barcode,name,category,cost price,markup price\n'
+                          + 'BAR001,Sample Product,Beverages,50.00,20.00\n'
+                          + 'BAR002,Another Item,Snacks,30.00,15.00\n'
+            const blob = new Blob([content], { type: 'text/csv' })
+            const a    = Object.assign(document.createElement('a'), {
+                href:     URL.createObjectURL(blob),
+                download: 'import_template.csv',
+            })
+            a.click()
+        }
+    }
+}
+</script>
+{% endblock %}
+
+{% endblock %}

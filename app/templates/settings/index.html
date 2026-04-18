@@ -127,6 +127,40 @@
                              color: var(--color-accent);">Stocking</span>
             </div>
         </a>
+        {# ── Card: Bulk Import Products ── #}
+        <a href="{{ url_for('admin.bulk_import_products') }}"
+        class="rounded-2xl p-5 flex flex-col gap-4 transition group cursor-pointer"
+        style="background-color: var(--color-surface); border: 1px solid var(--color-border);"
+        onmouseover="this.style.borderColor='var(--color-accent)'"
+        onmouseout="this.style.borderColor='var(--color-border)'">
+
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
+                    <span class="material-symbols-outlined text-[20px]"
+                        style="color: var(--color-accent);">upload_file</span>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold"
+                    style="color: var(--color-txt-primary);">Bulk Import Products</p>
+                    <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+                        Upload a CSV to register multiple products at once. Returns a file for any rows with errors.
+                    </p>
+                </div>
+                <span class="material-symbols-outlined text-[18px] mt-0.5 transition-transform
+                            group-hover:translate-x-1"
+                    style="color: var(--color-txt-muted);">arrow_forward</span>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                    style="background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+                            color: var(--color-accent);">Superadmin only</span>
+                <span class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                    style="background: color-mix(in srgb, var(--color-txt-muted) 10%, transparent);
+                            color: var(--color-txt-muted);">.csv</span>
+            </div>
+        </a>
 
         {# ── Placeholder card for future settings ── #}
         {# just remove x-cloak and add content when ready
