@@ -1787,3 +1787,38 @@ def bulk_import_products():
         'success'
     )
     return redirect(url_for('admin.bulk_import_products'))
+
+
+# ── NO indentation — this must be at module level ────────────────────────────
+@admin_bp.route('/products/export', methods=['GET'])
+@login_required
+@role_required("superadmin")
+def export_products():
+    products = (
+        db.session.query(Product, Category)
+        .outerjoin(Category, Product.category_id == Category.category_id)
+        .filter(Product.status == 'active')
+        .order_by(Product.product_name)
+        .all()
+    )
+
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(['barcode', 'name', 'category', 'cost price', 'markup price'])
+
+    for product, category in products:
+        writer.writerow([
+            product.product_id,
+            product.product_name,
+            category.category_name if category else '',
+            product.cost_price,
+            product.revenue_price,
+        ])
+
+    return Response(
+        out.getvalue(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': 'attachment; filename="products_export.csv"'
+        }
+    )
