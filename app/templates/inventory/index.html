@@ -899,34 +899,41 @@
     </div>
 
 
-    {# ── Pagination ── #}
-    <div class="flex items-center justify-between text-sm" x-show="filtered.length>perPage">
-        <p style="color:var(--color-txt-muted);">
-            Showing <span x-text="Math.min((page-1)*perPage+1,filtered.length)"></span>–<span x-text="Math.min(page*perPage,filtered.length)"></span>
-            of <span x-text="filtered.length"></span>
-        </p>
-        <div class="flex items-center gap-1">
-            <button @click="page=Math.max(1,page-1)" :disabled="page===1"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-40"
-                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
-                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
-                <span class="material-symbols-outlined text-[18px]">chevron_left</span>
-            </button>
-            <template x-for="pg in totalPages" :key="pg">
-                <button @click="page=pg" class="w-8 h-8 rounded-lg text-sm font-medium transition"
-                        :style="page===pg ? 'background:var(--color-primary);color:var(--color-bg)' : 'color:var(--color-txt-secondary)'"
-                        onmouseover="if(this.style.color!=='var(--color-bg)') this.style.backgroundColor='var(--color-surface-alt)'"
-                        onmouseout="if(this.style.color!=='var(--color-bg)') this.style.backgroundColor='transparent'"
-                        x-text="pg"></button>
-            </template>
-            <button @click="page=Math.min(totalPages,page+1)" :disabled="page===totalPages"
-                    class="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-40"
-                    style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
-                    onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
-                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
-            </button>
-        </div>
+ {# ── Pagination ── #}
+<div class="flex items-center justify-between text-sm" x-show="filtered.length>perPage">
+    <p style="color:var(--color-txt-muted);">
+        Showing <span x-text="Math.min((page-1)*perPage+1,filtered.length)"></span>–<span x-text="Math.min(page*perPage,filtered.length)"></span>
+        of <span x-text="filtered.length"></span>
+    </p>
+    <div class="flex items-center gap-1">
+        <button @click="page=Math.max(1,page-1)" :disabled="page===1"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-40"
+                style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
+            <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+        </button>
+
+        <span class="sm:hidden px-3 py-1.5 rounded-lg text-sm font-medium tabular-nums"
+              style="border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface);">
+            <span x-text="page"></span> / <span x-text="totalPages"></span>
+        </span>
+
+        <template x-for="pg in totalPages" :key="pg">
+            <button @click="page=pg" class="hidden sm:flex w-8 h-8 rounded-lg text-sm font-medium transition items-center justify-center"
+                    :style="page===pg ? 'background:var(--color-primary);color:var(--color-bg)' : 'color:var(--color-txt-secondary)'"
+                    onmouseover="if(this.style.color!=='var(--color-bg)') this.style.backgroundColor='var(--color-surface-alt)'"
+                    onmouseout="if(this.style.color!=='var(--color-bg)') this.style.backgroundColor='transparent'"
+                    x-text="pg"></button>
+        </template>
+
+        <button @click="page=Math.min(totalPages,page+1)" :disabled="page===totalPages"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition disabled:opacity-40"
+                style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                onmouseover="if(!this.disabled) this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
+            <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+        </button>
     </div>
+</div>
 
 
     {# ══════════════════════════════════════════════
