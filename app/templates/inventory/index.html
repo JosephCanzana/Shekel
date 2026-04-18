@@ -20,7 +20,6 @@
             filterNoStock:   false,
             sortName:  '',
             sortPrice: '',
-            sortStock: '', 
             rows:            PRODUCTS_DATA,
             canManage:       CAN_MANAGE,
             page:            1,
@@ -284,14 +283,13 @@
                 if (this.filterNormal)                                            n++
                 if (this.sortName  !== '') n++
                 if (this.sortPrice !== '') n++
-                if (this.sortStock !== '') n++
                 return n
             },
 
             resetFilters() {
                 this.filterStatus = 'active'; this.filterCategory = ''
                 this.filterLowStock = false;  this.filterNoStock = false
-               this.filterNormal = false; this.sortName = ''; this.sortPrice = ''; this.sortStock = ''   // ADD sortStock
+                this.filterNormal = false; this.sortName = ''; this.sortPrice = ''
                 this.resetPage()
             },
 
@@ -312,9 +310,6 @@
                 })
                 result.sort((a, b) => {
                     let cmp = 0
-                    if (this.sortStock === 'asc')  cmp = a.stock - b.stock
-                    if (this.sortStock === 'desc') cmp = b.stock - a.stock
-                    if (cmp !== 0) return cmp
                     if (this.sortPrice === 'asc')  cmp = a.total_price - b.total_price
                     if (this.sortPrice === 'desc') cmp = b.total_price - a.total_price
                     if (cmp !== 0) return cmp
@@ -581,18 +576,6 @@
         <template x-for="opt in [{val:'price_asc',label:'Low → High',icon:'arrow_downward'},{val:'price_desc',label:'High → Low',icon:'arrow_upward'}]" :key="opt.val">
             <button @click="sortOrder=(sortOrder===opt.val?'':opt.val);resetPage()" class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
                     :style="sortOrder===opt.val ? 'background:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
-                <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span><span x-text="opt.label"></span>
-            </button>
-        </template>
-    </div>
-</div>
-<div class="space-y-1.5">
-    <label class="text-xs font-semibold uppercase tracking-wider" style="color:var(--color-txt-muted);">Sort by Stock</label>
-    <div class="flex gap-2">
-        <template x-for="opt in [{val:'asc',label:'Low → High',icon:'arrow_downward'},{val:'desc',label:'High → Low',icon:'arrow_upward'}]" :key="opt.val">
-            <button @click="sortStock=(sortStock===opt.val?'':opt.val);resetPage()"
-                    class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition"
-                    :style="sortStock===opt.val ? 'background:var(--color-accent);color:var(--color-bg);border:1px solid var(--color-accent)' : 'border:1px solid var(--color-border);color:var(--color-txt-secondary);background:var(--color-surface-alt)'">
                 <span class="material-symbols-outlined text-[15px]" x-text="opt.icon"></span><span x-text="opt.label"></span>
             </button>
         </template>
