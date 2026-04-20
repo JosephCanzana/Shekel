@@ -18,8 +18,7 @@
             filterCategory:  '',
             filterLowStock:  false,
             filterNoStock:   false,
-            sortName:  '',
-            sortPrice: '',
+            sortOrder: '',
             rows:            PRODUCTS_DATA,
             canManage:       CAN_MANAGE,
             page:            1,
@@ -281,15 +280,14 @@
                 if (this.filterLowStock)                                          n++
                 if (this.filterNoStock)                                           n++
                 if (this.filterNormal)                                            n++
-                if (this.sortName  !== '') n++
-                if (this.sortPrice !== '') n++
+                if (this.sortOrder !== '') n++
                 return n
             },
 
             resetFilters() {
                 this.filterStatus = 'active'; this.filterCategory = ''
                 this.filterLowStock = false;  this.filterNoStock = false
-                this.filterNormal = false; this.sortName = ''; this.sortPrice = ''
+                this.sortOrder = ''
                 this.resetPage()
             },
 
