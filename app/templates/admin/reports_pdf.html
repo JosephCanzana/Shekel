@@ -6,10 +6,16 @@
 <style>
   @page {
     size: A4 portrait;
-    margin: 20mm 16mm 20mm 16mm;
-    @bottom-center {
+    margin: 18mm 14mm 22mm 14mm;
+    @bottom-left {
+      content: "Shekel — Confidential";
+      font-size: 7.5pt;
+      color: #94a3b8;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+    @bottom-right {
       content: "Page " counter(page) " of " counter(pages);
-      font-size: 9pt;
+      font-size: 7.5pt;
       color: #94a3b8;
       font-family: 'Helvetica Neue', Arial, sans-serif;
     }
@@ -19,7 +25,7 @@
 
   body {
     font-family: 'Helvetica Neue', Arial, sans-serif;
-    font-size: 9.5pt;
+    font-size: 9pt;
     color: #1e293b;
     line-height: 1.5;
     background: #ffffff;
@@ -29,74 +35,171 @@
   .report-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    padding-bottom: 12px;
-    border-bottom: 2px solid #1e293b;
-    margin-bottom: 18px;
+    align-items: stretch;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 3px solid #1e293b;
+    gap: 16px;
   }
-  .report-header .brand { font-size: 18pt; font-weight: 800; color: #1e293b; }
-  .report-header .meta  { text-align: right; font-size: 8.5pt; color: #64748b; }
-  .report-header .meta strong { display: block; font-size: 12pt; color: #1e293b; font-weight: 700; }
+  .header-left .brand {
+    font-size: 22pt;
+    font-weight: 900;
+    color: #1e293b;
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+  .header-left .tagline {
+    font-size: 8pt;
+    color: #64748b;
+    margin-top: 3px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .header-right {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .header-right .report-title {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 2px;
+  }
+  .header-right .report-meta {
+    font-size: 8pt;
+    color: #64748b;
+    line-height: 1.6;
+  }
+  .period-pill {
+    display: inline-block;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 8pt;
+    font-weight: 600;
+    color: #334155;
+    margin-top: 3px;
+  }
 
   /* ── Section headings ────────────────────────────────────────────────── */
   .section-title {
-    font-size: 10pt;
-    font-weight: 700;
+    font-size: 9pt;
+    font-weight: 800;
     color: #1e293b;
-    margin: 18px 0 8px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid #e2e8f0;
+    margin: 16px 0 8px;
+    padding: 5px 10px;
+    background: #f8fafc;
+    border-left: 3px solid #1e293b;
+    border-radius: 0 4px 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
+  .section-title.accent-blue   { border-left-color: #3b82f6; }
+  .section-title.accent-green  { border-left-color: #10b981; }
+  .section-title.accent-red    { border-left-color: #ef4444; }
+  .section-title.accent-violet { border-left-color: #8b5cf6; }
+  .section-title.accent-amber  { border-left-color: #f59e0b; }
 
   /* ── Summary cards ───────────────────────────────────────────────────── */
   .summary-grid {
     display: grid;
     gap: 8px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
   .summary-grid-2 { grid-template-columns: 1fr 1fr; }
+  .summary-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
   .summary-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
 
   .card {
     border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 10px 12px;
+    border-radius: 7px;
+    padding: 10px 13px;
     background: #f8fafc;
   }
+  .card.card-blue   { border-top: 3px solid #3b82f6; }
+  .card.card-green  { border-top: 3px solid #10b981; }
+  .card.card-amber  { border-top: 3px solid #f59e0b; }
+  .card.card-red    { border-top: 3px solid #ef4444; }
+  .card.card-violet { border-top: 3px solid #8b5cf6; }
+  .card.card-orange { border-top: 3px solid #f97316; }
+  .card.card-rose   { border-top: 3px solid #f43f5e; }
+
   .card-label {
-    font-size: 7.5pt;
-    font-weight: 600;
+    font-size: 7pt;
+    font-weight: 700;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 4px;
+    letter-spacing: 0.07em;
+    margin-bottom: 5px;
   }
   .card-value {
-    font-size: 15pt;
-    font-weight: 700;
+    font-size: 14pt;
+    font-weight: 800;
     color: #1e293b;
+    line-height: 1.1;
   }
-  .card-sub { font-size: 8pt; color: #94a3b8; margin-top: 1px; }
+  .card-value.blue   { color: #2563eb; }
+  .card-value.green  { color: #059669; }
+  .card-value.red    { color: #dc2626; }
+  .card-value.amber  { color: #d97706; }
+  .card-value.violet { color: #7c3aed; }
+  .card-value.orange { color: #ea580c; }
+  .card-sub {
+    font-size: 7.5pt;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+
+  /* ── Loss breakdown box ──────────────────────────────────────────────── */
+  .loss-box {
+    border: 1px solid #fecaca;
+    border-radius: 7px;
+    padding: 10px 13px;
+    background: #fff5f5;
+    margin-bottom: 12px;
+  }
+  .loss-box-title {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: #991b1b;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 8px;
+  }
+  .loss-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .loss-item { }
+  .loss-item-label { font-size: 7pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  .loss-item-value { font-size: 11pt; font-weight: 700; color: #dc2626; }
+  .loss-item-sub   { font-size: 7pt; color: #94a3b8; }
 
   /* ── Tables ─────────────────────────────────────────────────────────── */
   table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 8.5pt;
-    margin-bottom: 14px;
+    font-size: 8pt;
+    margin-bottom: 12px;
     page-break-inside: auto;
   }
   thead tr { background: #1e293b; }
   thead th {
     color: #ffffff;
-    font-weight: 600;
-    font-size: 7.5pt;
+    font-weight: 700;
+    font-size: 7pt;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     padding: 6px 8px;
     text-align: left;
+    white-space: nowrap;
   }
   thead th.right { text-align: right; }
+  thead th.center { text-align: center; }
   tbody tr { page-break-inside: avoid; }
   tbody tr:nth-child(even) { background: #f8fafc; }
   tbody td {
@@ -105,19 +208,36 @@
     color: #334155;
     vertical-align: middle;
   }
+  tfoot tr { background: #f1f5f9; }
+  tfoot td {
+    padding: 6px 8px;
+    border-top: 2px solid #cbd5e1;
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 8.5pt;
+  }
   tbody td.right    { text-align: right; }
-  tbody td.mono     { font-family: 'Courier New', monospace; font-size: 8pt; }
-  tbody td.bold     { font-weight: 600; color: #1e293b; }
-  tbody td.muted    { color: #64748b; font-size: 8pt; }
-  .no-data td { text-align: center; color: #94a3b8; padding: 16px; }
+  tbody td.center   { text-align: center; }
+  tbody td.mono     { font-family: 'Courier New', monospace; font-size: 7.5pt; }
+  tbody td.bold     { font-weight: 700; color: #1e293b; }
+  tbody td.muted    { color: #64748b; font-size: 7.5pt; }
+  tbody td.green    { color: #059669; font-weight: 600; }
+  tbody td.red      { color: #dc2626; font-weight: 600; }
+  tbody td.amber    { color: #d97706; font-weight: 600; }
+  tbody td.orange   { color: #ea580c; font-weight: 600; }
+  tbody td.violet   { color: #7c3aed; font-weight: 600; }
+  tfoot td.right    { text-align: right; }
+  .no-data td { text-align: center; color: #94a3b8; padding: 20px; font-style: italic; }
 
-  /* ── Status badges (text-only for PDF) ───────────────────────────────── */
+  /* ── Status badges ───────────────────────────────────────────────────── */
   .badge {
     display: inline-block;
-    padding: 1px 6px;
+    padding: 1px 7px;
     border-radius: 3px;
-    font-size: 7.5pt;
-    font-weight: 600;
+    font-size: 7pt;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
   }
   .badge-green  { background: #d1fae5; color: #065f46; }
   .badge-amber  { background: #fef3c7; color: #92400e; }
@@ -127,14 +247,19 @@
   .badge-violet { background: #ede9fe; color: #5b21b6; }
   .badge-orange { background: #ffedd5; color: #9a3412; }
 
-  /* ── Footer note ─────────────────────────────────────────────────────── */
+  /* ── Two-column layout for narrow tables ─────────────────────────────── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .two-col > div { }
+
+  /* ── Footer ──────────────────────────────────────────────────────────── */
   .report-footer {
     margin-top: 24px;
     padding-top: 8px;
     border-top: 1px solid #e2e8f0;
-    font-size: 7.5pt;
+    font-size: 7pt;
     color: #94a3b8;
     text-align: center;
+    letter-spacing: 0.03em;
   }
 </style>
 </head>
@@ -142,11 +267,16 @@
 
 {# ── HEADER ─────────────────────────────────────────────────────────────── #}
 <div class="report-header">
-  <div class="brand">Shekel</div>
-  <div class="meta">
-    <strong>{{ tab.replace("_"," ").title() }} Report</strong>
-    Period: {{ date_from }} → {{ date_to }}<br>
-    Generated: {{ generated_at }}
+  <div class="header-left">
+    <div class="brand">Shekel</div>
+    <div class="tagline">Business Management System</div>
+  </div>
+  <div class="header-right">
+    <div class="report-title">{{ tab.replace("_"," ").title() }} Report</div>
+    <div class="report-meta">
+      Generated: {{ generated_at }}<br>
+      <span class="period-pill">{{ date_from }} &nbsp;→&nbsp; {{ date_to }}</span>
+    </div>
   </div>
 </div>
 
@@ -156,59 +286,111 @@
 ═══════════════════════════════════════════════════════════════════════════ #}
 {% if tab == "sales" %}
 
-<div class="section-title">Summary</div>
+{# Summary cards #}
+<div class="section-title accent-green">Financial Summary</div>
 <div class="summary-grid summary-grid-4">
-  <div class="card">
-    <div class="card-label">Total Revenue</div>
-    <div class="card-value">₱{{ "%.2f"|format(data.sales.total_revenue) }}</div>
-  </div>
-  <div class="card">
+  <div class="card card-blue">
     <div class="card-label">Transactions</div>
-    <div class="card-value">{{ data.sales.total_transactions }}</div>
+    <div class="card-value blue">{{ data.sales.total_transactions }}</div>
+    <div class="card-sub">₱{{ "%.2f"|format(data.sales.avg_order) }} avg order</div>
   </div>
-  <div class="card">
-    <div class="card-label">Avg Order Value</div>
-    <div class="card-value">₱{{ "%.2f"|format(data.sales.avg_order) }}</div>
+  <div class="card card-green">
+    <div class="card-label">Total Revenue</div>
+    <div class="card-value green">₱{{ "%.2f"|format(data.sales.total_revenue) }}</div>
+    <div class="card-sub">{{ data.sales.total_units_sold | default(0) }} units sold</div>
   </div>
-  <div class="card">
-    <div class="card-label">Top Product</div>
-    <div class="card-value" style="font-size:10pt">
-      {{ data.sales.top_products[0].product_name.capitalize() if data.sales.top_products else "—" }}
-    </div>
-    {% if data.sales.top_products %}
-    <div class="card-sub">{{ data.sales.top_products[0].units_sold }} units sold</div>
-    {% endif %}
+  <div class="card card-orange">
+    <div class="card-label">Total Cost</div>
+    <div class="card-value orange">₱{{ "%.2f"|format(data.sales.total_cost | default(0)) }}</div>
+    <div class="card-sub">cost of goods sold</div>
+  </div>
+  <div class="card card-violet">
+    <div class="card-label">Gross Profit</div>
+    <div class="card-value violet">₱{{ "%.2f"|format(data.sales.total_profit | default(0)) }}</div>
+    {% set margin = ((data.sales.total_profit | default(0)) / (data.sales.total_revenue) * 100) if data.sales.total_revenue > 0 else 0 %}
+    <div class="card-sub">{{ "%.1f"|format(margin) }}% margin</div>
   </div>
 </div>
 
-<div class="section-title">Daily Breakdown</div>
+{% if data.sales.defect_sales_loss is defined %}
+<div class="loss-box">
+  <div class="loss-box-title">⚠ Defect Impact (this period)</div>
+  <div class="loss-grid">
+    <div class="loss-item">
+      <div class="loss-item-label">Sales Loss</div>
+      <div class="loss-item-value">₱{{ "%.2f"|format(data.sales.defect_sales_loss | default(0)) }}</div>
+      <div class="loss-item-sub">customer refunds</div>
+    </div>
+    <div class="loss-item">
+      <div class="loss-item-label">Cost Loss</div>
+      <div class="loss-item-value">₱{{ "%.2f"|format(data.sales.defect_cost_loss | default(0)) }}</div>
+      <div class="loss-item-sub">inventory write-off</div>
+    </div>
+    <div class="loss-item">
+      <div class="loss-item-label">Profit Loss</div>
+      <div class="loss-item-value">₱{{ "%.2f"|format(data.sales.defect_profit_loss | default(0)) }}</div>
+      <div class="loss-item-sub">net impact</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Daily breakdown #}
+<div class="section-title accent-blue">Daily Breakdown</div>
 <table>
   <thead>
     <tr>
       <th>Date</th>
       <th class="right">Transactions</th>
       <th class="right">Revenue (₱)</th>
+      <th class="right">Cost (₱)</th>
+      <th class="right">Profit (₱)</th>
+      <th class="right">Margin</th>
     </tr>
   </thead>
   <tbody>
+    {% set ns = namespace(total_txn=0, total_rev=0, total_cost=0, total_profit=0) %}
     {% for row in data.sales.daily %}
+    {% set ns.total_txn    = ns.total_txn    + row.transactions %}
+    {% set ns.total_rev    = ns.total_rev    + (row.total  | default(0) | float) %}
+    {% set ns.total_cost   = ns.total_cost   + (row.cost   | default(0) | float) %}
+    {% set ns.total_profit = ns.total_profit + (row.profit | default(0) | float) %}
+    {% set row_margin = ((row.profit | default(0) | float) / (row.total | default(1) | float) * 100) if (row.total | default(0) | float) > 0 else 0 %}
     <tr>
       <td class="bold">{{ row.date }}</td>
       <td class="right mono">{{ row.transactions }}</td>
-      <td class="right bold">₱{{ "%.2f"|format(row.total|float) }}</td>
+      <td class="right bold">₱{{ "%.2f"|format(row.total  | default(0) | float) }}</td>
+      <td class="right orange mono">₱{{ "%.2f"|format(row.cost   | default(0) | float) }}</td>
+      <td class="right green  mono">₱{{ "%.2f"|format(row.profit | default(0) | float) }}</td>
+      <td class="right muted">{{ "%.1f"|format(row_margin) }}%</td>
     </tr>
     {% else %}
-    <tr class="no-data"><td colspan="3">No sales in this period.</td></tr>
+    <tr class="no-data"><td colspan="6">No sales in this period.</td></tr>
     {% endfor %}
   </tbody>
+  {% if data.sales.daily %}
+  <tfoot>
+    <tr>
+      <td>TOTAL</td>
+      <td class="right">{{ ns.total_txn }}</td>
+      <td class="right">₱{{ "%.2f"|format(ns.total_rev) }}</td>
+      <td class="right" style="color:#ea580c">₱{{ "%.2f"|format(ns.total_cost) }}</td>
+      <td class="right" style="color:#059669">₱{{ "%.2f"|format(ns.total_profit) }}</td>
+      <td class="right">
+        {% set tot_margin = (ns.total_profit / ns.total_rev * 100) if ns.total_rev > 0 else 0 %}
+        {{ "%.1f"|format(tot_margin) }}%
+      </td>
+    </tr>
+  </tfoot>
+  {% endif %}
 </table>
 
 {% if data.sales.top_products %}
-<div class="section-title">Top 10 Products</div>
+<div class="section-title accent-amber">Top Products</div>
 <table>
   <thead>
     <tr>
-      <th>#</th>
+      <th class="center">#</th>
       <th>Product</th>
       <th class="right">Units Sold</th>
       <th class="right">Revenue (₱)</th>
@@ -217,10 +399,10 @@
   <tbody>
     {% for row in data.sales.top_products %}
     <tr>
-      <td class="muted">{{ loop.index }}</td>
+      <td class="center muted">{{ loop.index }}</td>
       <td class="bold">{{ row.product_name.capitalize() }}</td>
       <td class="right mono">{{ row.units_sold }}</td>
-      <td class="right bold">₱{{ "%.2f"|format(row.revenue|float) }}</td>
+      <td class="right bold">₱{{ "%.2f"|format(row.revenue | float) }}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -235,28 +417,95 @@
 ═══════════════════════════════════════════════════════════════════════════ #}
 {% if tab == "inventory" %}
 
-<div class="section-title">Summary</div>
+<div class="section-title accent-blue">Inventory Summary</div>
 <div class="summary-grid summary-grid-4">
-  <div class="card">
+  <div class="card card-blue">
     <div class="card-label">Total Products</div>
-    <div class="card-value">{{ data.inventory.total_products }}</div>
+    <div class="card-value blue">{{ data.inventory.total_products }}</div>
+    <div class="card-sub">active SKUs</div>
   </div>
-  <div class="card">
+  <div class="card card-green">
     <div class="card-label">Total Units</div>
-    <div class="card-value">{{ data.inventory.total_units }}</div>
+    <div class="card-value green">{{ data.inventory.total_units }}</div>
+    <div class="card-sub">available stock</div>
   </div>
-  <div class="card">
+  <div class="card card-amber">
     <div class="card-label">Low Stock</div>
-    <div class="card-value" style="color:#b45309">{{ data.inventory.low_stock }}</div>
+    <div class="card-value amber">{{ data.inventory.low_stock }}</div>
     <div class="card-sub">at or below reorder threshold</div>
   </div>
-  <div class="card">
+  <div class="card card-red">
     <div class="card-label">Out of Stock</div>
-    <div class="card-value" style="color:#dc2626">{{ data.inventory.out_of_stock }}</div>
+    <div class="card-value red">{{ data.inventory.out_of_stock }}</div>
+    <div class="card-sub">needs immediate reorder</div>
   </div>
 </div>
 
-<div class="section-title">Product Inventory</div>
+{# Split out-of-stock and low-stock for quick action tables #}
+{% set out_rows = [] %}
+{% set low_rows = [] %}
+{% set ok_rows  = [] %}
+{% for product, inv, category in data.inventory.rows %}
+  {% if inv.quantity_available == 0 %}
+    {% set _ = out_rows.append((product, inv, category)) %}
+  {% elif inv.quantity_available <= product.low_reorder_threshold %}
+    {% set _ = low_rows.append((product, inv, category)) %}
+  {% else %}
+    {% set _ = ok_rows.append((product, inv, category)) %}
+  {% endif %}
+{% endfor %}
+
+{% if out_rows %}
+<div class="section-title accent-red">Out of Stock ({{ out_rows | length }})</div>
+<table>
+  <thead>
+    <tr>
+      <th>Product</th>
+      <th>Category</th>
+      <th class="right">Defective</th>
+      <th class="right">Reorder At</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for product, inv, category in out_rows %}
+    <tr>
+      <td class="bold">{{ product.product_name.capitalize() }}</td>
+      <td class="muted">{{ category.category_name.capitalize() if category else '—' }}</td>
+      <td class="right mono muted">{{ inv.quantity_defective or 0 }}</td>
+      <td class="right muted">{{ product.low_reorder_threshold }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if low_rows %}
+<div class="section-title accent-amber">Low Stock ({{ low_rows | length }})</div>
+<table>
+  <thead>
+    <tr>
+      <th>Product</th>
+      <th>Category</th>
+      <th class="right">In Stock</th>
+      <th class="right">Reorder At</th>
+      <th class="right">Gap</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for product, inv, category in low_rows %}
+    <tr>
+      <td class="bold">{{ product.product_name.capitalize() }}</td>
+      <td class="muted">{{ category.category_name.capitalize() if category else '—' }}</td>
+      <td class="right amber mono">{{ inv.quantity_available }}</td>
+      <td class="right muted">{{ product.low_reorder_threshold }}</td>
+      <td class="right red mono">{{ product.low_reorder_threshold - inv.quantity_available }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<div class="section-title accent-green">All Products</div>
 <table>
   <thead>
     <tr>
@@ -265,7 +514,8 @@
       <th class="right">In Stock</th>
       <th class="right">Defective</th>
       <th class="right">Reorder At</th>
-      <th>Status</th>
+      <th class="center">Status</th>
+      <th>Last Updated</th>
     </tr>
   </thead>
   <tbody>
@@ -275,10 +525,12 @@
     <tr>
       <td class="bold">{{ product.product_name.capitalize() }}</td>
       <td class="muted">{{ category.category_name.capitalize() if category else '—' }}</td>
-      <td class="right mono bold">{{ inv.quantity_available }}</td>
+      <td class="right mono {{ 'red' if is_out else ('amber' if is_low else 'green') }}">
+        {{ inv.quantity_available }}
+      </td>
       <td class="right mono muted">{{ inv.quantity_defective or 0 }}</td>
       <td class="right muted">{{ product.low_reorder_threshold }}</td>
-      <td>
+      <td class="center">
         {% if is_out %}
         <span class="badge badge-red">Out</span>
         {% elif is_low %}
@@ -287,9 +539,10 @@
         <span class="badge badge-green">OK</span>
         {% endif %}
       </td>
+      <td class="muted">{{ inv.last_updated | pht("%b %d, %Y") if inv.last_updated else '—' }}</td>
     </tr>
     {% else %}
-    <tr class="no-data"><td colspan="6">No inventory data.</td></tr>
+    <tr class="no-data"><td colspan="7">No inventory data.</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -302,19 +555,21 @@
 ═══════════════════════════════════════════════════════════════════════════ #}
 {% if tab == "stock" %}
 
-<div class="section-title">Summary</div>
+<div class="section-title accent-green">Stock-In Summary</div>
 <div class="summary-grid summary-grid-2">
-  <div class="card">
+  <div class="card card-blue">
     <div class="card-label">Stock-In Entries</div>
-    <div class="card-value">{{ data.stock.total_entries }}</div>
+    <div class="card-value blue">{{ data.stock.total_entries }}</div>
+    <div class="card-sub">receiving events in period</div>
   </div>
-  <div class="card">
+  <div class="card card-green">
     <div class="card-label">Total Units Received</div>
-    <div class="card-value">{{ data.stock.total_units }}</div>
+    <div class="card-value green">{{ data.stock.total_units }}</div>
+    <div class="card-sub">units added to inventory</div>
   </div>
 </div>
 
-<div class="section-title">Stock-In Records</div>
+<div class="section-title accent-blue">Stock-In Records</div>
 <table>
   <thead>
     <tr>
@@ -326,20 +581,34 @@
     </tr>
   </thead>
   <tbody>
+    {% set ns = namespace(total_qty=0) %}
     {% for stock_in, product, user in data.stock.rows %}
+    {% if stock_in.stockin_datetime %}
+    {% set ns.total_qty = ns.total_qty + stock_in.quantity_received %}
     <tr>
       <td class="muted">
-        {{ stock_in.stockin_datetime | pht("%b %d, %Y %I:%M %p") if stock_in.stockin_datetime else '—' }}
+        {{ stock_in.stockin_datetime | pht("%b %d, %Y") }}
+        <br><span style="color:#94a3b8">{{ stock_in.stockin_datetime | pht("%I:%M %p") }}</span>
       </td>
       <td class="bold">{{ product.product_name.capitalize() }}</td>
-      <td class="right mono bold" style="color:#059669">+{{ stock_in.quantity_received }}</td>
+      <td class="right green mono bold">+{{ stock_in.quantity_received }}</td>
       <td class="muted">{{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}</td>
-      <td class="muted">{{ stock_in.notes or '—' }}</td>
+      <td class="muted" style="font-size:7.5pt">{{ stock_in.notes or '—' }}</td>
     </tr>
+    {% endif %}
     {% else %}
     <tr class="no-data"><td colspan="5">No stock-in entries for this period.</td></tr>
     {% endfor %}
   </tbody>
+  {% if data.stock.rows %}
+  <tfoot>
+    <tr>
+      <td colspan="2">TOTAL</td>
+      <td class="right" style="color:#059669">+{{ ns.total_qty }}</td>
+      <td colspan="2"></td>
+    </tr>
+  </tfoot>
+  {% endif %}
 </table>
 
 {% endif %}{# /stock #}
@@ -350,77 +619,159 @@
 ═══════════════════════════════════════════════════════════════════════════ #}
 {% if tab == "defects" %}
 
-<div class="section-title">Summary</div>
+<div class="section-title accent-red">Defects Summary</div>
 <div class="summary-grid summary-grid-4">
-  <div class="card">
+  <div class="card card-rose">
     <div class="card-label">Total Records</div>
-    <div class="card-value">{{ data.defects.total }}</div>
+    <div class="card-value red">{{ data.defects.total }}</div>
+    <div class="card-sub">defect entries</div>
   </div>
-  <div class="card">
+  <div class="card card-orange">
     <div class="card-label">Total Units</div>
-    <div class="card-value">{{ data.defects.total_units }}</div>
+    <div class="card-value orange">{{ data.defects.total_units }}</div>
+    <div class="card-sub">defective items</div>
   </div>
-  <div class="card">
+  <div class="card card-violet">
     <div class="card-label">Customer Origin</div>
-    <div class="card-value">{{ data.defects.customer_origin }}</div>
+    <div class="card-value violet">{{ data.defects.customer_origin }}</div>
+    <div class="card-sub">returned by customers</div>
   </div>
-  <div class="card">
+  <div class="card card-blue">
     <div class="card-label">In-Store Origin</div>
-    <div class="card-value">{{ data.defects.store_origin }}</div>
+    <div class="card-value blue">{{ data.defects.store_origin }}</div>
+    <div class="card-sub">found in-store</div>
   </div>
 </div>
 
-<div class="section-title">Defect Records</div>
+{# Financial loss breakdown #}
+<div class="loss-box">
+  <div class="loss-box-title">Financial Loss Breakdown (active defects only)</div>
+  <div class="loss-grid">
+    <div class="loss-item">
+      <div class="loss-item-label">Sales Loss</div>
+      <div class="loss-item-value">₱{{ "%.2f"|format(data.defects.total_sales_loss | default(0)) }}</div>
+      <div class="loss-item-sub">customer refunds issued</div>
+    </div>
+    <div class="loss-item">
+      <div class="loss-item-label">Profit Loss</div>
+      <div class="loss-item-value">₱{{ "%.2f"|format(data.defects.total_profit_loss | default(0)) }}</div>
+      <div class="loss-item-sub">net margin impact</div>
+    </div>
+    <div class="loss-item">
+      <div class="loss-item-label">Cost Loss</div>
+      <div class="loss-item-value">₱{{ "%.2f"|format(data.defects.total_cost_loss | default(0)) }}</div>
+      <div class="loss-item-sub">all origins combined</div>
+    </div>
+  </div>
+</div>
+
+{# Supplier recovery #}
+<div class="section-title accent-amber">Supplier Recovery (cost basis)</div>
+<div class="summary-grid summary-grid-3">
+  {% set recovered = data.defects.supplier_recovered | default(0) %}
+  {% set absorbed  = data.defects.supplier_loss      | default(0) %}
+  {% set pending   = data.defects.supplier_pending   | default(0) %}
+  <div class="card card-green">
+    <div class="card-label">Recovered</div>
+    <div class="card-value green">₱{{ "%.2f"|format(recovered) }}</div>
+    <div class="card-sub">money / item returned by supplier</div>
+  </div>
+  <div class="card card-red">
+    <div class="card-label">Absorbed Loss</div>
+    <div class="card-value red">₱{{ "%.2f"|format(absorbed) }}</div>
+    <div class="card-sub">supplier will not cover</div>
+  </div>
+  <div class="card card-amber">
+    <div class="card-label">Pending</div>
+    <div class="card-value amber">₱{{ "%.2f"|format(pending) }}</div>
+    <div class="card-sub">awaiting supplier resolution</div>
+  </div>
+</div>
+
+{# Defects records table #}
+<div class="section-title accent-red">Defect Records</div>
 <table>
   <thead>
     <tr>
       <th>Date (PHT)</th>
       <th>Product</th>
       <th class="right">Qty</th>
-      <th>Origin</th>
+      <th class="center">Origin</th>
       <th>Reason</th>
-      <th>Compensation</th>
-      <th>Status</th>
-      <th>Logged By</th>
+      <th class="right">Sales (₱)</th>
+      <th class="right">Cost (₱)</th>
+      <th class="right">Profit (₱)</th>
+      <th>Cust. Comp.</th>
+      <th>Supp. Comp.</th>
+      <th class="center">Status</th>
+      <th>By</th>
     </tr>
   </thead>
   <tbody>
+    {% set ns = namespace(tot_qty=0, tot_sales=0, tot_cost=0, tot_profit=0) %}
     {% for detail_row, defect, product, user in data.defects.rows %}
+    {% if defect.defect_datetime %}
+    {% set ns.tot_qty    = ns.tot_qty    + detail_row.quantity %}
+    {% set ns.tot_sales  = ns.tot_sales  + (detail_row.subtotal_amount  | default(0) | float) %}
+    {% set ns.tot_cost   = ns.tot_cost   + (detail_row.subtotal_unit    | default(0) | float) %}
+    {% set ns.tot_profit = ns.tot_profit + (detail_row.subtotal_revenue | default(0) | float) %}
     <tr>
-      <td class="muted">
-        {{ defect.defect_datetime | pht("%b %d, %Y") if defect.defect_datetime else '—' }}
+      <td class="muted" style="white-space:nowrap">
+        {{ defect.defect_datetime | pht("%b %d, %Y") }}
       </td>
-      <td class="bold">{{ product.product_name.capitalize() }}</td>
+      <td class="bold" style="font-size:7.5pt">{{ product.product_name.capitalize() }}</td>
       <td class="right mono">{{ detail_row.quantity }}</td>
-      <td>
+      <td class="center">
         {% if detail_row.origin == 'customer' %}
-        <span class="badge badge-rose">Customer</span>
+        <span class="badge badge-rose">Cust.</span>
         {% else %}
-        <span class="badge badge-orange">In-Store</span>
+        <span class="badge badge-orange">Store</span>
         {% endif %}
       </td>
-      <td class="muted">{{ detail_row.reason.replace("_"," ").title() }}</td>
-      <td class="muted">{{ detail_row.customer_compensation.replace("_"," ").title() }}</td>
-      <td>
+      <td class="muted" style="font-size:7.5pt">{{ detail_row.reason.replace('_',' ').title() }}</td>
+      <td class="right red mono">₱{{ "%.2f"|format(detail_row.subtotal_amount  | default(0) | float) }}</td>
+      <td class="right orange mono">₱{{ "%.2f"|format(detail_row.subtotal_unit    | default(0) | float) }}</td>
+      <td class="right red mono">₱{{ "%.2f"|format(detail_row.subtotal_revenue | default(0) | float) }}</td>
+      <td class="muted" style="font-size:7pt">{{ detail_row.customer_compensation.replace('_',' ').title() }}</td>
+      <td class="muted" style="font-size:7pt">{{ detail_row.supplier_compensation.replace('_',' ').title() }}</td>
+      <td class="center">
         {% set st = detail_row.status %}
         <span class="badge {{ 'badge-green' if st=='active' else ('badge-red' if st=='rejected' else 'badge-blue') }}">
           {{ st.title() }}
         </span>
       </td>
-      <td class="muted">{{ (user.first_name ~ ' ' ~ user.last_name).strip().title() }}</td>
+      <td class="muted" style="font-size:7.5pt;white-space:nowrap">
+        {{ user.first_name[0].upper() }}. {{ user.last_name.title() }}
+      </td>
     </tr>
+    {% endif %}
     {% else %}
-    <tr class="no-data"><td colspan="8">No defect records for this period.</td></tr>
+    <tr class="no-data"><td colspan="12">No defect records for this period.</td></tr>
     {% endfor %}
   </tbody>
+  {% if data.defects.rows %}
+  <tfoot>
+    <tr>
+      <td colspan="2">TOTAL</td>
+      <td class="right">{{ ns.tot_qty }}</td>
+      <td colspan="2"></td>
+      <td class="right" style="color:#dc2626">₱{{ "%.2f"|format(ns.tot_sales) }}</td>
+      <td class="right" style="color:#ea580c">₱{{ "%.2f"|format(ns.tot_cost) }}</td>
+      <td class="right" style="color:#dc2626">₱{{ "%.2f"|format(ns.tot_profit) }}</td>
+      <td colspan="4"></td>
+    </tr>
+  </tfoot>
+  {% endif %}
 </table>
 
 {% endif %}{# /defects #}
 
 
 <div class="report-footer">
-  Shekel Business Report &mdash; {{ tab.replace("_"," ").title() }} &mdash; {{ date_from }} to {{ date_to }}
-  &mdash; Generated {{ generated_at }}
+  Shekel Business Report &nbsp;|&nbsp; {{ tab.replace("_"," ").title() }}
+  &nbsp;|&nbsp; {{ date_from }} &ndash; {{ date_to }}
+  &nbsp;|&nbsp; Generated {{ generated_at }}
+  &nbsp;|&nbsp; This document is confidential and intended for authorized personnel only.
 </div>
 
 </body>

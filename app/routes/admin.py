@@ -1265,15 +1265,18 @@ def export_report_pdf():
         mimetype="application/pdf",
     )
 
-
 @admin_bp.route("/reports/export")
 @login_required
 @role_required("superadmin", "admin")
 def export_report():
-    """Download the selected report tab as a formatted Excel workbook."""
+    """Download the selected report tab as a polished, color-coded Excel workbook."""
     import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.styles import (
+        Font, PatternFill, Alignment, Border, Side, GradientFill
+    )
+    from openpyxl.styles.numbers import FORMAT_NUMBER_COMMA_SEPARATED1
     from openpyxl.utils import get_column_letter
+    from openpyxl.formatting.rule import CellIsRule, ColorScaleRule
 
     date_from, date_to, date_from_str, date_to_str = _parse_date_range()
     tab  = request.args.get("tab", "sales")
@@ -1281,190 +1284,539 @@ def export_report():
 
     wb = openpyxl.Workbook()
 
-    # ── Shared style helpers ──────────────────────────────────────────────────
-    def make_header(ws, headers, col_widths):
-        fill = PatternFill("solid", fgColor="1E293B")
-        font = Font(bold=True, color="FFFFFF", size=11)
-        for ci, (h, w) in enumerate(zip(headers, col_widths), 1):
-            cell = ws.cell(row=1, column=ci, value=h)
-            cell.font      = font
-            cell.fill      = fill
-            cell.alignment = Alignment(horizontal="center", vertical="center")
+    # ── Palette ───────────────────────────────────────────────────────────────
+    CLR = {
+        "header_bg":   "1E293B",   # dark slate header
+        "header_fg":   "FFFFFF",
+        "accent":      "6366F1",   # indigo accent
+        "row_alt":     "F8FAFC",
+        "border":      "E2E8F0",
+        "title_bg":    "F1F5F9",
+        "green_bg":    "D1FAE5",   "green_fg":    "065F46",
+        "amber_bg":    "FEF3C7",   "amber_fg":    "92400E",
+        "red_bg":      "FEE2E2",   "red_fg":      "991B1B",
+        "blue_bg":     "DBEAFE",   "blue_fg":     "1E40AF",
+        "orange_bg":   "FFEDD5",   "orange_fg":   "9A3412",
+        "violet_bg":   "EDE9FE",   "violet_fg":   "5B21B6",
+        "rose_bg":     "FFE4E6",   "rose_fg":     "9F1239",
+        "green_num":   "059669",
+        "red_num":     "DC2626",
+        "orange_num":  "EA580C",
+        "amber_num":   "D97706",
+    }
+
+    CURRENCY_FMT = u'₱#,##0.00'
+    INT_FMT      = '#,##0'
+
+    # ── Style helpers ─────────────────────────────────────────────────────────
+    def fill(hex_color):
+        return PatternFill("solid", fgColor=hex_color)
+
+    def border(color="E2E8F0", style="thin"):
+        s = Side(style=style, color=color)
+        return Border(left=s, right=s, top=s, bottom=s)
+
+    def thick_bottom(color="CBD5E1"):
+        b = Side(style="medium", color=color)
+        return Border(bottom=b)
+
+    def font(bold=False, size=10, color="1E293B", italic=False):
+        return Font(bold=bold, size=size, color=color, italic=italic,
+                    name="Calibri")
+
+    def align(h="left", v="center", wrap=False):
+        return Alignment(horizontal=h, vertical=v, wrap_text=wrap)
+
+    def write_title_block(ws, title, subtitle, row=1):
+        """Write a branded title block at the top of a sheet."""
+        ws.merge_cells(f"A{row}:H{row}")
+        c = ws.cell(row=row, column=1, value=title)
+        c.font      = Font(bold=True, size=16, color=CLR["header_bg"], name="Calibri")
+        c.fill      = fill(CLR["title_bg"])
+        c.alignment = align("left", "center")
+        ws.row_dimensions[row].height = 30
+
+        ws.merge_cells(f"A{row+1}:H{row+1}")
+        c2 = ws.cell(row=row+1, column=1, value=subtitle)
+        c2.font      = Font(italic=True, size=9, color="64748B", name="Calibri")
+        c2.fill      = fill(CLR["title_bg"])
+        c2.alignment = align("left", "center")
+        ws.row_dimensions[row+1].height = 16
+        return row + 3   # return next available row (leaves one blank)
+
+    def write_kv_block(ws, pairs, start_row):
+        """Write key-value summary rows with styled labels."""
+        for i, (label, value, fmt) in enumerate(pairs):
+            r = start_row + i
+            lc = ws.cell(row=r, column=1, value=label)
+            lc.font      = font(bold=True, size=9, color="64748B")
+            lc.fill      = fill("F8FAFC")
+            lc.alignment = align("left")
+            lc.border    = border()
+
+            vc = ws.cell(row=r, column=2, value=value)
+            vc.font      = font(bold=True, size=11)
+            vc.fill      = fill("FFFFFF")
+            vc.alignment = align("right")
+            vc.border    = border()
+            if fmt:
+                vc.number_format = fmt
+            ws.row_dimensions[r].height = 18
+        ws.column_dimensions["A"].width = 28
+        ws.column_dimensions["B"].width = 20
+        return start_row + len(pairs) + 1
+
+    def make_table_header(ws, row, headers):
+        """Write a styled table header row. headers = [(label, width, align)]"""
+        for ci, (h, w, ha) in enumerate(headers, 1):
+            c = ws.cell(row=row, column=ci, value=h)
+            c.font      = Font(bold=True, color=CLR["header_fg"], size=9, name="Calibri")
+            c.fill      = fill(CLR["header_bg"])
+            c.alignment = Alignment(horizontal=ha, vertical="center")
+            c.border    = border(CLR["header_bg"])
             ws.column_dimensions[get_column_letter(ci)].width = w
-        ws.row_dimensions[1].height = 22
-        ws.freeze_panes = "A2"
+        ws.row_dimensions[row].height = 22
+        ws.freeze_panes = ws.cell(row=row+1, column=1)
 
-    def write_row(ws, ri, values, wrap_cols=None):
-        alt_fill = PatternFill("solid", fgColor="F8FAFC")
-        thin     = Border(bottom=Side(style="thin", color="E2E8F0"))
+    def write_data_row(ws, row_idx, values, formats=None, colors=None, height=17):
+        """Write one data row. values = list, formats = list of num fmts or None,
+           colors = list of (bg_hex, fg_hex) or None per cell."""
+        alt = row_idx % 2 == 0
         for ci, val in enumerate(values, 1):
-            cell = ws.cell(row=ri, column=ci, value=val)
-            cell.border    = thin
-            cell.alignment = Alignment(vertical="center", wrap_text=(wrap_cols and ci in wrap_cols))
-            if ri % 2 == 0:
-                cell.fill = alt_fill
-        ws.row_dimensions[ri].height = 18
+            c = ws.cell(row=row_idx, column=ci, value=val)
+            c.border    = border()
+            c.alignment = Alignment(vertical="center")
 
-    def add_summary(ws, row, label, value):
-        ws.cell(row=row, column=1, value=label).font = Font(bold=True)
-        ws.cell(row=row, column=2, value=value)
+            # alternating row fill (only if no specific color override)
+            if colors and ci <= len(colors) and colors[ci-1]:
+                bg, fg = colors[ci-1]
+                c.fill = fill(bg)
+                c.font = Font(color=fg, size=9, name="Calibri", bold=True)
+            else:
+                c.fill = fill(CLR["row_alt"]) if alt else fill("FFFFFF")
+                c.font = Font(color="334155", size=9, name="Calibri")
 
-    # ── Sales ─────────────────────────────────────────────────────────────────
+            if formats and ci <= len(formats) and formats[ci-1]:
+                c.number_format = formats[ci-1]
+        ws.row_dimensions[row_idx].height = height
+
+    def write_totals_row(ws, row_idx, values, formats=None):
+        """Write a bold totals / subtotals footer row."""
+        for ci, val in enumerate(values, 1):
+            c = ws.cell(row=row_idx, column=ci, value=val)
+            c.fill      = fill("E2E8F0")
+            c.font      = Font(bold=True, size=9, color=CLR["header_bg"], name="Calibri")
+            c.border    = Border(top=Side(style="medium", color="94A3B8"),
+                                  bottom=Side(style="medium", color="94A3B8"))
+            c.alignment = Alignment(horizontal="right" if ci > 1 else "left",
+                                     vertical="center")
+            if formats and ci <= len(formats) and formats[ci-1]:
+                c.number_format = formats[ci-1]
+        ws.row_dimensions[row_idx].height = 20
+
+    def badge_fill(status_str):
+        """Return (bg, fg) color pair for a status string."""
+        s = status_str.lower()
+        if s in ("active", "ok", "approved"):
+            return CLR["green_bg"], CLR["green_fg"]
+        if s in ("rejected", "out"):
+            return CLR["red_bg"], CLR["red_fg"]
+        if s in ("low",):
+            return CLR["amber_bg"], CLR["amber_fg"]
+        if s in ("submitted", "pending", "partially_approved"):
+            return CLR["blue_bg"], CLR["blue_fg"]
+        return "F1F5F9", "334155"
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # SALES
+    # ═══════════════════════════════════════════════════════════════════════════
     if tab == "sales":
-        ws = wb.active
-        ws.title = "Sales Summary"
         s = data["sales"]
 
-        add_summary(ws, 1, "Period",              f"{date_from_str}  →  {date_to_str}")
-        add_summary(ws, 2, "Total Transactions",  s["total_transactions"])
-        add_summary(ws, 3, "Total Revenue (₱)",   round(s["total_revenue"], 2))
-        add_summary(ws, 4, "Total Cost (₱)",      round(s["total_cost"],    2))
-        add_summary(ws, 5, "Total Profit (₱)",    round(s["total_profit"],   2))
-        add_summary(ws, 6, "Avg Order Value (₱)", round(s["avg_order"],      2))
-        add_summary(ws, 7, "Defect Sales Loss (₱)",  round(s["defect_sales_loss"],  2))
-        add_summary(ws, 8, "Defect Cost Loss (₱)",   round(s["defect_cost_loss"],   2))
-        add_summary(ws, 9, "Defect Profit Loss (₱)", round(s["defect_profit_loss"], 2))
-
-        # Blank row then daily table starting at row 11
-        start = 11
-        ws.cell(row=start, column=1, value="Daily Breakdown").font = Font(bold=True, size=12)
-        start += 1
-        daily_headers    = ["Date", "Transactions", "Revenue (₱)", "Cost (₱)", "Profit (₱)"]
-        daily_col_widths = [18,     16,              18,            16,          16]
-        for ci, (h, w) in enumerate(zip(daily_headers, daily_col_widths), 1):
-            cell = ws.cell(row=start, column=ci, value=h)
-            cell.font      = Font(bold=True, color="FFFFFF")
-            cell.fill      = PatternFill("solid", fgColor="1E293B")
-            cell.alignment = Alignment(horizontal="center")
-            ws.column_dimensions[get_column_letter(ci)].width = w
-        ws.freeze_panes = f"A{start + 1}"
-
-        for ri, row in enumerate(s["daily"], start + 1):
-            write_row(ws, ri, [
-                row["date"],
-                row["transactions"],
-                round(row["total"],  2),
-                round(row["cost"],   2),
-                round(row["profit"], 2),
-            ])
-
-        # Top products on sheet 2
-        ws2 = wb.create_sheet("Top Products")
-        make_header(ws2, ["Product", "Units Sold", "Revenue (₱)"], [36, 14, 16])
-        for ri, row in enumerate(s["top_products"], 2):
-            write_row(ws2, ri, [
-                row["product_name"].capitalize(),
-                int(row["units_sold"]  or 0),
-                round(float(row["revenue"] or 0), 2),
-            ])
- 
-
-    # ── Inventory ─────────────────────────────────────────────────────────────
-    elif tab == "inventory":
+        # ── Sheet 1: Summary ──────────────────────────────────────────────────
         ws = wb.active
-        ws.title = "Inventory"
+        ws.title = "Summary"
+        ws.sheet_view.showGridLines = False
+
+        nxt = write_title_block(ws, "Sales Report", f"Period: {date_from_str}  →  {date_to_str}")
+
+        kv_pairs = [
+            ("Total Transactions",     s["total_transactions"],           INT_FMT),
+            ("Total Revenue (₱)",      float(s["total_revenue"]),         CURRENCY_FMT),
+            ("Total Cost (₱)",         float(s.get("total_cost", 0)),     CURRENCY_FMT),
+            ("Gross Profit (₱)",       float(s.get("total_profit", 0)),   CURRENCY_FMT),
+            ("Avg Order Value (₱)",    float(s["avg_order"]),             CURRENCY_FMT),
+            ("Total Units Sold",       s.get("total_units_sold", 0),      INT_FMT),
+            ("Defect: Sales Loss (₱)", float(s.get("defect_sales_loss",  0)), CURRENCY_FMT),
+            ("Defect: Cost Loss (₱)",  float(s.get("defect_cost_loss",   0)), CURRENCY_FMT),
+            ("Defect: Profit Loss (₱)",float(s.get("defect_profit_loss", 0)), CURRENCY_FMT),
+        ]
+        nxt = write_kv_block(ws, kv_pairs, nxt)
+
+        # Profit margin calculation in a separate highlighted cell
+        rev   = float(s["total_revenue"])
+        prof  = float(s.get("total_profit", 0))
+        margin = (prof / rev * 100) if rev > 0 else 0
+        margin_row = nxt
+        ws.cell(row=margin_row, column=1, value="Gross Margin (%)").font = font(bold=True, size=9, color="64748B")
+        ws.cell(row=margin_row, column=1).fill = fill("F8FAFC")
+        mc = ws.cell(row=margin_row, column=2, value=round(margin, 2))
+        mc.font = Font(bold=True, size=14, color=CLR["green_num"] if margin >= 0 else CLR["red_num"], name="Calibri")
+        mc.number_format = "0.00\"%\""
+        mc.fill = fill("ECFDF5" if margin >= 0 else "FEF2F2")
+        mc.alignment = align("right")
+        ws.row_dimensions[margin_row].height = 26
+
+        # ── Sheet 2: Daily Breakdown ───────────────────────────────────────────
+        ws2 = wb.create_sheet("Daily Breakdown")
+        ws2.sheet_view.showGridLines = False
+
+        write_title_block(ws2, "Daily Sales Breakdown", f"Period: {date_from_str}  →  {date_to_str}")
+
+        hdrs = [
+            ("Date",              16, "left"),
+            ("Transactions",      15, "right"),
+            ("Revenue (₱)",       18, "right"),
+            ("Cost (₱)",          16, "right"),
+            ("Profit (₱)",        16, "right"),
+            ("Margin (%)",        13, "right"),
+        ]
+        make_table_header(ws2, 4, hdrs)
+
+        tot_txn = tot_rev = tot_cost = tot_profit = 0
+        for ri, row in enumerate(s["daily"], 5):
+            rev_r  = float(row.get("total",  0))
+            cost_r = float(row.get("cost",   0))
+            prof_r = float(row.get("profit", 0))
+            mgn    = (prof_r / rev_r * 100) if rev_r > 0 else 0
+            tot_txn    += row["transactions"]
+            tot_rev    += rev_r
+            tot_cost   += cost_r
+            tot_profit += prof_r
+            write_data_row(ws2, ri,
+                [row["date"], row["transactions"], rev_r, cost_r, prof_r, round(mgn, 2)],
+                formats=[None, INT_FMT, CURRENCY_FMT, CURRENCY_FMT, CURRENCY_FMT, '0.00"%"'],
+                colors=[None, None, None,
+                        ("FFEDD5", CLR["orange_num"]),
+                        ("ECFDF5" if prof_r >= 0 else "FEF2F2",
+                         CLR["green_num"] if prof_r >= 0 else CLR["red_num"]),
+                        None])
+        tot_margin = (tot_profit / tot_rev * 100) if tot_rev > 0 else 0
+        write_totals_row(ws2, len(s["daily"]) + 5,
+            ["TOTAL", tot_txn, tot_rev, tot_cost, tot_profit, round(tot_margin, 2)],
+            formats=[None, INT_FMT, CURRENCY_FMT, CURRENCY_FMT, CURRENCY_FMT, '0.00"%"'])
+
+        # ── Sheet 3: Top Products ──────────────────────────────────────────────
+        ws3 = wb.create_sheet("Top Products")
+        ws3.sheet_view.showGridLines = False
+        write_title_block(ws3, "Top Products by Revenue", f"Period: {date_from_str}  →  {date_to_str}")
+
+        make_table_header(ws3, 4, [
+            ("Rank",        8,  "center"),
+            ("Product",     38, "left"),
+            ("Units Sold",  14, "right"),
+            ("Revenue (₱)", 18, "right"),
+        ])
+        for ri, row in enumerate(s["top_products"], 5):
+            rev_val = float(row.get("revenue") or 0)
+            write_data_row(ws3, ri,
+                [ri - 4, row["product_name"].capitalize(),
+                 int(row.get("units_sold") or 0), rev_val],
+                formats=[None, None, INT_FMT, CURRENCY_FMT])
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # INVENTORY
+    # ═══════════════════════════════════════════════════════════════════════════
+    elif tab == "inventory":
         inv = data["inventory"]
 
-        add_summary(ws, 1, "Total Products",  inv["total_products"])
-        add_summary(ws, 2, "Total Units",     inv["total_units"])
-        add_summary(ws, 3, "Low Stock",       inv["low_stock"])
-        add_summary(ws, 4, "Out of Stock",    inv["out_of_stock"])
+        ws = wb.active
+        ws.title = "Inventory"
+        ws.sheet_view.showGridLines = False
+        nxt = write_title_block(ws, "Inventory Report", f"Snapshot as of: {date_to_str}")
 
-        start = 6
-        headers    = ["Product", "Category", "In Stock", "Defective", "Reorder Threshold", "Status", "Last Updated"]
-        col_widths = [36,        20,          12,         12,          18,                  12,       22]
-        for ci, (h, w) in enumerate(zip(headers, col_widths), 1):
-            cell = ws.cell(row=start, column=ci, value=h)
-            cell.font      = Font(bold=True, color="FFFFFF")
-            cell.fill      = PatternFill("solid", fgColor="1E293B")
-            cell.alignment = Alignment(horizontal="center")
-            ws.column_dimensions[get_column_letter(ci)].width = w
-        ws.freeze_panes = f"A{start + 1}"
+        write_kv_block(ws, [
+            ("Total Products",  inv["total_products"], INT_FMT),
+            ("Total Units",     inv["total_units"],    INT_FMT),
+            ("Low Stock Items", inv["low_stock"],      INT_FMT),
+            ("Out of Stock",    inv["out_of_stock"],   INT_FMT),
+        ], nxt)
 
-        for ri, (product, inv_row, category) in enumerate(inv["rows"], start + 1):
-            last_upd = to_pht(inv_row.last_updated).strftime("%b %d, %Y") if inv_row.last_updated else "—"
-            write_row(ws, ri, [
+        # ── Sheet 2: Full product list ─────────────────────────────────────────
+        ws2 = wb.create_sheet("All Products")
+        ws2.sheet_view.showGridLines = False
+        write_title_block(ws2, "Product Inventory Detail", f"Snapshot as of: {date_to_str}")
+
+        hdrs = [
+            ("Product",            36, "left"),
+            ("Category",           20, "left"),
+            ("In Stock",           12, "right"),
+            ("Defective",          12, "right"),
+            ("Reorder Threshold",  18, "right"),
+            ("Status",             12, "center"),
+            ("Product Status",     14, "center"),
+            ("Last Updated",       20, "left"),
+        ]
+        make_table_header(ws2, 4, hdrs)
+
+        for ri, (product, inv_row, category) in enumerate(inv["rows"], 5):
+            qty   = inv_row.quantity_available
+            thresh= product.low_reorder_threshold
+            is_out = qty == 0
+            is_low = not is_out and qty <= thresh
+
+            stock_status = "Out" if is_out else ("Low" if is_low else "OK")
+            sbg, sfg     = badge_fill(stock_status)
+            last_upd     = to_pht(inv_row.last_updated).strftime("%b %d, %Y") if inv_row.last_updated else "—"
+
+            # qty color based on stock level
+            qty_color = None
+            if is_out:
+                qty_color = (CLR["red_bg"], CLR["red_fg"])
+            elif is_low:
+                qty_color = (CLR["amber_bg"], CLR["amber_fg"])
+            else:
+                qty_color = ("ECFDF5", CLR["green_num"])
+
+            write_data_row(ws2, ri, [
                 product.product_name.capitalize(),
                 category.category_name.capitalize() if category else "—",
-                inv_row.quantity_available,
+                qty,
                 inv_row.quantity_defective or 0,
-                product.low_reorder_threshold,
+                thresh,
+                stock_status,
                 product.status.title(),
                 last_upd,
-            ])
+            ],
+            formats=[None, None, INT_FMT, INT_FMT, INT_FMT, None, None, None],
+            colors=[None, None, qty_color, None, None,
+                    (sbg, sfg),
+                    badge_fill(product.status),
+                    None])
 
-    # ── Stock Movement ────────────────────────────────────────────────────────
+        # ── Sheet 3: Action Required ───────────────────────────────────────────
+        ws3 = wb.create_sheet("⚠ Reorder Required")
+        ws3.sheet_view.showGridLines = False
+        write_title_block(ws3, "Reorder Required", f"Out-of-stock & low-stock items — {date_to_str}")
+
+        make_table_header(ws3, 4, [
+            ("Product",             36, "left"),
+            ("Category",            20, "left"),
+            ("In Stock",            12, "right"),
+            ("Reorder Threshold",   18, "right"),
+            ("Units Needed",        14, "right"),
+            ("Status",              12, "center"),
+        ])
+        ri = 5
+        for product, inv_row, category in inv["rows"]:
+            qty   = inv_row.quantity_available
+            thresh = product.low_reorder_threshold
+            is_out = qty == 0
+            is_low = not is_out and qty <= thresh
+            if not is_out and not is_low:
+                continue
+            needed = thresh - qty
+            stock_status = "Out" if is_out else "Low"
+            sbg, sfg = badge_fill(stock_status)
+            write_data_row(ws3, ri, [
+                product.product_name.capitalize(),
+                category.category_name.capitalize() if category else "—",
+                qty,
+                thresh,
+                needed,
+                stock_status,
+            ],
+            formats=[None, None, INT_FMT, INT_FMT, INT_FMT, None],
+            colors=[None, None,
+                    (CLR["red_bg"], CLR["red_fg"]) if is_out else (CLR["amber_bg"], CLR["amber_fg"]),
+                    None,
+                    (CLR["amber_bg"], CLR["amber_fg"]),
+                    (sbg, sfg)])
+            ri += 1
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # STOCK IN
+    # ═══════════════════════════════════════════════════════════════════════════
     elif tab == "stock":
-        ws = wb.active
-        ws.title = "Stock Movement"
         sk = data["stock"]
 
-        add_summary(ws, 1, "Period",         f"{date_from_str}  →  {date_to_str}")
-        add_summary(ws, 2, "Total Entries",  sk["total_entries"])
-        add_summary(ws, 3, "Total Units In", sk["total_units"])
+        ws = wb.active
+        ws.title = "Stock Movement"
+        ws.sheet_view.showGridLines = False
+        nxt = write_title_block(ws, "Stock-In Report", f"Period: {date_from_str}  →  {date_to_str}")
 
-        start = 5
-        headers    = ["Date & Time (PHT)", "Product", "Qty Received", "Received By", "Notes"]
-        col_widths = [22,                  36,         14,             22,             40]
-        for ci, (h, w) in enumerate(zip(headers, col_widths), 1):
-            cell = ws.cell(row=start, column=ci, value=h)
-            cell.font      = Font(bold=True, color="FFFFFF")
-            cell.fill      = PatternFill("solid", fgColor="1E293B")
-            cell.alignment = Alignment(horizontal="center")
-            ws.column_dimensions[get_column_letter(ci)].width = w
-        ws.freeze_panes = f"A{start + 1}"
+        write_kv_block(ws, [
+            ("Period",              f"{date_from_str}  →  {date_to_str}", None),
+            ("Total Entries",       sk["total_entries"],                   INT_FMT),
+            ("Total Units Received",sk["total_units"],                     INT_FMT),
+        ], nxt)
 
-        for ri, (stock_in, product, user) in enumerate(sk["rows"], start + 1):
-            pht_dt = to_pht(stock_in.stockin_datetime).strftime("%b %d, %Y %I:%M %p") if stock_in.stockin_datetime else "—"
+        # ── Sheet 2: Records ───────────────────────────────────────────────────
+        ws2 = wb.create_sheet("Records")
+        ws2.sheet_view.showGridLines = False
+        write_title_block(ws2, "Stock-In Records", f"Period: {date_from_str}  →  {date_to_str}")
+
+        hdrs = [
+            ("Date & Time (PHT)",  22, "left"),
+            ("Product",            36, "left"),
+            ("Qty Received",       14, "right"),
+            ("Received By",        22, "left"),
+            ("Batch ID",           10, "center"),
+            ("Notes",              40, "left"),
+        ]
+        make_table_header(ws2, 4, hdrs)
+
+        total_qty = 0
+        for ri, (stock_in, product, user) in enumerate(sk["rows"], 5):
+            pht_dt = (to_pht(stock_in.stockin_datetime).strftime("%b %d, %Y  %I:%M %p")
+                      if stock_in.stockin_datetime else "—")
             name   = f"{user.first_name} {user.last_name}".strip().title()
-            write_row(ws, ri, [
+            total_qty += stock_in.quantity_received
+            write_data_row(ws2, ri, [
                 pht_dt,
                 product.product_name.capitalize(),
                 stock_in.quantity_received,
                 name,
+                stock_in.batch_id or "—",
                 stock_in.notes or "—",
-            ], wrap_cols={5})
+            ],
+            formats=[None, None, INT_FMT, None, None, None],
+            colors=[None, None, ("ECFDF5", CLR["green_num"]), None, None, None],
+            height=18)
+        write_totals_row(ws2, len(sk["rows"]) + 5,
+            ["TOTAL", "", total_qty, "", "", ""],
+            formats=[None, None, INT_FMT, None, None, None])
 
-    # ── Defects ───────────────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════════════════
+    # DEFECTS
+    # ═══════════════════════════════════════════════════════════════════════════
     elif tab == "defects":
-        ws = wb.active
-        ws.title = "Defects"
         df = data["defects"]
 
-        add_summary(ws, 1,  "Period",              f"{date_from_str}  →  {date_to_str}")
-        add_summary(ws, 2,  "Total Records",       df["total"])
-        add_summary(ws, 3,  "Total Units",         df["total_units"])
-        add_summary(ws, 4,  "Customer Origin",     df["customer_origin"])
-        add_summary(ws, 5,  "In-Store Origin",     df["store_origin"])
-        add_summary(ws, 6,  "Sales Loss (₱)",      round(df["total_sales_loss"],  2))
-        add_summary(ws, 7,  "Cost Loss (₱)",       round(df["total_cost_loss"],   2))
-        add_summary(ws, 8,  "Profit Loss (₱)",     round(df["total_profit_loss"], 2))
-        add_summary(ws, 9,  "Supplier Loss (₱)",   round(df["supplier_loss"],     2))
+        # ── Sheet 1: Summary ──────────────────────────────────────────────────
+        ws = wb.active
+        ws.title = "Summary"
+        ws.sheet_view.showGridLines = False
+        nxt = write_title_block(ws, "Defects Report", f"Period: {date_from_str}  →  {date_to_str}")
 
-        start = 11
-        headers    = ["Date (PHT)", "Product", "Qty", "Origin", "Reason", "Cust. Compensation", "Status", "Logged By"]
-        col_widths = [22,           30,         8,     12,       22,       22,                   12,       22]
-        for ci, (h, w) in enumerate(zip(headers, col_widths), 1):
-            cell = ws.cell(row=start, column=ci, value=h)
-            cell.font      = Font(bold=True, color="FFFFFF")
-            cell.fill      = PatternFill("solid", fgColor="1E293B")
-            cell.alignment = Alignment(horizontal="center")
-            ws.column_dimensions[get_column_letter(ci)].width = w
-        ws.freeze_panes = f"A{start + 1}"
+        write_kv_block(ws, [
+            ("Period",                  f"{date_from_str}  →  {date_to_str}", None),
+            ("Total Defect Records",    df["total"],                           INT_FMT),
+            ("Total Units Defective",   df["total_units"],                     INT_FMT),
+            ("Customer Origin",         df["customer_origin"],                 INT_FMT),
+            ("In-Store Origin",         df["store_origin"],                    INT_FMT),
+            ("",                        "",                                    None),
+            ("Sales Loss (₱)",          float(df.get("total_sales_loss",  0)), CURRENCY_FMT),
+            ("Profit Loss (₱)",         float(df.get("total_profit_loss", 0)), CURRENCY_FMT),
+            ("Cost Loss (₱)",           float(df.get("total_cost_loss",   0)), CURRENCY_FMT),
+            ("",                        "",                                    None),
+            ("Supplier Recovered (₱)",  float(df.get("supplier_recovered",0)), CURRENCY_FMT),
+            ("Supplier Absorbed (₱)",   float(df.get("supplier_loss",     0)), CURRENCY_FMT),
+            ("Supplier Pending (₱)",    float(df.get("supplier_pending",  0)), CURRENCY_FMT),
+        ], nxt)
 
-        for ri, (detail, defect, product, user) in enumerate(df["rows"], start + 1):
-            pht_dt = to_pht(defect.defect_datetime).strftime("%b %d, %Y %I:%M %p") if defect.defect_datetime else "—"
-            name   = f"{user.first_name} {user.last_name}".strip().title()
-            write_row(ws, ri, [
+        # ── Sheet 2: Records ───────────────────────────────────────────────────
+        ws2 = wb.create_sheet("Records")
+        ws2.sheet_view.showGridLines = False
+        write_title_block(ws2, "Defect Records", f"Period: {date_from_str}  →  {date_to_str}")
+
+        hdrs = [
+            ("Date (PHT)",          20, "left"),
+            ("Product",             30, "left"),
+            ("Qty",                  8, "right"),
+            ("Origin",              12, "center"),
+            ("Reason",              20, "left"),
+            ("Sales Loss (₱)",      16, "right"),
+            ("Cost Loss (₱)",       16, "right"),
+            ("Profit Loss (₱)",     16, "right"),
+            ("Cust. Compensation",  22, "left"),
+            ("Supp. Compensation",  22, "left"),
+            ("Status",              12, "center"),
+            ("Logged By",           22, "left"),
+        ]
+        make_table_header(ws2, 4, hdrs)
+
+        tot_qty = tot_sales = tot_cost = tot_profit = 0
+        for ri, (detail, defect, product, user) in enumerate(df["rows"], 5):
+            pht_dt  = (to_pht(defect.defect_datetime).strftime("%b %d, %Y")
+                       if defect.defect_datetime else "—")
+            name    = f"{user.first_name} {user.last_name}".strip().title()
+            sales_v = float(detail.subtotal_amount  or 0)
+            cost_v  = float(detail.subtotal_unit    or 0)
+            prof_v  = float(detail.subtotal_revenue or 0)
+            tot_qty    += detail.quantity
+            tot_sales  += sales_v
+            tot_cost   += cost_v
+            tot_profit += prof_v
+
+            origin_color = (CLR["rose_bg"],   CLR["rose_fg"])   if detail.origin == "customer" \
+                      else (CLR["orange_bg"], CLR["orange_fg"])
+            sbg, sfg = badge_fill(detail.status)
+
+            write_data_row(ws2, ri, [
                 pht_dt,
                 product.product_name.capitalize(),
                 detail.quantity,
                 "Customer" if detail.origin == "customer" else "In-Store",
                 detail.reason.replace("_", " ").title(),
+                sales_v,
+                cost_v,
+                prof_v,
                 detail.customer_compensation.replace("_", " ").title(),
+                detail.supplier_compensation.replace("_", " ").title(),
                 detail.status.title(),
                 name,
-            ])
+            ],
+            formats=[None, None, INT_FMT, None, None,
+                     CURRENCY_FMT, CURRENCY_FMT, CURRENCY_FMT,
+                     None, None, None, None],
+            colors=[None, None, None,
+                    origin_color,
+                    None,
+                    (CLR["red_bg"],   CLR["red_fg"]),
+                    ("FFEDD5",        CLR["orange_num"]),
+                    (CLR["red_bg"],   CLR["red_fg"]),
+                    None, None,
+                    (sbg, sfg),
+                    None])
+
+        write_totals_row(ws2, len(df["rows"]) + 5,
+            ["TOTAL", "", tot_qty, "", "", tot_sales, tot_cost, tot_profit, "", "", "", ""],
+            formats=[None, None, INT_FMT, None, None,
+                     CURRENCY_FMT, CURRENCY_FMT, CURRENCY_FMT,
+                     None, None, None, None])
+
+        # ── Sheet 3: By Product ────────────────────────────────────────────────
+        # Aggregate defect totals per product from rows
+        from collections import defaultdict
+        by_product = defaultdict(lambda: {"qty": 0, "sales": 0.0, "cost": 0.0, "profit": 0.0})
+        for detail, defect, product, user in df["rows"]:
+            key = product.product_name.capitalize()
+            by_product[key]["qty"]    += detail.quantity
+            by_product[key]["sales"]  += float(detail.subtotal_amount  or 0)
+            by_product[key]["cost"]   += float(detail.subtotal_unit    or 0)
+            by_product[key]["profit"] += float(detail.subtotal_revenue or 0)
+        sorted_products = sorted(by_product.items(), key=lambda x: x[1]["qty"], reverse=True)
+
+        ws3 = wb.create_sheet("By Product")
+        ws3.sheet_view.showGridLines = False
+        write_title_block(ws3, "Defects by Product", f"Period: {date_from_str}  →  {date_to_str}")
+
+        make_table_header(ws3, 4, [
+            ("Product",         36, "left"),
+            ("Total Qty",       12, "right"),
+            ("Sales Loss (₱)",  16, "right"),
+            ("Cost Loss (₱)",   16, "right"),
+            ("Profit Loss (₱)", 16, "right"),
+        ])
+        for ri, (pname, vals) in enumerate(sorted_products, 5):
+            write_data_row(ws3, ri,
+                [pname, vals["qty"], vals["sales"], vals["cost"], vals["profit"]],
+                formats=[None, INT_FMT, CURRENCY_FMT, CURRENCY_FMT, CURRENCY_FMT],
+                colors=[None, None,
+                        (CLR["red_bg"], CLR["red_fg"]),
+                        ("FFEDD5", CLR["orange_num"]),
+                        (CLR["red_bg"], CLR["red_fg"])])
 
     else:
         wb.active.title = "No Data"
@@ -1480,8 +1832,6 @@ def export_report():
         download_name=filename,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # SALES HISTORY  (admin / superadmin)
 # ═══════════════════════════════════════════════════════════════════════════════
