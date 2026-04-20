@@ -13,6 +13,9 @@ class Sale(BaseModel):
     total_amount        = db.Column(db.Numeric(10, 2), nullable=False)
     payment_method      = db.Column(db.String(50), nullable=True)
 
+    tendered_amount     = db.Column(db.Numeric(10, 2), nullable=True)   
+    change_amount       = db.Column(db.Numeric(10, 2), nullable=True)   
+
     # ── Relationships ──────────────────────────────────────────────────────────
     user         = db.relationship("User",       back_populates="sales")
     sale_details = db.relationship("SaleDetail", back_populates="sale")

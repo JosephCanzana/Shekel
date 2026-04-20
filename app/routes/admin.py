@@ -1624,6 +1624,8 @@ def sale_detail(transaction_id):
         "total_amount":        float(sale.total_amount),
         "total_cost_price":    float(sale.total_cost_price),
         "total_revenue_price": float(sale.total_revenue_price),
+        "tendered_amount":     float(sale.tendered_amount) if sale.tendered_amount is not None else None,
+        "change_amount":       float(sale.change_amount)   if sale.change_amount   is not None else None,
         "payment_method":      sale.payment_method or "cash",
         "cashier": {
             "name": f"{u.first_name} {u.last_name}".strip().title() if u else "—",

@@ -178,6 +178,8 @@ def charge():
         total_revenue_price = round(total_revenue, 2),
         total_amount        = round(total_amount,  2),
         payment_method      = "cash",
+        tendered_amount     = round(tendered, 2),   # ← new
+        change_amount       = round(change,   2),   # ← new
     )
     db.session.add(sale)
     db.session.flush()  # get sale.transaction_id before inserting details
@@ -373,8 +375,10 @@ def sale_detail(transaction_id):
         "total_amount":        float(sale.total_amount),
         "total_cost_price":    float(sale.total_cost_price),
         "total_revenue_price": float(sale.total_revenue_price),
+        "tendered_amount":     float(sale.tendered_amount) if sale.tendered_amount is not None else None,
+        "change_amount":       float(sale.change_amount)   if sale.change_amount   is not None else None,
         "payment_method":      sale.payment_method or "cash",
-        "has_override":        any(d["override_used"] for d in details),  # ← top-level flag
+        "has_override":        any(d["override_used"] for d in details),
         "cashier": {
             "name": f"{u.first_name} {u.last_name}".strip().title() if u else "—",
             "role": u.role.title() if u else "—",

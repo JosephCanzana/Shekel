@@ -548,6 +548,30 @@
           </div>
         </div>
 
+        {# ── PATCHED: Tendered / Change row ── #}
+        <template x-if="detail && detail.tendered_amount != null">
+          <div class="grid grid-cols-2 gap-2">
+            <div class="rounded-xl px-4 py-3 flex items-center justify-between gap-2"
+                 style="background-color:var(--color-surface-alt);border:1px solid var(--color-border);">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]" style="color:var(--color-txt-muted);">payments</span>
+                <p class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Tendered</p>
+              </div>
+              <p class="text-sm font-bold tabular-nums" style="color:var(--color-txt-primary);"
+                 x-text="fmt(detail.tendered_amount)"></p>
+            </div>
+            <div class="rounded-xl px-4 py-3 flex items-center justify-between gap-2"
+                 style="background-color:var(--color-surface-alt);border:1px solid var(--color-border);">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]" style="color:var(--color-txt-muted);">currency_exchange</span>
+                <p class="text-xs font-semibold uppercase tracking-wide" style="color:var(--color-txt-muted);">Change</p>
+              </div>
+              <p class="text-sm font-bold tabular-nums" style="color:var(--color-success);"
+                 x-text="fmt(detail.change_amount)"></p>
+            </div>
+          </div>
+        </template>
+
         {# Items #}
         <div class="rounded-xl overflow-hidden" style="border:1px solid var(--color-border);">
           <div class="px-4 py-2.5 flex items-center justify-between"
@@ -693,14 +717,14 @@ function salesHistory() {
         datetime:       this.detail.sale_datetime,
         cashier:        this.detail.cashier.name,
         total:          this.detail.total_amount,
-        tendered:       this.detail.total_amount,
-        change:         0,
+        tendered:       this.detail.tendered_amount ?? this.detail.total_amount,
+        change:         this.detail.change_amount   ?? 0,
         payment_method: this.detail.payment_method ?? 'cash',
         warnings:       [],
-       items: this.detail.items.map(item => ({
+        items: this.detail.items.map(item => ({
           product_name:  item.product_name,
-          qty:           item.quantity,       // detail API → agent key
-          total_price:   item.price,          // detail API → agent key
+          qty:           item.quantity,
+          total_price:   item.price,
           subtotal:      item.subtotal,
           override_used: item.override_used ?? false,
         })),
