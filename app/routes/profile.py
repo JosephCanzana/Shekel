@@ -205,7 +205,8 @@ def resend_verification():
         recovery.verify_token_expiry = expiry
         db.session.commit()
 
-        verify_url = url_for('profile.verify_recovery_email', token=token, _external=True)
+        base_url  = current_app.config["APP_BASE_URL"]
+        reset_url = f"{base_url}/reset-password/{token}"
         msg        = Message(
             "Verify your recovery email — Shekel",
             sender=os.getenv("MAIL_USERNAME"),
