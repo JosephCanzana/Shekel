@@ -21,13 +21,13 @@ ALL_COLUMNS = [
     {"key": "low_stock_threshold", "label": "Low Stock Threshold",  "group": "Inventory"},
     {"key": "last_updated",        "label": "Last Updated",         "group": "Inventory"},
     {"key": "unit_cost",           "label": "Unit Cost",            "group": "Pricing"},
-    {"key": "unit_revenue",        "label": "Unit Revenue",         "group": "Pricing"},
+    {"key": "unit_revenue",        "label": "Unit Profit",         "group": "Pricing"},
     {"key": "unit_price",          "label": "Unit Price",           "group": "Pricing"},
     {"key": "bundle_cost",         "label": "Bundle Cost",          "group": "Pricing"},
-    {"key": "bundle_revenue",      "label": "Bundle Revenue",       "group": "Pricing"},
+    {"key": "bundle_revenue",      "label": "Bundle Profit",       "group": "Pricing"},
     {"key": "bundle_price",        "label": "Bundle Price",         "group": "Pricing"},
     {"key": "stock_cost_value",    "label": "Stock Cost Value",     "group": "Value"},
-    {"key": "stock_revenue_value", "label": "Stock Revenue Value",  "group": "Value"},
+    {"key": "stock_revenue_value", "label": "Stock Profit Value",  "group": "Value"},
     {"key": "stock_total_value",   "label": "Stock Total Value",    "group": "Value"},
 ]
 
