@@ -7,6 +7,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # Session lifetime
+    SESSION_COOKIE_NAME = os.getenv("SESSION_COOKIE_NAME", "session")
     PERMANENT_SESSION_LIFETIME = timedelta(hours=2)
     SESSION_REFRESH_EACH_REQUEST = True
     WTF_CSRF_TIME_LIMIT = 7200
