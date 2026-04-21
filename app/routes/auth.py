@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from flask import Blueprint, render_template, redirect, request, url_for, flash
+from flask import Blueprint, render_template, redirect, request, url_for, flash, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_mail import Message
 from sqlalchemy import func
@@ -184,7 +184,8 @@ def forgot_password():
             recovery.token_expiry = get_token_expiry()
             db.session.commit()
 
-            reset_url = url_for('auth.reset_password', token=token, _external=True)
+            base_url  = current_app.config["APP_BASE_URL"]
+            reset_url = f"{base_url}/reset-password/{token}"
             msg       = Message("Password Reset — Shekel", recipients=[email])
             msg.body  = (
                 f"Hello,\n\nClick the link to reset your password "
