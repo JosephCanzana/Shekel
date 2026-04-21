@@ -5,10 +5,10 @@ services:
     container_name: shekel_db_demo
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DEMO_MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DEMO_MYSQL_DATABASE}
-      MYSQL_USER: ${DEMO_MYSQL_USER}
-      MYSQL_PASSWORD: ${DEMO_MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
       - db_demo_data:/var/lib/mysql
       - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
