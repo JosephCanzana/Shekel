@@ -1,4 +1,5 @@
 .env.prod
+.env.demo
 .env
 venv
 __pycache__
