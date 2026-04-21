@@ -37,7 +37,7 @@ services:
         condition: service_healthy
     networks:
       - demo-internal
-      - nginx-shared    
+      - nginx-shared
 
 volumes:
   db_demo_data:
@@ -47,4 +47,4 @@ networks:
     driver: bridge
   nginx-shared:
     external: true
-    name: shekel_default 
+    name: shekel_default
