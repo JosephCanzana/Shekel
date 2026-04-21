@@ -93,6 +93,12 @@ def create_app(test_config=None):
     from app.utils.navbar_notifications import register_context_processor
     register_context_processor(app)
 
+    from app.routes.maintenance import maintenance_bp
+    from app.middleware import register_maintenance_middleware
+
+    app.register_blueprint(maintenance_bp)
+    register_maintenance_middleware(app)
+
     @app.route("/test")
     def test():
         return render_template("test.html")

@@ -162,6 +162,52 @@
             </div>
         </a>
 
+        {# ── Card: Maintenance Control ── #}
+        <a href="{{ url_for('superadmin.maintenance_control') }}"
+           class="rounded-2xl p-5 flex flex-col gap-4 transition group cursor-pointer"
+           style="background-color: var(--color-surface); border: 1px solid var(--color-border);"
+           onmouseover="this.style.borderColor='var(--color-accent)'"
+           onmouseout="this.style.borderColor='var(--color-border)'">
+
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                     style="background: color-mix(in srgb, var(--color-error) 12%, transparent);">
+                    <span class="material-symbols-outlined text-[20px]"
+                          style="color: var(--color-error);">construction</span>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold"
+                       style="color: var(--color-txt-primary);">Maintenance Control</p>
+                    <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+                        Schedule or activate system maintenance with a countdown warning for all users.
+                    </p>
+                </div>
+                <span class="material-symbols-outlined text-[18px] mt-0.5 transition-transform
+                             group-hover:translate-x-1"
+                      style="color: var(--color-txt-muted);">arrow_forward</span>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                      style="background: color-mix(in srgb, var(--color-error) 10%, transparent);
+                             color: var(--color-error);">Superadmin only</span>
+                {% set m = maintenance_state %}
+                {% if m.is_active %}
+                <span class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                      style="background: color-mix(in srgb, var(--color-error) 15%, transparent);
+                             color: var(--color-error);">● Active</span>
+                {% elif m.scheduled_start %}
+                <span class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                      style="background: color-mix(in srgb, var(--color-warning, #f59e0b) 15%, transparent);
+                             color: #f59e0b;">● Scheduled</span>
+                {% else %}
+                <span class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                      style="background: color-mix(in srgb, var(--color-success) 10%, transparent);
+                             color: var(--color-success);">● Online</span>
+                {% endif %}
+            </div>
+        </a>
+
         {# ── Placeholder card for future settings ── #}
         {# just remove x-cloak and add content when ready
         <div class="rounded-2xl p-5 flex flex-col gap-4 opacity-40 cursor-not-allowed"

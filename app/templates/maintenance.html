@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Under Maintenance — Shekel</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    @font-face {
+      font-family: 'Main';
+      src: url('/static/fonts/Geist-VariableFont_wght.ttf') format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+
+    /* ── Theme tokens ── */
+    :root {
+      --color-primary:       #2A2A2E;
+      --color-primary-hover: #1C1C20;
+      --color-primary-soft:  #F5F5F7;
+      --color-bg:            #FAFAFB;
+      --color-surface:       #FFFFFF;
+      --color-surface-alt:   #F3F4F6;
+      --color-txt-primary:   #1F1F23;
+      --color-txt-secondary: #5A5A61;
+      --color-txt-muted:     #9A9AA1;
+      --color-border:        #E7E7EA;
+      --color-border-strong: #D6D6DB;
+      --color-success:       #16A34A;
+      --color-error:         #DC2626;
+      --color-warning:       #D97706;
+      --color-info:          #2563EB;
+      --color-accent:        #3B82F6;
+      --color-accent-hover:  #2563EB;
+      --color-accent-soft:   #EFF6FF;
+      --font-main:           'Main', sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-primary:       #FFFFFF;
+        --color-primary-hover: #E5E7EB;
+        --color-primary-soft:  #1F1F23;
+        --color-bg:            #0F0F11;
+        --color-surface:       #18181B;
+        --color-surface-alt:   #202024;
+        --color-txt-primary:   #F4F4F5;
+        --color-txt-secondary: #B4B4BB;
+        --color-txt-muted:     #71717A;
+        --color-border:        #2A2A2E;
+        --color-border-strong: #3A3A3F;
+        --color-success:       #22C55E;
+        --color-error:         #F87171;
+        --color-warning:       #FBBF24;
+        --color-info:          #60A5FA;
+        --color-accent:        #60A5FA;
+        --color-accent-hover:  #93C5FD;
+        --color-accent-soft:   #1E293B;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background-color: var(--color-bg);
+      color: var(--color-txt-primary);
+      font-family: var(--font-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: background-color .3s, color .3s;
+    }
+
+    /* ── Subtle background texture ── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(var(--color-border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: .45;
+      mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 100%);
+    }
+
+    /* ── Accent glow ── */
+    .glow {
+      position: fixed;
+      width: 480px; height: 320px;
+      border-radius: 50%;
+      background: var(--color-accent);
+      filter: blur(140px);
+      opacity: .06;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -60%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── Content card ── */
+    .card {
+      position: relative; z-index: 10;
+      width: 100%; max-width: 460px;
+      margin: 1.5rem;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 20px;
+      padding: 2.5rem 2rem 2rem;
+      text-align: center;
+      box-shadow:
+        0 1px 2px rgba(0,0,0,.04),
+        0 8px 24px rgba(0,0,0,.05),
+        0 32px 56px rgba(0,0,0,.04);
+      animation: cardIn .55s cubic-bezier(.22,1,.36,1) both;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(18px) scale(.98); }
+      to   { opacity: 1; transform: translateY(0)   scale(1); }
+    }
+
+    /* ── Icon badge ── */
+    .icon-badge {
+      width: 56px; height: 56px;
+      border-radius: 16px;
+      background: var(--color-accent-soft);
+      border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-bottom: 1.5rem;
+      animation: badgePop .6s .1s cubic-bezier(.34,1.56,.64,1) both;
+    }
+
+    @keyframes badgePop {
+      from { opacity: 0; transform: scale(.7); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* ── Wordmark ── */
+    .wordmark {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--color-txt-muted);
+      margin-bottom: .6rem;
+    }
+    .wordmark-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--color-accent);
+      opacity: .7;
+    }
+
+    h1 {
+      font-size: 22px; font-weight: 700;
+      letter-spacing: -.025em;
+      color: var(--color-txt-primary);
+      margin-bottom: .5rem;
+      animation: fadeUp .5s .15s ease both;
+    }
+
+    .subtitle {
+      font-size: 13.5px; line-height: 1.75;
+      color: var(--color-txt-secondary);
+      max-width: 300px;
+      margin: 0 auto 1.75rem;
+      animation: fadeUp .5s .2s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Status pill ── */
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-warning) 22%, transparent);
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 11.5px; font-weight: 600;
+      color: var(--color-warning);
+      margin-bottom: 1.75rem;
+      letter-spacing: .02em;
+      animation: fadeUp .5s .25s ease both;
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--color-warning);
+      animation: blink 1.6s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .25; }
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: var(--color-border);
+      margin: 1.5rem 0;
+      animation: fadeUp .5s .3s ease both;
+    }
+
+    /* ── Countdown section ── */
+    .countdown-label {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--color-txt-muted);
+      margin-bottom: .875rem;
+    }
+
+    .tiles {
+      display: flex; gap: 8px; justify-content: center;
+      animation: fadeUp .5s .35s ease both;
+    }
+
+    .tile {
+      flex: 1;
+      background: var(--color-surface-alt);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      padding: 14px 8px 10px;
+    }
+
+    .tile-num {
+      font-size: 30px; font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--color-txt-primary);
+      line-height: 1; letter-spacing: -.02em;
+    }
+
+    .tile-label {
+      font-size: 9px; font-weight: 600;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--color-txt-muted);
+      margin-top: 5px;
+    }
+
+    /* ── Expired / loading dots ── */
+    .dots {
+      display: flex; gap: 5px; justify-content: center; align-items: center;
+      padding: 12px 0;
+      animation: fadeUp .4s ease both;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--color-accent);
+      animation: dotBounce 1.3s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: .15s; }
+    .dot:nth-child(3) { animation-delay: .3s; }
+
+    @keyframes dotBounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: .3; }
+      40%           { transform: translateY(-5px); opacity: 1; }
+    }
+
+    /* ── Tip rotator ── */
+    .tip-wrap {
+      min-height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeUp .5s .4s ease both;
+    }
+
+    .tip-text {
+      font-size: 12.5px; line-height: 1.65;
+      color: var(--color-txt-muted);
+      transition: opacity .35s ease, transform .35s ease;
+    }
+    .tip-text.hidden {
+      opacity: 0; transform: translateY(4px);
+    }
+
+    /* ── Footer note ── */
+    .footer-note {
+      font-size: 11px; color: var(--color-txt-muted);
+      margin-top: .25rem;
+      animation: fadeUp .5s .45s ease both;
+    }
+    .footer-note a {
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .footer-note a:hover { text-decoration: underline; }
+
+    /* ── Progress bar ── */
+    .progress-bar {
+      height: 2px;
+      background: var(--color-border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+      animation: fadeUp .5s .3s ease both;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-accent), var(--color-accent-hover));
+      border-radius: 99px;
+      transition: width .9s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="glow"></div>
+
+  <div class="card" x-data="maintenancePage()">
+
+    <!-- Icon -->
+    <div>
+      <div class="icon-badge">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+             stroke="var(--color-accent)" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l-2.496-2.496a3.75 3.75 0 015.294-5.294l2.496 2.496M11.42 15.17L6.75 19.84a2.652 2.652 0 01-3.75-3.75l4.67-4.67"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Wordmark -->
+    <div class="wordmark">
+      <span class="wordmark-dot"></span>
+      Shekel
+    </div>
+
+    <!-- Heading -->
+    <h1>We'll be right back</h1>
+    <p class="subtitle">{{ state.message }}</p>
+
+    <!-- Status pill -->
+    <div>
+      <span class="status-pill">
+        <span class="status-dot"></span>
+        Maintenance in progress
+      </span>
+    </div>
+
+    <!-- Countdown -->
+    {% if state.show_countdown and state.seconds_until_end is not none %}
+    <div x-data="restorationCountdown({{ state.seconds_until_end }}, {{ 'true' if state.auto_end else 'false' }})">
+
+      <!-- Progress bar -->
+      <div class="progress-bar" x-show="!expired">
+        <div class="progress-fill" :style="'width:' + progressPct + '%'"></div>
+      </div>
+
+      <p class="countdown-label" x-text="expired ? 'Restoring…' : 'Estimated restoration in'"></p>
+
+      <!-- Tiles -->
+      <div class="tiles" x-show="!expired">
+        <div class="tile">
+          <div class="tile-num" x-text="hh"></div>
+          <div class="tile-label">Hours</div>
+        </div>
+        <div class="tile">
+          <div class="tile-num" x-text="mm"></div>
+          <div class="tile-label">Minutes</div>
+        </div>
+        <div class="tile">
+          <div class="tile-num" x-text="ss"></div>
+          <div class="tile-label">Seconds</div>
+        </div>
+      </div>
+
+      <!-- Expired -->
+      <div x-show="expired" x-transition.duration.400ms>
+        <div class="dots">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+        <p style="font-size:13px; color:var(--color-txt-secondary);">The system will be back shortly.</p>
+      </div>
+
+    </div>
+    {% endif %}
+
+    <div class="divider"></div>
+
+    <!-- Rotating tip -->
+    <div class="tip-wrap">
+      <p class="tip-text" :class="{ hidden: tipHidden }" x-text="currentTip"></p>
+    </div>
+
+    <!-- Footer -->
+    <p class="footer-note" style="margin-top:.875rem;">
+      For urgent concerns, contact your <a href="mailto:admin@shekel.app">system administrator</a>.
+    </p>
+
+  </div>
+
+  <script>
+    function restorationCountdown(seconds, autoEnd) {
+      return {
+        total: seconds,
+        initial: seconds,
+        expired: false,
+        get hh() { return String(Math.floor(this.total / 3600)).padStart(2,'0') },
+        get mm() { return String(Math.floor((this.total % 3600) / 60)).padStart(2,'0') },
+        get ss() { return String(this.total % 60).padStart(2,'0') },
+        get progressPct() {
+          if (this.initial === 0) return 0
+          return Math.round(((this.initial - this.total) / this.initial) * 100)
+        },
+        init() {
+          const iv = setInterval(() => {
+            if (this.total > 0) {
+              this.total--
+            } else {
+              clearInterval(iv)
+              this.expired = true
+              if (autoEnd) this.pollUntilOnline()
+            }
+          }, 1000)
+        },
+        async pollUntilOnline() {
+          const check = setInterval(async () => {
+            try {
+              const res  = await fetch('/api/maintenance-status')
+              const data = await res.json()
+              if (!data.is_active) {
+                clearInterval(check)
+                window.location.href = '/'
+              }
+            } catch(e) {}
+          }, 3000)
+        }
+      }
+    }
+
+    function maintenancePage() {
+      return {
+        currentTip: '',
+        tipHidden: false,
+        tipIndex: 0,
+        tips: [
+          'Our team is working to restore the system as quickly as possible.',
+          'Regular maintenance keeps your data safe and the app running smoothly.',
+          'Thank you for your patience — we\'ll be back shortly.',
+          'This is a great time for a quick break. ☕',
+          'Updates often bring performance improvements and security patches.',
+          'Shekel is getting a tune-up. Almost there!',
+        ],
+        init() {
+          this.currentTip = this.tips[0]
+          setInterval(() => {
+            this.tipHidden = true
+            setTimeout(() => {
+              this.tipIndex = (this.tipIndex + 1) % this.tips.length
+              this.currentTip = this.tips[this.tipIndex]
+              this.tipHidden = false
+            }, 380)
+          }, 5000)
+        }
+      }
+    }
+  </script>
+</body>
+</html>

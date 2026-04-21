@@ -7,6 +7,7 @@ from app.models.app_settings import AppSettings
 from app.extensions import db
 from app.utils.helpers import validate_password
 from app.utils.audit import audit
+from app.utils.maintenance_helpers import get_maintenance_state
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -61,7 +62,8 @@ def get_role_setting(role, page="inventory"):
 def index():
     app_settings = AppSettings.get()
     return render_template("settings/index.html",
-                           default_password=app_settings.default_password)
+                           default_password=app_settings.default_password,
+                           maintenance_state=get_maintenance_state())
 
 
 # ── Columns page ──────────────────────────────────────────────────────────────

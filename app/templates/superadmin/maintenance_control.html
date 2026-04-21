@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% block title %}Maintenance Control — Shekel{% endblock %}
+{% block nav_title %}Maintenance Control{% endblock %}
+
+{% block body %}
+<div class="space-y-5" x-data="maintenanceControl()">
+
+  {# ── Header ── #}
+  <div>
+    <h1 class="text-xl font-bold tracking-tight" style="color: var(--color-txt-primary);">
+      Maintenance Control
+    </h1>
+    <p class="text-sm mt-0.5" style="color: var(--color-txt-muted);">
+      Schedule or activate system-wide maintenance with a countdown warning for all users.
+    </p>
+  </div>
+
+  {# ── Status bar ── #}
+  <div class="flex items-center gap-3 px-4 py-3 rounded-xl"
+       style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+    {% if state.is_active %}
+      <span class="w-2 h-2 rounded-full shrink-0 animate-pulse"
+            style="background-color: var(--color-error);"></span>
+      <span class="text-sm font-semibold" style="color: var(--color-error);">Maintenance Active</span>
+      <span class="text-sm ml-auto" style="color: var(--color-txt-muted);">
+        System is currently unavailable to all non-superadmin users.
+      </span>
+    {% elif state.scheduled_start %}
+      <span class="w-2 h-2 rounded-full shrink-0 animate-pulse"
+            style="background-color: var(--color-warning);"></span>
+      <span class="text-sm font-semibold" style="color: var(--color-warning);">Scheduled</span>
+      <span class="text-sm ml-auto" style="color: var(--color-txt-muted);">
+        Users will be warned via a banner countdown before the system goes offline.
+      </span>
+    {% else %}
+      <span class="w-2 h-2 rounded-full shrink-0"
+            style="background-color: var(--color-success);"></span>
+      <span class="text-sm font-semibold" style="color: var(--color-success);">System Online</span>
+      <span class="text-sm ml-auto" style="color: var(--color-txt-muted);">
+        All users have normal access.
+      </span>
+    {% endif %}
+  </div>
+
+  {# ── SCHEDULED (not yet active): countdown + cancel ── #}
+  {% if state.seconds_until_start is not none and not state.is_active %}
+  <div class="rounded-2xl p-5 space-y-4"
+       style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+    <div class="flex items-start gap-3">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+           style="background: color-mix(in srgb, var(--color-warning) 12%, transparent);">
+        <span class="material-symbols-outlined text-[20px]"
+              style="color: var(--color-warning);">schedule</span>
+      </div>
+      <div>
+        <p class="text-sm font-semibold" style="color: var(--color-txt-primary);">
+          Maintenance scheduled
+        </p>
+        <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+          A warning banner is being shown to all users. The system will go offline when the timer hits zero.
+        </p>
+      </div>
+    </div>
+
+    {# Countdown tile #}
+    <div class="rounded-xl px-4 py-3"
+         style="background-color: var(--color-surface-alt); border: 1px solid var(--color-border);"
+         x-data="maintenanceCountdown({{ state.seconds_until_start }})">
+      <p class="text-xs font-medium mb-1" style="color: var(--color-txt-muted); letter-spacing: .08em; text-transform: uppercase;">
+        Maintenance starts in
+      </p>
+      <p class="text-3xl font-mono font-bold tracking-tight"
+         style="color: var(--color-txt-primary);" x-text="formatted"></p>
+    </div>
+
+    {# Cancel button #}
+    <form method="POST" action="{{ url_for('superadmin.maintenance_cancel') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit"
+              class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition"
+              style="background-color: var(--color-surface-alt);
+                     color: var(--color-txt-primary);
+                     border: 1px solid var(--color-border);"
+              onmouseover="this.style.borderColor='var(--color-border-strong)'; this.style.backgroundColor='var(--color-bg)'"
+              onmouseout="this.style.borderColor='var(--color-border)'; this.style.backgroundColor='var(--color-surface-alt)'">
+        <span class="material-symbols-outlined text-[16px]"
+              style="color: var(--color-txt-muted);">cancel</span>
+        Cancel Scheduled Maintenance
+      </button>
+    </form>
+
+  </div>
+  {% endif %}
+
+  {# ── ACTIVE: end maintenance ── #}
+  {% if state.is_active %}
+  <div class="rounded-2xl p-5 space-y-4"
+       style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+    <div class="flex items-start gap-3">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+           style="background: color-mix(in srgb, var(--color-error) 12%, transparent);">
+        <span class="material-symbols-outlined text-[20px]"
+              style="color: var(--color-error);">construction</span>
+      </div>
+      <div>
+        <p class="text-sm font-semibold" style="color: var(--color-txt-primary);">
+          System is under maintenance
+        </p>
+        <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+          All non-superadmin users are seeing the maintenance page right now.
+        </p>
+      </div>
+    </div>
+
+    {% if state.estimated_end %}
+    <div class="rounded-xl px-4 py-3"
+         style="background-color: var(--color-surface-alt); border: 1px solid var(--color-border);"
+         x-data="maintenanceCountdown({{ state.seconds_until_end or 0 }})">
+      <p class="text-xs font-medium mb-1"
+         style="color: var(--color-txt-muted); letter-spacing: .08em; text-transform: uppercase;">
+        Estimated restoration in
+      </p>
+      <p class="text-3xl font-mono font-bold tracking-tight"
+         style="color: var(--color-txt-primary);" x-text="formatted"></p>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('superadmin.maintenance_end') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit"
+              class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition"
+              style="background-color: var(--color-error); color: #fff;"
+              onmouseover="this.style.opacity='.88'"
+              onmouseout="this.style.opacity='1'">
+        <span class="material-symbols-outlined text-[16px]">power_settings_new</span>
+        End Maintenance Now
+      </button>
+    </form>
+
+  </div>
+
+  {# ── IDLE: schedule form ── #}
+  {% else %}
+  <form method="POST" action="{{ url_for('superadmin.maintenance_update') }}"
+        class="rounded-2xl p-5 space-y-5"
+        style="background-color: var(--color-surface); border: 1px solid var(--color-border);">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {# Form header #}
+    <div class="flex items-start gap-3 pb-4"
+         style="border-bottom: 1px solid var(--color-border);">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+           style="background: color-mix(in srgb, var(--color-accent) 12%, transparent);">
+        <span class="material-symbols-outlined text-[20px]"
+              style="color: var(--color-accent);">schedule</span>
+      </div>
+      <div>
+        <p class="text-sm font-semibold" style="color: var(--color-txt-primary);">
+          Schedule Maintenance
+        </p>
+        <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+          Set a countdown duration before the system goes offline.
+        </p>
+      </div>
+    </div>
+
+    {# Timing inputs #}
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+      <div class="space-y-1.5">
+        <label class="block text-xs font-medium" style="color: var(--color-txt-secondary);">
+          Start in (minutes)
+        </label>
+        <div class="relative">
+          <span class="material-symbols-outlined text-[15px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                style="color: var(--color-txt-muted);">timer</span>
+          <input type="number" name="minutes_until" min="0" value="15"
+                 x-model.number="minutesUntil"
+                 class="w-full pl-9 pr-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                 style="border: 1px solid var(--color-border);
+                        background-color: var(--color-surface-alt);
+                        color: var(--color-txt-primary);"
+                 onfocus="this.style.borderColor='var(--color-accent)';this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                 onblur="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+        </div>
+        <p class="text-xs" style="color: var(--color-txt-muted);">
+          Set to <span class="font-mono font-semibold">0</span> to go offline immediately.
+        </p>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="block text-xs font-medium" style="color: var(--color-txt-secondary);">
+          Estimated duration (minutes)
+          <span style="color: var(--color-txt-muted); font-weight: 400;"> — optional</span>
+        </label>
+        <div class="relative">
+          <span class="material-symbols-outlined text-[15px] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                style="color: var(--color-txt-muted);">hourglass_bottom</span>
+          <input type="number" name="duration_minutes" min="1" placeholder="e.g. 60"
+                 class="w-full pl-9 pr-3 py-2 rounded-lg text-sm focus:outline-none transition"
+                 style="border: 1px solid var(--color-border);
+                        background-color: var(--color-surface-alt);
+                        color: var(--color-txt-primary);"
+                 onfocus="this.style.borderColor='var(--color-accent)';this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                 onblur="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">
+        </div>
+        <p class="text-xs" style="color: var(--color-txt-muted);">
+          Shows a restoration countdown on the maintenance page.
+        </p>
+      </div>
+
+    </div>
+
+    {# Message #}
+    <div class="space-y-1.5">
+      <label class="block text-xs font-medium" style="color: var(--color-txt-secondary);">
+        Message shown to users
+      </label>
+      <textarea name="message" rows="3"
+                class="w-full px-3 py-2 rounded-lg text-sm focus:outline-none transition resize-none"
+                style="border: 1px solid var(--color-border);
+                       background-color: var(--color-surface-alt);
+                       color: var(--color-txt-primary);"
+                onfocus="this.style.borderColor='var(--color-accent)';this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
+                onblur="this.style.borderColor='var(--color-border)';this.style.boxShadow='none'">{{ state.message }}</textarea>
+    </div>
+
+ {# Toggles #}
+<div class="space-y-2">
+
+  <label class="flex items-center justify-between gap-4 px-4 py-3 rounded-xl cursor-pointer"
+         style="background-color: var(--color-surface-alt); border: 1px solid var(--color-border);">
+    <div>
+      <p class="text-sm font-medium" style="color: var(--color-txt-primary);">
+        Show restoration countdown
+      </p>
+      <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+        Displays a timer on the maintenance page. Requires an estimated duration.
+      </p>
+    </div>
+    <input type="checkbox" name="show_countdown" class="sr-only" :checked="showCountdown">
+    <button type="button"
+            @click="showCountdown = !showCountdown"
+            class="relative shrink-0 w-10 h-6 rounded-full transition-colors duration-200"
+            :style="showCountdown
+              ? 'background-color: var(--color-primary); border: 1.5px solid transparent;'
+              : 'background-color: transparent; border: 1.5px solid var(--color-txt-muted);'">
+      <span class="absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full shadow-sm transition-transform duration-200"
+            :style="showCountdown
+              ? 'background: var(--color-bg); transform: translateX(16px);'
+              : 'background: var(--color-txt-muted); transform: translateX(0);'">
+      </span>
+    </button>
+  </label>
+
+  <label class="flex items-center justify-between gap-4 px-4 py-3 rounded-xl cursor-pointer"
+         style="background-color: var(--color-surface-alt); border: 1px solid var(--color-border);">
+    <div>
+      <p class="text-sm font-medium" style="color: var(--color-txt-primary);">
+        Auto-end when timer expires
+      </p>
+      <p class="text-xs mt-0.5" style="color: var(--color-txt-muted);">
+        Off — system stays down after the timer until manually ended.
+      </p>
+    </div>
+    <input type="checkbox" name="auto_end" class="sr-only" :checked="autoEnd">
+    <button type="button"
+            @click="autoEnd = !autoEnd"
+            class="relative shrink-0 w-10 h-6 rounded-full transition-colors duration-200"
+            :style="autoEnd
+              ? 'background-color: var(--color-primary); border: 1.5px solid transparent;'
+              : 'background-color: transparent; border: 1.5px solid var(--color-txt-muted);'">
+      <span class="absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full shadow-sm transition-transform duration-200"
+            :style="autoEnd
+              ? 'background: var(--color-bg); transform: translateX(16px);'
+              : 'background: var(--color-txt-muted); transform: translateX(0);'">
+      </span>
+    </button>
+  </label>
+
+</div>
+    {# Preview hint #}
+    <div class="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs"
+         style="background-color: var(--color-accent-soft);
+                border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
+                color: var(--color-txt-secondary);">
+      <span class="material-symbols-outlined text-[14px] shrink-0 mt-px"
+            style="color: var(--color-accent);">info</span>
+      <span x-show="minutesUntil > 0">
+        A warning banner will appear for all users
+        <span class="font-semibold font-mono" style="color: var(--color-txt-primary);"
+              x-text="minutesUntil + ' min'"></span>
+        before the system goes offline.
+      </span>
+      <span x-show="minutesUntil == 0" x-cloak>
+        The system will go offline
+        <span class="font-semibold" style="color: var(--color-error);">immediately</span>
+        — no warning will be shown to users.
+      </span>
+    </div>
+
+    {# Submit #}
+    <div class="flex justify-end pt-1">
+      <button type="submit"
+              class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition"
+              style="background-color: var(--color-primary); color: var(--color-bg);"
+              onmouseover="this.style.backgroundColor='var(--color-primary-hover)'"
+              onmouseout="this.style.backgroundColor='var(--color-primary)'">
+        <span class="material-symbols-outlined text-[16px]">bolt</span>
+        <span x-text="minutesUntil == 0 ? 'Activate Now' : 'Schedule Maintenance'"></span>
+      </button>
+    </div>
+
+  </form>
+  {% endif %}
+
+</div>
+
+<script>
+function maintenanceControl() {
+  return {
+    minutesUntil:  15,
+    showCountdown: {{ 'true' if state.show_countdown else 'false' }},
+    autoEnd:       {{ 'true' if state.get('auto_end', True) else 'false' }},
+  }
+}
+
+function maintenanceCountdown(seconds) {
+  return {
+    total: seconds,
+    get formatted() {
+      const h = Math.floor(this.total / 3600)
+      const m = Math.floor((this.total % 3600) / 60)
+      const s = this.total % 60
+      return [h, m, s].map(v => String(v).padStart(2, '0')).join(':')
+    },
+    init() {
+      const iv = setInterval(() => {
+        if (this.total <= 0) { clearInterval(iv); location.reload(); return }
+        this.total--
+      }, 1000)
+    }
+  }
+}
+</script>
+{% endblock %}
