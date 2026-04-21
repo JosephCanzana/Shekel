@@ -1,0 +1,48 @@
+# docker-compose.demo.yml
+services:
+  db-demo:
+    image: mysql:8.0
+    container_name: shekel_db_demo
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DEMO_MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DEMO_MYSQL_DATABASE}
+      MYSQL_USER: ${DEMO_MYSQL_USER}
+      MYSQL_PASSWORD: ${DEMO_MYSQL_PASSWORD}
+    volumes:
+      - db_demo_data:/var/lib/mysql
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    networks:
+      - demo-internal
+
+  web-demo:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: shekel_web_demo
+    restart: unless-stopped
+    env_file:
+      - .env.demo
+    depends_on:
+      db-demo:
+        condition: service_healthy
+    networks:
+      - demo-internal
+      - nginx-shared    
+
+volumes:
+  db_demo_data:
+
+networks:
+  demo-internal:
+    driver: bridge
+  nginx-shared:
+    external: true
+    name: shekel_default 
