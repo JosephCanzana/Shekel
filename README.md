@@ -1,5 +1,11 @@
 # Shekel
 
+## App link
+- Production
+> https://proto.taild735b3.ts.net
+- Demo
+> https://proto.taild735b3.ts.net:8443
+
 ## First clone & docker update
 
 1. Create .env file
@@ -29,6 +35,10 @@
 > docker compose exec db mysql -u root -p
 4. Access container os
 > docker exec -it shekel-web-1 bash
+5. Production build
+> docker compose -f docker-compose.prod.yml up -d --build
+6. Demo build
+> docker compose -f docker-compose.demo.yml up -d --build
 
 ## Tailwind
 1. Install Tailwind
@@ -45,3 +55,13 @@
 ## Mysql
 1. schema
 > mysqldump -u username -p --no-data db_name > schema.sql
+
+## Tailscale
+1. funnel
+> tailscale funnel 80
+2. expose demo
+> tailscale serve --bg --https=8443 http://localhost:8080
+
+## Nginx
+1. reload nginx
+> docker compose up -d --force-recreate nginx
