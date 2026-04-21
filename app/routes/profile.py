@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask               import render_template, request, flash, redirect, url_for, Blueprint
+from flask               import render_template, request, flash, redirect, url_for, Blueprint, current_app
 from flask_login         import login_required, current_user
 from flask_mail import Message
 from sqlalchemy.exc      import DataError
@@ -115,7 +115,8 @@ def update_recovery():
             ))
         db.session.commit()
 
-        verify_url = url_for('profile.verify_recovery_email', token=token, _external=True)
+        base_url   = current_app.config["APP_BASE_URL"]
+        verify_url = f"{base_url}/profile/recovery/verify/{token}"
         msg        = Message("Verify your recovery email — Shekel", recipients=[email])
         msg.body   = (
             f"Hello,\n\nClick the link to verify your recovery email "
