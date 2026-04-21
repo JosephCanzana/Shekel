@@ -27,8 +27,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env.demo
-    environment:
-    - SCRIPT_NAME=/demo
     depends_on:
       db-demo:
         condition: service_healthy
