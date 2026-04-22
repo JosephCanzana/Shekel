@@ -264,10 +264,7 @@
             closeDetail()       { this.mobileDetailOpen = false; setTimeout(() => this.selectedProduct = null, 300) },
 
             get categories() {
-                const seen = new Set()
-                return this.rows
-                    .map(r => ({ id: r.category_id, name: r.category_name }))
-                    .filter(c => c.name && c.name !== '—' && !seen.has(c.id) && seen.add(c.id))
+                return CATEGORIES_DATA.filter(c => c.name && c.name !== '—')
             },
 
             get lowStockCount() { return this.rows.filter(r => r.stock > 0 && r.stock <= r.low_reorder_threshold && r.status === 'active').length },

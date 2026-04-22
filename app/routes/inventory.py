@@ -31,10 +31,14 @@ def index():
         submitted_items = StockAdjustmentRequest.query.filter_by(status="pending").all()
 
     return render_template("inventory/index.html",
-        products=products,
-        products_data=products_data,
-        can_manage=is_admin_or_coadmin(),
-        submitted_items=submitted_items)
+            products=products,
+            products_data=products_data,
+            can_manage=is_admin_or_coadmin(),
+            submitted_items=submitted_items,
+            categories_data=[
+                {"id": c.category_id, "name": c.category_name}
+                for c in get_active_categories()
+            ])
 
 
 @inventory_bp.route("/add", methods=["GET", "POST"])
