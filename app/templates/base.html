@@ -57,36 +57,39 @@
         x-transition:leave-end="opacity-0 translate-y-2"
         class="fixed bottom-5 inset-x-0 z-50 flex justify-center pointer-events-none px-4">
 
-    <div class="pointer-events-auto flex items-center gap-3 px-4 py-2.5 rounded-2xl shadow-lg"
+<div class="fixed inset-x-0 z-50 flex justify-center pointer-events-none px-4 sm:px-0"
+     style="bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+
+    <div class="pointer-events-auto w-full sm:w-auto flex items-center gap-3 px-4 py-3 sm:py-2.5 rounded-2xl shadow-lg"
         style="background-color: var(--color-surface);
                 border: 1px solid var(--color-border);
                 backdrop-filter: blur(8px);">
 
         {# Pulsing dot #}
-        <span class="relative flex h-2 w-2 shrink-0">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
-                style="background-color: #f59e0b;"></span>
-        <span class="relative inline-flex h-2 w-2 rounded-full"
-                style="background-color: #f59e0b;"></span>
+        <span class="relative flex h-2.5 w-2.5 sm:h-2 sm:w-2 shrink-0">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60"
+                    style="background-color: #f59e0b;"></span>
+            <span class="relative inline-flex h-full w-full rounded-full"
+                    style="background-color: #f59e0b;"></span>
         </span>
 
-        <span class="text-xs" style="color: var(--color-txt-muted);">
-        Maintenance in
-        <span class="font-mono font-semibold" style="color: var(--color-txt-primary);"
-                x-text="formatted"></span>
+        <span class="flex-1 text-sm sm:text-xs" style="color: var(--color-txt-muted);">
+            Scheduled maintenance in
+            <span class="font-mono font-semibold" style="color: var(--color-txt-primary);"
+                    x-text="formatted"></span>
         </span>
 
         {# Dismiss button #}
         <button @click="visible = false"
-                class="ml-1 flex items-center justify-center rounded-lg w-5 h-5 transition"
+                class="flex items-center justify-center rounded-lg w-7 h-7 sm:w-5 sm:h-5 transition shrink-0"
                 style="color: var(--color-txt-muted);"
                 onmouseover="this.style.color='var(--color-txt-primary)'"
                 onmouseout="this.style.color='var(--color-txt-muted)'">
-        <span class="material-symbols-outlined text-[14px]">close</span>
+            <span class="material-symbols-outlined text-[16px] sm:text-[14px]">close</span>
         </button>
 
     </div>
-    </div>
+</div>s
     {% endif %}
 
     {# Content area — padded to clear fixed navbar (h-14) and collapsed sidebar (w-16) #}

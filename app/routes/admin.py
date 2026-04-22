@@ -263,6 +263,9 @@ def review_request(request_id):
 
     decision_map = {d["detail_id"]: d for d in decisions}
 
+    last_batch = db.session.query(func.max(StockIn.batch_id)).scalar() or 0
+    batch_id   = last_batch + 1
+
     for detail in req.details:
         decision = decision_map.get(detail.detail_id)
         if not decision:
@@ -301,7 +304,8 @@ def review_request(request_id):
 
                     db.session.add(StockIn(
                         product_id        = detail.product_id,
-                        user_id           = current_user.user_id,
+                        batch_id          = batch_id,
+                        user_id           = req.requested_by,
                         quantity_received = qty,
                         stockin_datetime  = datetime.utcnow(),
                         notes             = detail.note or None,
