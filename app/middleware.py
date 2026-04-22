@@ -9,6 +9,8 @@ EXEMPT_ROUTES = {
     "superadmin.maintenance_end",
     "auth.login",
     "auth.logout",
+    "auth.forgot_password",
+    "auth.reset_password", 
     "static",
 }
 

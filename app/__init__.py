@@ -5,6 +5,7 @@ from config import DevelopmentConfig
 from app.extensions import db, login_manager, migrate, csrf, mail
 from app.utils.helpers import to_pht
 from werkzeug.middleware.proxy_fix import ProxyFix
+from config import DevelopmentConfig, ProductionConfig
 
 def create_app(test_config=None):
     load_dotenv()
@@ -20,7 +21,8 @@ def create_app(test_config=None):
     
 
     
-    app.config.from_object(DevelopmentConfig)
+    config_class = ProductionConfig if os.getenv("FLASK_ENV") == "production" else DevelopmentConfig
+    app.config.from_object(config_class)
     # For pytesting
     if test_config:
         app.config.update(test_config)
