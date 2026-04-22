@@ -168,7 +168,12 @@
                    onmouseout="this.style.backgroundColor='transparent'">
                     Cancel
                 </a>
-                <button type="submit"
+                <button type="button"
+                        @click="$dispatch('confirm', {
+                            title:   '{{ 'Save Changes' if user is defined else 'Create User' }}',
+                            message: '{{ ('Save changes for ' ~ user.first_name ~ ' ' ~ user.last_name ~ '? Role and password changes take effect immediately.') if user is defined else 'Create this new user? They will be able to log in right away.' }}',
+                            form:    $el.closest('form')
+                        })"
                         class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition active:scale-[.98]"
                         style="background-color: var(--color-primary);
                                color: var(--color-bg);"
@@ -177,7 +182,6 @@
                     {{ "Save Changes" if user is defined else "Create User" }}
                 </button>
             </div>
-
         </form>
     </div>
 </div>
