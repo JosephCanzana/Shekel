@@ -24,6 +24,6 @@ class Defect(BaseModel):
 
     user     = db.relationship("User", foreign_keys="Defect.user_id",    back_populates="defects")
     archiver = db.relationship("User", foreign_keys="Defect.archived_by")
-    deleter        = db.relationship("User",         foreign_keys="Defect.archived_by")
+    deleter  = db.relationship("User", foreign_keys="Defect.archived_by", overlaps="archiver")
     defect_details = db.relationship("DefectDetail", back_populates="defect",
                                  cascade="all, delete-orphan")

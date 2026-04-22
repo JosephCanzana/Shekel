@@ -192,7 +192,12 @@ def forgot_password():
                 f"(expires in 30 minutes).\n\n{reset_url}\n\n"
                 f"If you did not request this, ignore this email."
             )
-            mail.send(msg)
+            try:
+                mail.send(msg)
+                flash("If that email belongs to an admin account, a reset link has been sent.", "info")
+            except Exception as e:
+                current_app.logger.error(f"Mail error: {e}")
+                flash("Failed to send email. Please try again later.", "error")
 
         flash("If that email belongs to an admin account, a reset link has been sent.", "info")
         return redirect(url_for('auth.forgot_password'))
