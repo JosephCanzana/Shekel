@@ -49,6 +49,7 @@ function requestsData() {
             ...b,
             expanded:   false,
             submitting: false,
+            confirming: false,
             done:       false,
             decisions:  b.details.map(d => ({
                 detail_id:          d.detail_id,
@@ -587,19 +588,62 @@ function requestsData() {
                                 </template>
 
                                 {# Submit footer — stacks on mobile #}
-                                <div class="flex flex-col xs:flex-row xs:items-center justify-between gap-3 px-4 sm:px-5 py-4"
-                                     style="background:var(--color-surface-alt);">
-                                    <div class="text-xs" style="color:var(--color-txt-muted);">
-                                        <span x-text="batch.decisions.filter(d=>d.action==='approve').length"></span> approving ·
-                                        <span x-text="batch.decisions.filter(d=>d.action==='reject').length"></span> rejecting
+                                <div class="flex flex-col gap-3 px-4 sm:px-5 py-4"
+                                    style="background:var(--color-surface-alt);">
+
+                                    {# Summary line #}
+                                    <div class="flex items-center justify-between flex-wrap gap-2">
+                                        <div class="text-xs" style="color:var(--color-txt-muted);">
+                                            <span class="font-semibold" style="color:var(--color-success);"
+                                                x-text="batch.decisions.filter(d=>d.action==='approve').length + ' approving'"></span>
+                                            <span class="mx-1 opacity-40">·</span>
+                                            <span class="font-semibold" style="color:var(--color-error);"
+                                                x-text="batch.decisions.filter(d=>d.action==='reject').length + ' rejecting'"></span>
+                                        </div>
+                                        <template x-if="!batch.confirming">
+                                            <button @click="batch.confirming = true"
+                                                    class="w-full xs:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition active:scale-[.98]"
+                                                    style="background:var(--color-primary);color:var(--color-bg);"
+                                                    onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                                                <span class="material-symbols-outlined text-[17px]">task_alt</span>
+                                                Submit Review
+                                            </button>
+                                        </template>
                                     </div>
-                                    <button @click="submitReview(batch)" :disabled="batch.submitting"
-                                            class="w-full xs:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50 active:scale-[.98]"
-                                            style="background:var(--color-primary);color:var(--color-bg);">
-                                        <span x-show="!batch.submitting" class="material-symbols-outlined text-[17px]">task_alt</span>
-                                        <span x-show="batch.submitting" class="material-symbols-outlined text-[17px] animate-spin">progress_activity</span>
-                                        <span x-text="batch.submitting ? 'Submitting…' : 'Submit Review'"></span>
-                                    </button>
+
+                                    {# Inline confirm step #}
+                                    <template x-if="batch.confirming">
+                                        <div class="flex flex-col gap-2 rounded-xl p-3"
+                                            style="background:color-mix(in srgb,var(--color-warning) 8%,transparent);
+                                                    border:1px solid color-mix(in srgb,var(--color-warning) 25%,transparent);">
+                                            <div class="flex items-start gap-2">
+                                                <span class="material-symbols-outlined text-[16px] mt-0.5 shrink-0" style="color:var(--color-warning);">warning</span>
+                                                <p class="text-xs font-semibold" style="color:var(--color-warning);">
+                                                    Submit this review?
+                                                    <span class="font-normal" style="color:var(--color-txt-muted);">
+                                                        Approved quantities will update inventory immediately. This cannot be undone.
+                                                    </span>
+                                                </p>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <button @click="batch.confirming = false"
+                                                        class="flex-1 py-2 rounded-lg text-xs font-semibold transition"
+                                                        style="border:1px solid var(--color-border);color:var(--color-txt-secondary);"
+                                                        onmouseover="this.style.backgroundColor='var(--color-surface)'"
+                                                        onmouseout="this.style.backgroundColor='transparent'">Cancel</button>
+                                                <button @click="batch.confirming = false; submitReview(batch)"
+                                                        :disabled="batch.submitting"
+                                                        class="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition disabled:opacity-50"
+                                                        style="background:var(--color-primary);color:var(--color-bg);"
+                                                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                                                    <span x-show="!batch.submitting" class="material-symbols-outlined text-[15px]">check_circle</span>
+                                                    <span x-show="batch.submitting" class="material-symbols-outlined text-[15px] animate-spin">progress_activity</span>
+                                                    <span x-text="batch.submitting ? 'Submitting…' : 'Yes, Submit'"></span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </template>
+
                                 </div>
                             </div>
                         </div>
@@ -985,18 +1029,7 @@ function requestsData() {
                                                 onmouseout="this.style.background='color-mix(in srgb,var(--color-error) 12%,transparent)'">
                                             <span class="material-symbols-outlined text-[13px]">cancel</span> Reject
                                         </button>
-                                        <button @click="$dispatch('confirm', {
-                                                    title:   'Delete',
-                                                    message: 'Delete this submission? No inventory change.',
-                                                    action:  item.delete_url,
-                                                    fields:  []
-                                                })"
-                                                class="w-7 h-7 rounded-lg flex items-center justify-center transition"
-                                                style="color:var(--color-txt-muted);"
-                                                onmouseover="this.style.color='var(--color-error)'"
-                                                onmouseout="this.style.color='var(--color-txt-muted)'">
-                                            <span class="material-symbols-outlined text-[14px]">delete</span>
-                                        </button>
+
                                     </div>
                                 </div>
                             </div>

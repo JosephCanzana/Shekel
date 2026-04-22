@@ -269,17 +269,17 @@
 }" x-init="
     $nextTick(() => $refs.searchField && $refs.searchField.focus());
     window.addEventListener('keydown', (e) => {
-        const tag = document.activeElement.tagName;
-        const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-        if (e.key === 'F2' || (e.key === '/' && !isTyping)) {
-            e.preventDefault();
-            let visibleField = null;
-            document.querySelectorAll('input[x-ref=searchField]').forEach(f => {
-                if (f.offsetParent !== null) visibleField = f;
-            });
-            if (visibleField) { visibleField.focus(); visibleField.select(); }
-        }
-    });
+    const tag = document.activeElement.tagName;
+    const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    if (e.key === 'F2' || (e.key === '/' && !isTyping)) {
+        e.preventDefault();
+        let visibleField = null;
+        document.querySelectorAll('input.stockin-search').forEach(f => {
+            if (f.offsetParent !== null) visibleField = f;
+        });
+        if (visibleField) { visibleField.focus(); visibleField.select(); }
+    }
+});
 ">
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -425,8 +425,7 @@
                                        @blur="handleBlur()"
                                        placeholder="Search by name or barcode..."
                                        autocomplete="off"
-                                       class="w-full pl-8 pr-3 py-2 rounded-xl text-sm focus:outline-none transition"
-                                       style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
+                                       class="stockin-search w-full pl-8 pr-3 py-2 rounded-xl text-sm focus:outline-none transition"                                       style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary);"
                                        onfocus="this.style.borderColor='var(--color-accent)'; this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                                        onblur="this.style.borderColor='var(--color-border)'; this.style.boxShadow='none'">
                             </div>
@@ -443,10 +442,10 @@
                             <div class="absolute left-0 right-10 mt-1 rounded-xl overflow-hidden z-20 shadow-lg"
                                  style="background-color:var(--color-surface); border:1px solid var(--color-border);">
                                 <template x-for="(s, i) in suggestions" :key="s.product_id">
-                                    <button x-ref="'suggestion_' + i" @click="selectSuggestion(s)"
-                                            @keydown.arrow-down.prevent="focusSuggestion(i+1)"
-                                            @keydown.arrow-up.prevent="i===0 ? $refs.searchField.focus() : focusSuggestion(i-1)"
-                                            @keydown.enter.prevent="selectSuggestion(s)"
+                                    <button x-ref="'suggestion_' + i" @mousedown.prevent="selectSuggestion(s)"
+        @keydown.arrow-down.prevent="focusSuggestion(i+1)"
+        @keydown.arrow-up.prevent="i===0 ? $refs.searchField.focus() : focusSuggestion(i-1)"
+        @keydown.enter.prevent="selectSuggestion(s)"
                                             class="w-full flex items-center justify-between px-4 py-2.5 text-left text-sm transition"
                                             style="border-top:1px solid var(--color-border);" :style="i===0 ? 'border-top:none' : ''"
                                             onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
@@ -708,8 +707,7 @@
                                            @blur="handleBlur()"
                                            placeholder="Barcode or product name..."
                                            autocomplete="off"
-                                           class="w-full pl-9 pr-3 py-2.5 rounded-2xl text-sm focus:outline-none transition"
-                                           style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary); font-size:16px;"
+                                           class="stockin-search w-full pl-9 pr-3 py-2.5 rounded-2xl text-sm focus:outline-none transition"                                           style="border:1px solid var(--color-border); background-color:var(--color-surface-alt); color:var(--color-txt-primary); font-size:16px;"
                                            onfocus="this.style.borderColor='var(--color-accent)'; this.style.boxShadow='0 0 0 3px var(--color-accent-soft)'"
                                            onblur="this.style.borderColor='var(--color-border)'; this.style.boxShadow='none'">
                                 </div>
@@ -726,10 +724,10 @@
                                 <div class="absolute left-0 right-13 mt-1 rounded-2xl overflow-hidden z-20 shadow-xl"
                                      style="background-color:var(--color-surface); border:1px solid var(--color-border);">
                                     <template x-for="(s, i) in suggestions" :key="s.product_id">
-                                        <button @click="selectSuggestion(s)"
-                                                class="w-full flex items-center justify-between px-4 py-3 text-left transition"
-                                                style="border-top:1px solid var(--color-border);" :style="i===0 ? 'border-top:none' : ''"
-                                                onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
+                                        <button @mousedown.prevent="selectSuggestion(s)"
+                                            class="w-full flex items-center justify-between px-4 py-3 text-left transition"
+                                            style="border-top:1px solid var(--color-border);" :style="i===0 ? 'border-top:none' : ''"
+                                            onmouseover="this.style.backgroundColor='var(--color-surface-alt)'" onmouseout="this.style.backgroundColor='transparent'">
                                             <div>
                                                 <p class="text-sm font-medium" style="color:var(--color-txt-primary);" x-text="s.product_name"></p>
                                                 <p class="text-xs font-mono mt-0.5" style="color:var(--color-txt-muted);" x-text="s.product_id"></p>
