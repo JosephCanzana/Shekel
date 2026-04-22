@@ -6,6 +6,7 @@ from app.extensions import db, login_manager, migrate, csrf, mail
 from app.utils.helpers import to_pht
 from werkzeug.middleware.proxy_fix import ProxyFix
 from config import DevelopmentConfig, ProductionConfig
+import os
 
 def create_app(test_config=None):
     load_dotenv()
