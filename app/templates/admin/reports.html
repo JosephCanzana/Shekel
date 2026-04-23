@@ -245,7 +245,7 @@
     <div class="lg:col-span-3 bg-surface border border-border rounded-xl p-4">
       <div class="flex items-center justify-between mb-3">
         <p class="text-sm font-semibold text-txt-primary">
-          {% if is_single_day %}Hourly Revenue{% else %}Daily Revenue{% endif %}
+          {% if is_single_day %}Daily Revenue{% else %}Daily Revenue{% endif %}
         </p>
         <div class="flex items-center gap-1 bg-bg rounded-lg p-0.5 border border-border text-[11px]">
           <button @click="mode='revenue'; updateSalesChart('revenue')"

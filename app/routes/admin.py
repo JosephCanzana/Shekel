@@ -278,7 +278,7 @@ def review_request(request_id):
             raw_qty = decision.get("quantity_approved")
             try:
                 qty = int(raw_qty) if raw_qty is not None else detail.quantity_requested
-                if qty <= 0:
+                if qty < 0 or (qty <= 0 and detail.request.request_type != "adjustment"):
                     raise ValueError
             except (ValueError, TypeError):
                 return jsonify({"error": f"Invalid quantity for '{detail.product.product_name}'."}), 400

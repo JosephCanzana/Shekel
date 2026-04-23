@@ -229,7 +229,9 @@ function requestsData() {
             batch.submitting = true;
             const decisions = batch.decisions.map(d => {
                 const dec = { detail_id: d.detail_id, action: d.action };
-                if (d.action === 'approve') dec.quantity_approved = Math.max(1, parseInt(d.quantity_approved) || d.quantity_requested);
+                if (d.action === 'approve') dec.quantity_approved = batch.request_type === 'adjustment'
+    ? Math.max(0, parseInt(d.quantity_approved) ?? d.quantity_requested)
+    : Math.max(1, parseInt(d.quantity_approved) || d.quantity_requested);
                 else dec.rejection_reason = d.rejection_reason.trim() || '';
                 return dec;
             });
@@ -528,7 +530,8 @@ function requestsData() {
                                             </div>
                                             <div class="shrink-0 text-right">
                                                 <p class="text-xs" style="color:var(--color-txt-muted);">Requested</p>
-                                                <p class="text-lg font-bold tabular-nums" style="color:var(--color-primary);" x-text="'+' + dec.quantity_requested"></p>
+                                                <p class="text-lg font-bold tabular-nums" style="color:var(--color-primary);"
+   x-text="batch.request_type === 'adjustment' ? 'New count: ' + dec.quantity_requested : '+' + dec.quantity_requested"></p>
                                             </div>
                                         </div>
 
@@ -552,14 +555,15 @@ function requestsData() {
                                             {# Quantity control — full width on mobile #}
                                             <template x-if="dec.action === 'approve'">
                                                 <div class="flex items-center gap-2 flex-wrap">
-                                                    <p class="text-xs" style="color:var(--color-txt-muted);">Approve qty:</p>
+                                                    <p class="text-xs" style="color:var(--color-txt-muted);"
+   x-text="batch.request_type === 'adjustment' ? 'Set count to:' : 'Approve qty:'"></p>
                                                     <div class="flex items-center gap-1">
-                                                        <button @click="if(dec.quantity_approved>1) dec.quantity_approved--" :disabled="dec.quantity_approved<=1"
+                                                        <button @click="if(dec.quantity_approved>(batch.request_type==='adjustment'?0:1)) dec.quantity_approved--" :disabled="dec.quantity_approved<=(batch.request_type==='adjustment'?0:1)"
                                                                 class="w-8 h-8 rounded-lg flex items-center justify-center disabled:opacity-30"
                                                                 style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-muted);">
                                                             <span class="material-symbols-outlined text-[13px]">remove</span>
                                                         </button>
-                                                        <input type="number" x-model="dec.quantity_approved" :max="dec.quantity_requested" min="1"
+                                                        <input type="number" x-model="dec.quantity_approved" :max="dec.quantity_requested" :min="batch.request_type==='adjustment'?0:1"
                                                                @focus="$event.target.select()"
                                                                class="w-14 py-1.5 rounded-lg text-sm text-center font-bold focus:outline-none"
                                                                style="border:1px solid var(--color-border);background:var(--color-surface-alt);color:var(--color-txt-primary);">
