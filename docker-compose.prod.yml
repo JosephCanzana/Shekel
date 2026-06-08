@@ -26,7 +26,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: shekel_web
     restart: unless-stopped
-    expose:
+    ports:
       - "5000:5000"
     env_file:
       - .env
