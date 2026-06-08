@@ -27,7 +27,7 @@ services:
     container_name: shekel_web
     restart: unless-stopped
     expose:
-      - "5000"
+      - "5000:5000"
     env_file:
       - .env
     depends_on:
